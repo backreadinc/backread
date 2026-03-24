@@ -121,7 +121,7 @@ export default function DocumentEditorPage({ params }: { params: { id: string } 
       </div>
 
       {/* Editor toolbar */}
-      <EditorToolbar editor={editor} />
+      <EditorToolbar editor={editor!} />
 
       {/* Content */}
       <div style={{ flex: 1, overflow: 'auto', padding: '48px 24px' }}>
