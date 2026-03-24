@@ -2,7 +2,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase/client'
-import { buildShareUrl, generateToken, formatRelativeTime } from '@/lib/utils'
+import { buildShareUrl, generateToken } from '@/lib/utils'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
 import { Badge, Toggle } from '@/components/ui'
@@ -45,14 +45,21 @@ function makePage(bg = '#0a0a0b', objects: any[] = []) {
   return { version: '5.3.0', objects, background: bg }
 }
 function txt(text: string, o: any = {}) {
-  return { type: 'textbox', left: o.left??60, top: o.top??60, width: o.width??400, text,
-    fontSize: o.fontSize??18, fontFamily: 'DM Sans', fill: o.fill??'#ffffff',
-    fontWeight: o.fontWeight??'normal', opacity: o.opacity??1, selectable: true, editable: true }
+  return {
+    type: 'textbox', left: o.left ?? 60, top: o.top ?? 60,
+    width: o.width ?? 400, text,
+    fontSize: o.fontSize ?? 18, fontFamily: 'DM Sans', fill: o.fill ?? '#ffffff',
+    fontWeight: o.fontWeight ?? 'normal', opacity: o.opacity ?? 1,
+    selectable: true, editable: true,
+  }
 }
 function rct(o: any = {}) {
-  return { type: 'rect', left: o.left??0, top: o.top??0, width: o.width??200,
-    height: o.height??60, fill: o.fill??'#f97316', rx: o.rx??0, ry: o.ry??0,
-    selectable: true, opacity: o.opacity??1 }
+  return {
+    type: 'rect', left: o.left ?? 0, top: o.top ?? 0,
+    width: o.width ?? 200, height: o.height ?? 60,
+    fill: o.fill ?? '#f97316', rx: o.rx ?? 0, ry: o.ry ?? 0,
+    selectable: true, opacity: o.opacity ?? 1,
+  }
 }
 
 function buildTemplate(id: string): any[] {
@@ -64,7 +71,7 @@ function buildTemplate(id: string): any[] {
       makePage('#0f0f13', [rct({left:0,top:0,width:W,height:8,fill:'#f97316'}),txt('Our Solution',{left:60,top:50,fontSize:36,fontWeight:'700',width:W-120}),txt('Feature 1',{left:60,top:140,fontSize:20,fontWeight:'600',fill:'#f97316',width:260}),txt('Describe the capability and why it matters.',{left:60,top:170,fontSize:15,fill:'#a1a1aa',width:260}),txt('Feature 2',{left:360,top:140,fontSize:20,fontWeight:'600',fill:'#f97316',width:260}),txt('Describe the capability and why it matters.',{left:360,top:170,fontSize:15,fill:'#a1a1aa',width:260})]),
       makePage('#0f0f13', [rct({left:0,top:0,width:W,height:8,fill:'#f97316'}),txt('Traction',{left:60,top:50,fontSize:36,fontWeight:'700',width:W-120}),txt('$0M ARR',{left:60,top:150,fontSize:52,fontWeight:'700',fill:'#f97316',width:360}),txt('Annual Recurring Revenue',{left:60,top:215,fontSize:14,fill:'#71717a',width:360}),txt('0K Users',{left:400,top:150,fontSize:52,fontWeight:'700',width:280}),txt('Active accounts',{left:400,top:215,fontSize:14,fill:'#71717a',width:280})]),
       makePage('#0f0f13', [rct({left:0,top:0,width:W,height:8,fill:'#f97316'}),txt('The Ask',{left:60,top:50,fontSize:36,fontWeight:'700',width:W-120}),txt('Raising $X.XM',{left:60,top:130,fontSize:44,fontWeight:'700',fill:'#f97316',width:W-120}),txt('40% Product · 30% Sales · 20% Marketing · 10% Ops',{left:60,top:255,fontSize:16,fill:'#71717a',width:600})]),
-      makePage('#f97316', [txt('Thank You',{left:60,top:160,fontSize:72,fontWeight:'700',width:W-120}),txt('Questions? Let\'s talk.',{left:60,top:270,fontSize:24,fill:'#ffedd5',width:500})]),
+      makePage('#f97316', [txt('Thank You',{left:60,top:160,fontSize:72,fontWeight:'700',width:W-120}),txt("Questions? Let's talk.",{left:60,top:270,fontSize:24,fill:'#ffedd5',width:500})]),
     ]
     case 'proposal': return [
       makePage('#0d1117', [rct({left:W-300,top:0,width:300,height:H,fill:'#1a2332',opacity:.8}),txt('PROJECT PROPOSAL',{left:60,top:60,fontSize:13,fill:'#3b82f6',fontWeight:'600'}),txt('Proposal Title\nGoes Here',{left:60,top:110,fontSize:46,fontWeight:'700',width:W-380}),txt('Prepared for: Client Name\nDate: Month YYYY',{left:60,top:310,fontSize:15,fill:'#94a3b8',width:400})]),
@@ -87,22 +94,28 @@ function buildTemplate(id: string): any[] {
     ]
     case 'case-study': return [
       makePage('#09090b', [rct({left:0,top:H-8,width:W,height:8,fill:'#ec4899'}),txt('CASE STUDY',{left:60,top:60,fontSize:12,fill:'#ec4899'}),txt('How [Client]\nAchieved X with\nBackread',{left:60,top:100,fontSize:48,fontWeight:'700',fill:'#fafafa',width:W-120})]),
-      makePage('#09090b', [rct({left:0,top:0,width:W,height:4,fill:'#ec4899'}),txt('The Challenge',{left:60,top:50,fontSize:32,fontWeight:'700',fill:'#fafafa',width:W-120}),txt('Describe the client\'s core problem.',{left:60,top:120,fontSize:18,fill:'#a1a1aa',width:W-120}),txt('"Quote from the client about their pain."',{left:60,top:290,fontSize:20,fill:'#ec4899',fontWeight:'600',width:W-120})]),
+      makePage('#09090b', [rct({left:0,top:0,width:W,height:4,fill:'#ec4899'}),txt('The Challenge',{left:60,top:50,fontSize:32,fontWeight:'700',fill:'#fafafa',width:W-120}),txt("Describe the client's core problem.",{left:60,top:120,fontSize:18,fill:'#a1a1aa',width:W-120}),txt('"Quote from the client about their pain."',{left:60,top:290,fontSize:20,fill:'#ec4899',fontWeight:'600',width:W-120})]),
       makePage('#09090b', [rct({left:0,top:0,width:W,height:4,fill:'#ec4899'}),txt('The Solution',{left:60,top:50,fontSize:32,fontWeight:'700',fill:'#fafafa',width:W-120}),txt('How Backread was implemented.',{left:60,top:120,fontSize:18,fill:'#a1a1aa',width:W-120})]),
       makePage('#09090b', [rct({left:0,top:0,width:W,height:4,fill:'#ec4899'}),txt('The Results',{left:60,top:50,fontSize:32,fontWeight:'700',fill:'#fafafa',width:W-120}),txt('0%',{left:60,top:140,fontSize:72,fontWeight:'700',fill:'#ec4899',width:280}),txt('Improvement in metric',{left:60,top:230,fontSize:14,fill:'#71717a'}),txt('0x',{left:360,top:140,fontSize:72,fontWeight:'700',fill:'#fafafa',width:280}),txt('Faster than before',{left:360,top:230,fontSize:14,fill:'#71717a'})]),
-      makePage('#09090b', [rct({left:0,top:0,width:W,height:4,fill:'#ec4899'}),txt('What\'s Next',{left:60,top:50,fontSize:32,fontWeight:'700',fill:'#fafafa',width:W-120}),txt('Describe the client\'s plans going forward.',{left:60,top:120,fontSize:18,fill:'#a1a1aa',width:W-120})]),
+      makePage('#09090b', [rct({left:0,top:0,width:W,height:4,fill:'#ec4899'}),txt("What's Next",{left:60,top:50,fontSize:32,fontWeight:'700',fill:'#fafafa',width:W-120}),txt("Describe the client's plans going forward.",{left:60,top:120,fontSize:18,fill:'#a1a1aa',width:W-120})]),
     ]
-    case 'one-pager': default: return [
+    case 'one-pager':
+    default: return [
       makePage('#0a0a0b', [rct({left:0,top:0,width:4,height:H,fill:'#f59e0b'}),txt('BACKREAD',{left:40,top:40,fontSize:22,fontWeight:'700',fill:'#f59e0b',width:300}),txt('Your Headline Here',{left:40,top:100,fontSize:42,fontWeight:'700',fill:'#fafafa',width:W/2-60}),txt('A compelling one-sentence description.',{left:40,top:175,fontSize:16,fill:'#a1a1aa',width:W/2-60}),txt('Key Point 1',{left:40,top:250,fontSize:16,fontWeight:'600',fill:'#f59e0b'}),txt('Short explanation of this benefit.',{left:40,top:273,fontSize:14,fill:'#71717a',width:W/2-60}),txt('Key Point 2',{left:40,top:330,fontSize:16,fontWeight:'600',fill:'#f59e0b'}),txt('Short explanation of this benefit.',{left:40,top:353,fontSize:14,fill:'#71717a',width:W/2-60}),txt('hello@backread.com',{left:W/2+40,top:H-100,fontSize:14,fill:'#f59e0b'})]),
     ]
   }
+}
+
+// ─── Tool button style helper ─────────────────────────────────────────────────
+const toolBtnStyle: React.CSSProperties = {
+  background: 'none', border: 'none', cursor: 'pointer',
+  padding: '2px 4px', borderRadius: 4, fontFamily: 'inherit', fontSize: 14,
 }
 
 // ─── Main page component ──────────────────────────────────────────────────────
 export default function DocumentEditorPage({ params }: { params: { id: string } }) {
   const router = useRouter()
 
-  // ── Existing doc state (unchanged) ─────────────────────────────────────────
   const [doc, setDoc] = useState<Document | null>(null)
   const [title, setTitle] = useState('')
   const [emoji, setEmoji] = useState('📄')
@@ -113,10 +126,9 @@ export default function DocumentEditorPage({ params }: { params: { id: string } 
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
   const [showDrafter, setShowDrafter] = useState(false)
 
-  // ── Canvas state ────────────────────────────────────────────────────────────
+  // Canvas state
   const canvasEl = useRef<HTMLCanvasElement>(null)
   const fabricRef = useRef<any>(null)
-  const fabricLoaded = useRef(false)
   const [pages, setPages] = useState<any[]>([])
   const [currentPage, setCurrentPage] = useState(0)
   const [activeTool, setActiveTool] = useState('select')
@@ -128,21 +140,28 @@ export default function DocumentEditorPage({ params }: { params: { id: string } 
   const [bgColor, setBgColor] = useState('#0a0a0b')
   const [isDragging, setIsDragging] = useState(false)
   const saveTimer = useRef<NodeJS.Timeout | null>(null)
+  const pagesRef = useRef<any[]>([])
+  const currentPageRef = useRef(0)
 
-  // ── Load Fabric.js ──────────────────────────────────────────────────────────
+  // Keep refs in sync
+  useEffect(() => { pagesRef.current = pages }, [pages])
+  useEffect(() => { currentPageRef.current = currentPage }, [currentPage])
+
+  // ── Load Fabric.js ────────────────────────────────────────────────────────
   useEffect(() => {
-    if ((window as any).fabric) { fabricLoaded.current = true; return }
-    const s = document.createElement('script')
-    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.0/fabric.min.js'
-    s.onload = () => { fabricLoaded.current = true; initCanvas() }
-    document.head.appendChild(s)
     const link = document.createElement('link')
     link.rel = 'stylesheet'
     link.href = 'https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap'
     document.head.appendChild(link)
+
+    if ((window as any).fabric) return
+
+    const s = document.createElement('script')
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.0/fabric.min.js'
+    document.head.appendChild(s)
   }, [])
 
-  // ── Load document from Supabase (same as before) ───────────────────────────
+  // ── Load document ─────────────────────────────────────────────────────────
   useEffect(() => {
     loadDocument()
     loadShareLinks()
@@ -155,70 +174,53 @@ export default function DocumentEditorPage({ params }: { params: { id: string } 
     setTitle(data.title)
     setEmoji(data.cover_emoji ?? '📄')
 
-    // Load canvas data if it exists, otherwise show template picker
     const canvasData = (data as any).canvas_data
     if (canvasData?.pages?.length) {
       setPages(canvasData.pages)
       setShowTemplates(false)
-      // Canvas will load this once Fabric is ready
     } else {
       setShowTemplates(true)
     }
   }
 
   async function loadShareLinks() {
-    const { data } = await supabase.from('share_links').select('*').eq('document_id', params.id).order('created_at', { ascending: false })
+    const { data } = await supabase
+      .from('share_links').select('*')
+      .eq('document_id', params.id)
+      .order('created_at', { ascending: false })
     setShareLinks(data ?? [])
   }
 
-  // ── Init canvas once Fabric is loaded and pages are ready ──────────────────
-  function initCanvas() {
-    if (!canvasEl.current || !(window as any).fabric) return
-    const fabric = (window as any).fabric
-    if (fabricRef.current) fabricRef.current.dispose()
-
-    const fc = new fabric.Canvas(canvasEl.current, {
-      width: CANVAS_W, height: CANVAS_H,
-      backgroundColor: '#0a0a0b',
-      selection: true, preserveObjectStacking: true,
-    })
-    fabricRef.current = fc
-
-    fc.on('selection:created', (e: any) => setSelectedObj(e.selected?.[0] ?? null))
-    fc.on('selection:updated', (e: any) => setSelectedObj(e.selected?.[0] ?? null))
-    fc.on('selection:cleared', () => setSelectedObj(null))
-    fc.on('object:modified', () => scheduleAutoSave())
-    fc.on('object:added', () => scheduleAutoSave())
-    fc.on('object:removed', () => scheduleAutoSave())
-  }
-
-  // Re-init canvas after Fabric script loads
+  // ── Init canvas once Fabric is available ──────────────────────────────────
   useEffect(() => {
     const check = setInterval(() => {
       if ((window as any).fabric && canvasEl.current && !fabricRef.current) {
-        initCanvas()
         clearInterval(check)
+        const fabric = (window as any).fabric
+        const fc = new fabric.Canvas(canvasEl.current, {
+          width: CANVAS_W, height: CANVAS_H,
+          backgroundColor: '#0a0a0b',
+          selection: true, preserveObjectStacking: true,
+        })
+        fabricRef.current = fc
+        fc.on('selection:created', (e: any) => setSelectedObj(e.selected?.[0] ?? null))
+        fc.on('selection:updated', (e: any) => setSelectedObj(e.selected?.[0] ?? null))
+        fc.on('selection:cleared', () => setSelectedObj(null))
+        fc.on('object:modified', () => scheduleAutoSave())
+        fc.on('object:added', () => scheduleAutoSave())
+        fc.on('object:removed', () => scheduleAutoSave())
       }
     }, 100)
     return () => clearInterval(check)
   }, [])
 
-  // Load page into canvas when pages array or currentPage changes
+  // ── Load page into canvas when pages/fabricRef are ready ─────────────────
   useEffect(() => {
     if (!fabricRef.current || !pages[currentPage]) return
-    fabricRef.current.loadFromJSON(pages[currentPage], () => {
-      fabricRef.current.renderAll()
-    })
-  }, [currentPage, fabricRef.current]) // eslint-disable-line
-
-  // Load pages into canvas once both are ready
-  useEffect(() => {
-    if (pages.length > 0 && fabricRef.current) {
-      fabricRef.current.loadFromJSON(pages[0], () => fabricRef.current.renderAll())
-    }
+    fabricRef.current.loadFromJSON(pages[currentPage], () => fabricRef.current.renderAll())
   }, [pages.length]) // eslint-disable-line
 
-  // ── Auto-save canvas to Supabase ───────────────────────────────────────────
+  // ── Auto-save ─────────────────────────────────────────────────────────────
   function scheduleAutoSave() {
     if (saveTimer.current) clearTimeout(saveTimer.current)
     saveTimer.current = setTimeout(() => saveCanvas(), 1500)
@@ -228,24 +230,23 @@ export default function DocumentEditorPage({ params }: { params: { id: string } 
     if (!fabricRef.current) return
     setSaving(true)
     const currentJson = fabricRef.current.toJSON()
-    const allPages = [...pages]
-    allPages[currentPage] = currentJson
+    const allPages = [...pagesRef.current]
+    allPages[currentPageRef.current] = currentJson
     setPages(allPages)
     await supabase.from('documents').update({
       canvas_data: { pages: allPages },
-      editor_type: 'canvas',
       updated_at: new Date().toISOString(),
     } as any).eq('id', params.id)
     setSaving(false)
     setLastSaved(new Date())
-  }, [pages, currentPage, params.id])
+  }, [params.id])
 
-  // ── Page switching ─────────────────────────────────────────────────────────
+  // ── Page ops ──────────────────────────────────────────────────────────────
   function switchPage(idx: number) {
     if (!fabricRef.current) return
     const currentJson = fabricRef.current.toJSON()
-    const updated = [...pages]
-    updated[currentPage] = currentJson
+    const updated = [...pagesRef.current]
+    updated[currentPageRef.current] = currentJson
     setPages(updated)
     setCurrentPage(idx)
     fabricRef.current.loadFromJSON(updated[idx], () => fabricRef.current.renderAll())
@@ -254,12 +255,12 @@ export default function DocumentEditorPage({ params }: { params: { id: string } 
   function addPage() {
     if (!fabricRef.current) return
     const currentJson = fabricRef.current.toJSON()
-    const updated = [...pages]
-    updated[currentPage] = currentJson
+    const updated = [...pagesRef.current]
+    updated[currentPageRef.current] = currentJson
     const blank = makePage(bgColor)
-    updated.splice(currentPage + 1, 0, blank)
+    const newIdx = currentPageRef.current + 1
+    updated.splice(newIdx, 0, blank)
     setPages(updated)
-    const newIdx = currentPage + 1
     setCurrentPage(newIdx)
     fabricRef.current.clear()
     fabricRef.current.backgroundColor = bgColor
@@ -267,15 +268,15 @@ export default function DocumentEditorPage({ params }: { params: { id: string } 
   }
 
   function removePage(idx: number) {
-    if (pages.length <= 1) return
-    const updated = pages.filter((_, i) => i !== idx)
+    if (pagesRef.current.length <= 1) return
+    const updated = pagesRef.current.filter((_, i) => i !== idx)
     setPages(updated)
-    const newIdx = Math.min(currentPage, updated.length - 1)
+    const newIdx = Math.min(currentPageRef.current, updated.length - 1)
     setCurrentPage(newIdx)
     fabricRef.current?.loadFromJSON(updated[newIdx], () => fabricRef.current.renderAll())
   }
 
-  // ── Template apply ─────────────────────────────────────────────────────────
+  // ── Templates ─────────────────────────────────────────────────────────────
   function applyTemplate(id: string) {
     const builtPages = buildTemplate(id)
     setPages(builtPages)
@@ -283,6 +284,14 @@ export default function DocumentEditorPage({ params }: { params: { id: string } 
     setShowTemplates(false)
     if (fabricRef.current && builtPages[0]) {
       fabricRef.current.loadFromJSON(builtPages[0], () => fabricRef.current.renderAll())
+    } else {
+      // Fabric not ready yet — wait for it
+      const wait = setInterval(() => {
+        if (fabricRef.current) {
+          clearInterval(wait)
+          fabricRef.current.loadFromJSON(builtPages[0], () => fabricRef.current.renderAll())
+        }
+      }, 100)
     }
   }
 
@@ -298,12 +307,15 @@ export default function DocumentEditorPage({ params }: { params: { id: string } 
     }
   }
 
-  // ── Canvas tools ───────────────────────────────────────────────────────────
+  // ── Canvas tools ──────────────────────────────────────────────────────────
   function addText() {
     const fabric = (window as any).fabric
     const fc = fabricRef.current
     if (!fc || !fabric) return
-    const tb = new fabric.Textbox('Click to edit', { left: 100, top: 100, width: 300, fontSize: 24, fontFamily: 'DM Sans', fill: fontColor, editable: true })
+    const tb = new fabric.Textbox('Click to edit', {
+      left: 100, top: 100, width: 300,
+      fontSize: 24, fontFamily: 'DM Sans', fill: fontColor, editable: true,
+    })
     fc.add(tb); fc.setActiveObject(tb); fc.renderAll()
   }
 
@@ -360,7 +372,7 @@ export default function DocumentEditorPage({ params }: { params: { id: string } 
     reader.readAsDataURL(file)
   }
 
-  // ── Existing functions (unchanged) ─────────────────────────────────────────
+  // ── Misc ──────────────────────────────────────────────────────────────────
   async function saveTitle() {
     await supabase.from('documents').update({ title: title || 'Untitled', cover_emoji: emoji }).eq('id', params.id)
   }
@@ -374,10 +386,11 @@ export default function DocumentEditorPage({ params }: { params: { id: string } 
   // Keyboard shortcuts
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if ((e.target as HTMLElement).tagName === 'INPUT' || (e.target as HTMLElement).tagName === 'TEXTAREA') return
+      const tag = (e.target as HTMLElement).tagName
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return
       if ((e.metaKey || e.ctrlKey) && e.key === 's') { e.preventDefault(); saveCanvas() }
-      if (e.key === 'Delete' || e.key === 'Backspace') {
-        if (fabricRef.current?.getActiveObject()) deleteSelected()
+      if ((e.key === 'Delete' || e.key === 'Backspace') && fabricRef.current?.getActiveObject()) {
+        deleteSelected()
       }
     }
     window.addEventListener('keydown', handler)
@@ -399,7 +412,7 @@ export default function DocumentEditorPage({ params }: { params: { id: string } 
         input[type="color"]::-webkit-color-swatch { border: none; border-radius: 3px; }
       `}</style>
 
-      {/* ── Top bar (same structure as before, restyled for dark theme) ── */}
+      {/* ── Top bar ── */}
       <div style={{ borderBottom: `1px solid ${C.border}`, background: C.surface, padding: '0 16px', height: 52, display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
         <button onClick={() => router.push('/dashboard')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.muted, display: 'flex', alignItems: 'center', gap: 4, fontSize: 13, fontFamily: 'inherit' }}>
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M9 2L4 7l5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
@@ -423,7 +436,7 @@ export default function DocumentEditorPage({ params }: { params: { id: string } 
         {/* Title */}
         <input value={title} onChange={e => setTitle(e.target.value)} onBlur={saveTitle}
           placeholder="Untitled"
-          style={{ flex: 1, border: 'none', outline: 'none', fontSize: 14, fontWeight: 500, color: C.text, background: 'transparent', fontFamily: 'inherit', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} />
+          style={{ flex: 1, border: 'none', outline: 'none', fontSize: 14, fontWeight: 500, color: C.text, background: 'transparent', fontFamily: 'inherit' }} />
 
         {/* Right controls */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 'auto', flexShrink: 0 }}>
@@ -431,10 +444,7 @@ export default function DocumentEditorPage({ params }: { params: { id: string } 
             {saving ? 'Saving…' : lastSaved ? `✓ ${lastSaved.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : ''}
           </span>
           <Badge variant={isActive ? 'success' : 'default'}>{isActive ? 'Live' : 'Draft'}</Badge>
-
-          {/* Templates button */}
           <Button variant="ghost" size="sm" onClick={() => setShowTemplates(true)}>Templates</Button>
-
           <Button variant="ghost" size="sm" onClick={() => setShowDrafter(true)}>
             <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M6.5 1L7.8 5H12L8.6 7.4L9.9 11.5L6.5 9.1L3.1 11.5L4.4 7.4L1 5H5.2L6.5 1Z" fill="currentColor"/></svg>
             AI draft
@@ -443,24 +453,22 @@ export default function DocumentEditorPage({ params }: { params: { id: string } 
             <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><rect x="1" y="2" width="11" height="8" rx="1.5" stroke="currentColor" strokeWidth="1.3"/><path d="M5 11h3M6.5 10v1" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>
             Present
           </Button>
-          {isActive ? (
-            <Button variant="secondary" size="sm" onClick={() => setShowShare(true)}>Share</Button>
-          ) : (
-            <Button variant="primary" size="sm" onClick={publishDocument}>Publish & Share</Button>
-          )}
+          {isActive
+            ? <Button variant="secondary" size="sm" onClick={() => setShowShare(true)}>Share</Button>
+            : <Button variant="primary" size="sm" onClick={publishDocument}>Publish &amp; Share</Button>
+          }
         </div>
       </div>
 
       {/* ── Canvas toolbar ── */}
       <div style={{ borderBottom: `1px solid ${C.border}`, padding: '6px 16px', background: C.surface, display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0, flexWrap: 'wrap' }}>
-        {/* Tool buttons */}
         {([
-          { id: 'select', icon: '↖', label: 'Select' },
-          { id: 'text',   icon: 'T',  label: 'Text' },
-          { id: 'rect',   icon: '▭',  label: 'Rectangle' },
-          { id: 'circle', icon: '○',  label: 'Circle' },
-          { id: 'triangle', icon: '△', label: 'Triangle' },
-          { id: 'draw',   icon: '✏',  label: 'Draw' },
+          { id: 'select',   icon: '↖', label: 'Select' },
+          { id: 'text',     icon: 'T',  label: 'Text' },
+          { id: 'rect',     icon: '▭',  label: 'Rectangle' },
+          { id: 'circle',   icon: '○',  label: 'Circle' },
+          { id: 'triangle', icon: '△',  label: 'Triangle' },
+          { id: 'draw',     icon: '✏',  label: 'Draw' },
         ] as const).map(tool => (
           <button key={tool.id} title={tool.label}
             onClick={() => {
@@ -487,12 +495,11 @@ export default function DocumentEditorPage({ params }: { params: { id: string } 
 
         <div style={{ width: 1, height: 20, background: C.border, margin: '0 4px' }} />
 
-        {/* Edit actions */}
         {([
           { icon: '⧉', label: 'Duplicate', action: duplicateSelected },
           { icon: '🗑', label: 'Delete (Del)', action: deleteSelected },
           { icon: '↑', label: 'Bring to front', action: () => { const o = fabricRef.current?.getActiveObject(); if (o) { fabricRef.current.bringToFront(o); fabricRef.current.renderAll() } } },
-          { icon: '↓', label: 'Send to back', action: () => { const o = fabricRef.current?.getActiveObject(); if (o) { fabricRef.current.sendToBack(o); fabricRef.current.renderAll() } } },
+          { icon: '↓', label: 'Send to back',  action: () => { const o = fabricRef.current?.getActiveObject(); if (o) { fabricRef.current.sendToBack(o);  fabricRef.current.renderAll() } } },
         ]).map(btn => (
           <button key={btn.label} title={btn.label} onClick={btn.action}
             style={{ width: 32, height: 32, border: 'none', cursor: 'pointer', borderRadius: 6, fontSize: 13, background: 'transparent', color: C.muted, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
@@ -535,7 +542,8 @@ export default function DocumentEditorPage({ params }: { params: { id: string } 
           </div>
           <div style={{ flex: 1, overflow: 'auto', padding: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
             {pages.map((page, idx) => (
-              <div key={idx} onClick={() => switchPage(idx)} style={{ position: 'relative', cursor: 'pointer', borderRadius: 6, border: `2px solid ${currentPage === idx ? C.accent : C.border}`, overflow: 'hidden', transition: 'border-color 0.15s' }}>
+              <div key={idx} onClick={() => switchPage(idx)}
+                style={{ position: 'relative', cursor: 'pointer', borderRadius: 6, border: `2px solid ${currentPage === idx ? C.accent : C.border}`, overflow: 'hidden', transition: 'border-color 0.15s' }}>
                 <div style={{ width: '100%', aspectRatio: `${CANVAS_W}/${CANVAS_H}`, background: page?.background ?? '#0a0a0b', display: 'flex', alignItems: 'flex-end' }}>
                   <span style={{ padding: '1px 5px', fontSize: 9, color: C.muted, background: 'rgba(0,0,0,0.5)', width: '100%', fontFamily: 'monospace' }}>{idx + 1}</span>
                 </div>
@@ -549,7 +557,7 @@ export default function DocumentEditorPage({ params }: { params: { id: string } 
           <div style={{ padding: '6px 10px', borderTop: `1px solid ${C.border}`, fontSize: 10, color: C.muted, fontFamily: 'monospace' }}>{pages.length} page{pages.length !== 1 ? 's' : ''}</div>
         </div>
 
-        {/* Canvas */}
+        {/* Canvas area */}
         <div
           style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', background: C.canvas, overflow: 'auto', position: 'relative' }}
           onDragOver={e => { e.preventDefault(); setIsDragging(true) }}
@@ -564,12 +572,11 @@ export default function DocumentEditorPage({ params }: { params: { id: string } 
           <div style={{ transform: `scale(${zoom})`, transformOrigin: 'center center', boxShadow: '0 0 60px rgba(0,0,0,0.6)', borderRadius: 2 }}>
             <canvas ref={canvasEl} />
           </div>
-          {/* Page nav */}
           {pages.length > 1 && (
             <div style={{ position: 'absolute', bottom: 16, left: '50%', transform: 'translateX(-50%)', display: 'flex', gap: 6, alignItems: 'center', background: C.surface, border: `1px solid ${C.border}`, borderRadius: 20, padding: '5px 14px' }}>
-              <button onClick={() => currentPage > 0 && switchPage(currentPage - 1)} style={{ ...toolBtnStyle, opacity: currentPage === 0 ? 0.3 : 1, fontSize: 18 }}>‹</button>
+              <button onClick={() => currentPage > 0 && switchPage(currentPage - 1)} style={{ ...toolBtnStyle, opacity: currentPage === 0 ? 0.3 : 1, fontSize: 18, color: C.text }}>‹</button>
               <span style={{ fontSize: 12, color: C.muted, fontFamily: 'monospace' }}>{currentPage + 1} / {pages.length}</span>
-              <button onClick={() => currentPage < pages.length - 1 && switchPage(currentPage + 1)} style={{ ...toolBtnStyle, opacity: currentPage === pages.length - 1 ? 0.3 : 1, fontSize: 18 }}>›</button>
+              <button onClick={() => currentPage < pages.length - 1 && switchPage(currentPage + 1)} style={{ ...toolBtnStyle, opacity: currentPage === pages.length - 1 ? 0.3 : 1, fontSize: 18, color: C.text }}>›</button>
             </div>
           )}
         </div>
@@ -579,18 +586,18 @@ export default function DocumentEditorPage({ params }: { params: { id: string } 
           <div style={{ width: 180, flexShrink: 0, background: C.surface, borderLeft: `1px solid ${C.border}`, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
             <div style={{ padding: '8px 12px', borderBottom: `1px solid ${C.border}`, fontSize: 11, fontWeight: 600, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Properties</div>
             <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 12, overflow: 'auto' }}>
-              <PropRow label="X"><NumIn value={Math.round(selectedObj.left??0)} onChange={v => updateSelectedProp('left', v)} /></PropRow>
-              <PropRow label="Y"><NumIn value={Math.round(selectedObj.top??0)} onChange={v => updateSelectedProp('top', v)} /></PropRow>
+              <PropRow label="X"><NumIn value={Math.round(selectedObj.left ?? 0)} onChange={v => updateSelectedProp('left', v)} /></PropRow>
+              <PropRow label="Y"><NumIn value={Math.round(selectedObj.top ?? 0)} onChange={v => updateSelectedProp('top', v)} /></PropRow>
               <PropRow label="Opacity">
-                <input type="range" min={0} max={1} step={0.01} value={selectedObj.opacity??1}
+                <input type="range" min={0} max={1} step={0.01} value={selectedObj.opacity ?? 1}
                   onChange={e => updateSelectedProp('opacity', parseFloat(e.target.value))}
                   style={{ width: '100%', accentColor: C.accent }} />
               </PropRow>
               {(selectedObj.type === 'textbox' || selectedObj.type === 'text') && (
-                <PropRow label="Font size"><NumIn value={selectedObj.fontSize??18} onChange={v => updateSelectedProp('fontSize', v)} /></PropRow>
+                <PropRow label="Font size"><NumIn value={selectedObj.fontSize ?? 18} onChange={v => updateSelectedProp('fontSize', v)} /></PropRow>
               )}
               {selectedObj.type === 'rect' && (
-                <PropRow label="Radius"><NumIn value={selectedObj.rx??0} onChange={v => { updateSelectedProp('rx', v); updateSelectedProp('ry', v) }} /></PropRow>
+                <PropRow label="Radius"><NumIn value={selectedObj.rx ?? 0} onChange={v => { updateSelectedProp('rx', v); updateSelectedProp('ry', v) }} /></PropRow>
               )}
             </div>
           </div>
@@ -602,7 +609,7 @@ export default function DocumentEditorPage({ params }: { params: { id: string } 
         <div style={{ position: 'fixed', inset: 0, zIndex: 100, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(8px)' }}>
           <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 20, padding: '36px 40px', width: 'min(820px, 95vw)', maxHeight: '85vh', overflow: 'auto' }}>
             <div style={{ fontSize: 11, fontFamily: 'monospace', color: C.accent, fontWeight: 600, letterSpacing: '0.08em', marginBottom: 6 }}>BACKREAD EDITOR</div>
-            <h2 style={{ fontSize: 28, fontWeight: 700, marginBottom: 6, letterSpacing: '-0.02em' }}>Start with a template</h2>
+            <h2 style={{ fontSize: 28, fontWeight: 700, marginBottom: 6, letterSpacing: '-0.02em', color: C.text }}>Start with a template</h2>
             <p style={{ fontSize: 15, color: C.muted, marginBottom: 28 }}>Choose a template or start with a blank canvas.</p>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14, marginBottom: 24 }}>
               {TEMPLATES.map(t => (
@@ -620,24 +627,27 @@ export default function DocumentEditorPage({ params }: { params: { id: string } 
             </div>
             <div style={{ display: 'flex', justifyContent: 'center', gap: 10 }}>
               <button onClick={startBlank} style={{ padding: '10px 28px', borderRadius: 8, fontSize: 14, fontWeight: 600, fontFamily: 'inherit', border: `1px solid ${C.border}`, background: 'transparent', color: C.muted, cursor: 'pointer' }}>Start blank</button>
-              {pages.length > 0 && <button onClick={() => setShowTemplates(false)} style={{ padding: '10px 28px', borderRadius: 8, fontSize: 14, fontWeight: 600, fontFamily: 'inherit', border: `1px solid ${C.border}`, background: 'transparent', color: C.muted, cursor: 'pointer' }}>Cancel</button>}
+              {pages.length > 0 && (
+                <button onClick={() => setShowTemplates(false)} style={{ padding: '10px 28px', borderRadius: 8, fontSize: 14, fontWeight: 600, fontFamily: 'inherit', border: `1px solid ${C.border}`, background: 'transparent', color: C.muted, cursor: 'pointer' }}>Cancel</button>
+              )}
             </div>
           </div>
         </div>
       )}
 
-      {/* ── Share modal (100% unchanged from original) ── */}
-      {showShare && <ShareModal documentId={params.id} links={shareLinks} onClose={() => setShowShare(false)} onRefresh={loadShareLinks} />}
+      {/* ── Share modal ── */}
+      {showShare && (
+        <ShareModal documentId={params.id} links={shareLinks} onClose={() => setShowShare(false)} onRefresh={loadShareLinks} />
+      )}
 
-      {/* ── AI Drafter modal (100% unchanged from original) ── */}
+      {/* ── AI Drafter modal ── */}
       {showDrafter && (
         <AIDrafter
           documentType={doc?.type ?? 'document'}
           onDraftComplete={(html: string) => {
-            // Convert AI HTML draft to a canvas text page
             const stripped = html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
             const page = makePage('#0a0a0b', [txt(stripped, { left: 60, top: 60, width: CANVAS_W - 120, fontSize: 16, fill: '#f4f4f5' })])
-            const updated = [...pages, page]
+            const updated = [...pagesRef.current, page]
             setPages(updated)
             const newIdx = updated.length - 1
             setCurrentPage(newIdx)
@@ -652,8 +662,6 @@ export default function DocumentEditorPage({ params }: { params: { id: string } 
 }
 
 // ─── Small UI helpers ─────────────────────────────────────────────────────────
-const toolBtnStyle: React.CSSProperties = { background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px', borderRadius: 4, fontFamily: 'inherit', fontSize: 14 }
-
 function PropRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
@@ -670,8 +678,10 @@ function NumIn({ value, onChange }: { value: number; onChange: (v: number) => vo
   )
 }
 
-// ─── Share modal (100% unchanged from original) ───────────────────────────────
-function ShareModal({ documentId, links, onClose, onRefresh }: { documentId: string; links: ShareLink[]; onClose: () => void; onRefresh: () => void }) {
+// ─── Share modal ──────────────────────────────────────────────────────────────
+function ShareModal({ documentId, links, onClose, onRefresh }: {
+  documentId: string; links: ShareLink[]; onClose: () => void; onRefresh: () => void
+}) {
   const [creating, setCreating] = useState(false)
   const [label, setLabel] = useState('')
   const [requireEmail, setRequireEmail] = useState(false)
@@ -684,8 +694,7 @@ function ShareModal({ documentId, links, onClose, onRefresh }: { documentId: str
     setCreating(true)
     const token = generateToken(14)
     await supabase.from('share_links').insert({
-      document_id: documentId,
-      token,
+      document_id: documentId, token,
       label: label || 'Share link',
       require_email: requireEmail,
       allow_download: allowDownload,
@@ -693,8 +702,7 @@ function ShareModal({ documentId, links, onClose, onRefresh }: { documentId: str
       is_active: true,
     })
     await onRefresh()
-    setCreating(false)
-    setShowNew(false)
+    setCreating(false); setShowNew(false)
     setLabel(''); setPassword(''); setRequireEmail(false); setAllowDownload(false)
   }
 
@@ -734,7 +742,8 @@ function ShareModal({ documentId, links, onClose, onRefresh }: { documentId: str
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
                       <code style={{ flex: 1, fontSize: 11, color: '#6B6559', background: '#F5F3EF', padding: '4px 8px', borderRadius: 6, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }}>{buildShareUrl(link.token)}</code>
-                      <button onClick={() => copyLink(link.token)} style={{ padding: '4px 10px', background: copied === link.token ? '#F0FDF4' : '#F5F3EF', border: '1px solid', borderColor: copied === link.token ? '#BBF7D0' : '#E5E0D8', borderRadius: 7, fontSize: 12, cursor: 'pointer', color: copied === link.token ? '#16A34A' : '#6B6559', fontFamily: 'inherit', fontWeight: 500, whiteSpace: 'nowrap' }}>
+                      <button onClick={() => copyLink(link.token)}
+                        style={{ padding: '4px 10px', background: copied === link.token ? '#F0FDF4' : '#F5F3EF', border: '1px solid', borderColor: copied === link.token ? '#BBF7D0' : '#E5E0D8', borderRadius: 7, fontSize: 12, cursor: 'pointer', color: copied === link.token ? '#16A34A' : '#6B6559', fontFamily: 'inherit', fontWeight: 500, whiteSpace: 'nowrap' }}>
                         {copied === link.token ? '✓ Copied' : 'Copy'}
                       </button>
                     </div>
@@ -745,7 +754,8 @@ function ShareModal({ documentId, links, onClose, onRefresh }: { documentId: str
                       {link.allow_download && <span>⬇ Downloads</span>}
                     </div>
                     <div style={{ marginTop: 8, display: 'flex', justifyContent: 'flex-end' }}>
-                      <button onClick={() => toggleLink(link.id, !link.is_active)} style={{ fontSize: 12, color: link.is_active ? '#DC2626' : '#16A34A', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
+                      <button onClick={() => toggleLink(link.id, !link.is_active)}
+                        style={{ fontSize: 12, color: link.is_active ? '#DC2626' : '#16A34A', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
                         {link.is_active ? 'Disable link' : 'Enable link'}
                       </button>
                     </div>
@@ -755,7 +765,8 @@ function ShareModal({ documentId, links, onClose, onRefresh }: { documentId: str
             </div>
           )}
           {!showNew ? (
-            <button onClick={() => setShowNew(true)} style={{ width: '100%', padding: '10px', background: 'none', border: '1.5px dashed #D0C9BE', borderRadius: 12, cursor: 'pointer', fontSize: 14, color: '#9C9389', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+            <button onClick={() => setShowNew(true)}
+              style={{ width: '100%', padding: '10px', background: 'none', border: '1.5px dashed #D0C9BE', borderRadius: 12, cursor: 'pointer', fontSize: 14, color: '#9C9389', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1v12M1 7h12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
               Create new link
             </button>
