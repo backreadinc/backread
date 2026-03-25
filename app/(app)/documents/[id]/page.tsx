@@ -14,7 +14,7 @@ type ShareLink = Database['public']['Tables']['share_links']['Row']
 
 const EMOJIS = ['📄','🚀','💼','📊','📋','🎯','💡','🔍','📈','🤝','🏢','⚡','🌟','🔒','📝']
 
-// ─── Canvas constants ──────────────────────────────────────────────────────────
+// ─── CANVAS_EDITOR_V2 ──────────────────────────────────────────────────────────
 const CANVAS_W = 960
 const CANVAS_H = 540
 
