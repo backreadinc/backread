@@ -1,1201 +1,1394 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Backread Editor</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.0/fabric.min.js"></script>
-<style>
-*{box-sizing:border-box;margin:0;padding:0}
-:root{
-  --bg:#f0f1f5;
-  --surface:#ffffff;
-  --surface2:#f8f9fb;
-  --border:#e2e4ea;
-  --border2:#d0d3dc;
-  --text:#0d0f1a;
-  --text2:#4b5068;
-  --text3:#8b91a8;
-  --accent:#7c3aed;
-  --accent-light:#ede9fe;
-  --accent2:#06b6d4;
-  --danger:#ef4444;
-  --success:#22c55e;
-  --radius:8px;
-  --radius-lg:12px;
-  --shadow:0 1px 3px rgba(0,0,0,.08),0 4px 16px rgba(0,0,0,.06);
-  --shadow-lg:0 8px 32px rgba(0,0,0,.12),0 2px 8px rgba(0,0,0,.06);
-}
-html,body{height:100%;overflow:hidden;font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text)}
-::-webkit-scrollbar{width:4px;height:4px}
-::-webkit-scrollbar-track{background:transparent}
-::-webkit-scrollbar-thumb{background:var(--border2);border-radius:99px}
+'use client'
+import { useEffect, useState, useRef, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
+import { supabase } from '@/lib/supabase/client'
+import { buildShareUrl, generateToken } from '@/lib/utils'
+import Button from '@/components/ui/Button'
+import Input from '@/components/ui/Input'
+import { Toggle } from '@/components/ui'
+import AIDrafter from '@/components/editor/AIDrafter'
+import type { Database } from '@/lib/supabase/client'
 
-/* ========== APP SHELL ========== */
-#app{display:flex;flex-direction:column;height:100vh}
+type Document = Database['public']['Tables']['documents']['Row']
+type ShareLink = Database['public']['Tables']['share_links']['Row']
 
-/* ========== TOP BAR ========== */
-#topbar{
-  height:52px;display:flex;align-items:center;gap:0;
-  background:var(--surface);border-bottom:1px solid var(--border);
-  padding:0 12px;flex-shrink:0;position:relative;z-index:100;
-  box-shadow:0 1px 0 var(--border);
-}
-.tb-logo{display:flex;align-items:center;gap:8px;padding:0 8px;text-decoration:none}
-.tb-logo-mark{width:28px;height:28px;background:var(--accent);border-radius:7px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.tb-logo-mark svg{width:16px;height:16px}
-.tb-logo-name{font-size:13.5px;font-weight:700;color:var(--text);letter-spacing:-.01em}
-.tb-sep{width:1px;height:28px;background:var(--border);margin:0 6px;flex-shrink:0}
-.tb-doc-area{display:flex;align-items:center;gap:6px;flex:1;min-width:0;max-width:320px}
-.tb-emoji-btn{font-size:18px;background:none;border:none;cursor:pointer;padding:3px 4px;border-radius:6px;line-height:1;transition:background .12s}
-.tb-emoji-btn:hover{background:var(--surface2)}
-.tb-doc-title{border:none;outline:none;font:600 14px/1 'DM Sans',sans-serif;color:var(--text);background:transparent;flex:1;min-width:0;padding:4px 6px;border-radius:6px;transition:background .12s}
-.tb-doc-title:hover{background:var(--surface2)}
-.tb-doc-title:focus{background:var(--surface2);box-shadow:0 0 0 2px var(--accent-light)}
-.tb-status{font-size:10.5px;font-weight:600;font-family:'DM Mono',monospace;padding:2px 8px;border-radius:99px;flex-shrink:0}
-.tb-status.live{background:#dcfce7;color:#15803d}
-.tb-status.draft{background:var(--surface2);color:var(--text3)}
-.tb-actions{display:flex;align-items:center;gap:6px;margin-left:auto;flex-shrink:0}
-.tb-save{font-size:10.5px;color:var(--text3);font-family:'DM Mono',monospace;min-width:90px;text-align:right}
-.tb-save.saving{color:var(--accent)}
-.tb-btn{height:32px;padding:0 12px;border-radius:var(--radius);font:500 13px 'DM Sans',sans-serif;border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;display:flex;align-items:center;gap:6px;transition:all .12s;white-space:nowrap}
-.tb-btn:hover{background:var(--surface2);border-color:var(--border2);color:var(--text)}
-.tb-btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600;box-shadow:0 2px 8px rgba(124,58,237,.25)}
-.tb-btn.primary:hover{background:#6d28d9;box-shadow:0 2px 12px rgba(124,58,237,.35)}
-.tb-btn svg{width:14px;height:14px;flex-shrink:0}
-.tb-avatar{width:30px;height:30px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;cursor:pointer;flex-shrink:0}
+// ─── Canvas size presets ──────────────────────────────────────────────────────
+const CANVAS_SIZES = [
+  { id: 'presentation-169', label: 'Presentation 16:9', w: 1280, h: 720, cat: 'Presentation' },
+  { id: 'presentation-43',  label: 'Presentation 4:3',  w: 1024, h: 768, cat: 'Presentation' },
+  { id: 'a4-portrait',      label: 'A4 Portrait',       w: 794,  h: 1123, cat: 'Document' },
+  { id: 'a4-landscape',     label: 'A4 Landscape',      w: 1123, h: 794,  cat: 'Document' },
+  { id: 'a3-portrait',      label: 'A3 Portrait',       w: 1123, h: 1587, cat: 'Document' },
+  { id: 'letter-portrait',  label: 'US Letter',         w: 816,  h: 1056, cat: 'Document' },
+  { id: 'square',           label: 'Square (1:1)',       w: 1080, h: 1080, cat: 'Social' },
+  { id: 'story',            label: 'Story / Reel',      w: 540,  h: 960,  cat: 'Social' },
+  { id: 'linkedin',         label: 'LinkedIn Banner',   w: 1584, h: 396,  cat: 'Social' },
+  { id: 'twitter',          label: 'Twitter Header',    w: 1500, h: 500,  cat: 'Social' },
+]
 
-/* ========== TOOLBAR ========== */
-#toolbar{
-  height:46px;background:var(--surface);border-bottom:1px solid var(--border);
-  display:flex;align-items:center;padding:0 10px;gap:2px;flex-shrink:0;
-  overflow-x:auto;
-}
-.tool-group{display:flex;align-items:center;gap:1px}
-.tool-div{width:1px;height:22px;background:var(--border);margin:0 6px;flex-shrink:0}
-.tbtn{width:32px;height:32px;border:none;background:transparent;color:var(--text2);border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .12s;flex-shrink:0;position:relative}
-.tbtn:hover{background:var(--surface2);color:var(--text)}
-.tbtn.active{background:var(--accent-light);color:var(--accent)}
-.tbtn svg{width:15px;height:15px;pointer-events:none}
-.tbtn[title]:hover::after{content:attr(title);position:absolute;bottom:-28px;left:50%;transform:translateX(-50%);background:var(--text);color:#fff;font-size:11px;padding:2px 7px;border-radius:4px;white-space:nowrap;pointer-events:none;z-index:999;font-family:'DM Sans',sans-serif}
-.font-select{height:30px;border:1px solid var(--border);border-radius:6px;padding:0 24px 0 8px;font:400 12px 'DM Sans',sans-serif;color:var(--text);background:var(--surface) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%238b91a8'/%3E%3C/svg%3E") no-repeat right 7px center;-webkit-appearance:none;cursor:pointer;outline:none;min-width:130px}
-.font-select:focus{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-light)}
-.font-size-input{width:48px;height:30px;border:1px solid var(--border);border-radius:6px;padding:0 6px;font:400 12px 'DM Mono',monospace;color:var(--text);text-align:center;outline:none;background:var(--surface)}
-.font-size-input:focus{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-light)}
-.fmt-btn{width:28px;height:28px;border:none;background:transparent;color:var(--text2);border-radius:5px;cursor:pointer;font:600 14px 'DM Sans',sans-serif;display:flex;align-items:center;justify-content:center;transition:all .12s}
-.fmt-btn:hover{background:var(--surface2);color:var(--text)}
-.fmt-btn.on{background:var(--accent-light);color:var(--accent)}
-.color-swatch-wrap{display:flex;flex-direction:column;align-items:center;gap:2px}
-.color-swatch-wrap label{font-size:8.5px;color:var(--text3);font-family:'DM Mono',monospace;letter-spacing:.04em;text-transform:uppercase}
-input[type=color]{width:26px;height:26px;border:1.5px solid var(--border);border-radius:6px;cursor:pointer;padding:0;-webkit-appearance:none}
-input[type=color]::-webkit-color-swatch-wrapper{padding:2px}
-input[type=color]::-webkit-color-swatch{border:none;border-radius:3px}
-.zoom-control{display:flex;align-items:center;gap:4px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:2px 8px;height:30px;margin-left:auto}
-.zoom-btn{background:none;border:none;cursor:pointer;color:var(--text2);font-size:18px;line-height:1;width:20px;height:20px;display:flex;align-items:center;justify-content:center;border-radius:4px;transition:all .12s}
-.zoom-btn:hover{background:var(--border);color:var(--text)}
-.zoom-val{font:500 11px 'DM Mono',monospace;color:var(--text2);min-width:36px;text-align:center}
-
-/* ========== BODY ========== */
-#body{display:flex;flex:1;overflow:hidden}
-
-/* ========== LEFT PANEL ========== */
-#left-panel{
-  width:64px;flex-shrink:0;background:var(--surface);
-  border-right:1px solid var(--border);
-  display:flex;flex-direction:column;align-items:center;
-  padding:8px 0;gap:2px;overflow-y:auto;
-}
-.side-btn{
-  width:48px;height:52px;border:none;background:transparent;
-  border-radius:var(--radius);cursor:pointer;display:flex;flex-direction:column;
-  align-items:center;justify-content:center;gap:4px;transition:all .15s;
-  color:var(--text2);position:relative;
-}
-.side-btn:hover{background:var(--surface2);color:var(--text)}
-.side-btn.active{background:var(--accent-light);color:var(--accent)}
-.side-btn svg{width:20px;height:20px}
-.side-btn span{font-size:9.5px;font-weight:500;line-height:1;letter-spacing:.01em}
-.side-div{width:32px;height:1px;background:var(--border);margin:4px 0}
-.side-badge{position:absolute;top:6px;right:6px;width:7px;height:7px;border-radius:50%;background:var(--accent)}
-
-/* ========== PAGE STRIP ========== */
-#page-strip{
-  width:148px;flex-shrink:0;background:var(--surface);
-  border-right:1px solid var(--border);display:flex;flex-direction:column;
-}
-.ps-header{
-  height:44px;display:flex;align-items:center;justify-content:space-between;
-  padding:0 12px;border-bottom:1px solid var(--border);flex-shrink:0;
-}
-.ps-label{font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em}
-.ps-add{width:22px;height:22px;background:var(--accent);border:none;border-radius:5px;color:#fff;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .12s;line-height:1;box-shadow:0 2px 6px rgba(124,58,237,.3)}
-.ps-add:hover{background:#6d28d9;transform:scale(1.05)}
-.ps-list{flex:1;overflow-y:auto;padding:10px 8px;display:flex;flex-direction:column;gap:8px}
-.ps-page{
-  cursor:pointer;border-radius:var(--radius);border:2px solid var(--border);
-  overflow:hidden;transition:all .15s;background:#fff;position:relative;
-}
-.ps-page:hover{border-color:var(--border2);box-shadow:0 2px 8px rgba(0,0,0,.08)}
-.ps-page.active{border-color:var(--accent);box-shadow:0 0 0 3px rgba(124,58,237,.12)}
-.ps-page-thumb{width:100%;aspect-ratio:16/9;background:#fff;min-height:72px}
-.ps-page-footer{
-  position:absolute;bottom:0;left:0;right:0;padding:2px 6px;
-  background:rgba(255,255,255,.92);display:flex;justify-content:space-between;align-items:center;
-  backdrop-filter:blur(4px);
-}
-.ps-page-num{font:600 9px 'DM Mono',monospace;color:var(--text3)}
-.ps-page-del{
-  width:14px;height:14px;border-radius:3px;background:var(--danger);border:none;
-  color:#fff;font-size:9px;cursor:pointer;display:none;align-items:center;justify-content:center;
-}
-.ps-page:hover .ps-page-del{display:flex}
-.ps-footer{height:36px;border-top:1px solid var(--border);display:flex;align-items:center;padding:0 12px;flex-shrink:0}
-.ps-count{font-size:10px;color:var(--text3);font-family:'DM Mono',monospace}
-
-/* ========== CANVAS AREA ========== */
-#canvas-area{
-  flex:1;display:flex;align-items:center;justify-content:center;
-  background:var(--bg);overflow:auto;position:relative;
-}
-#canvas-area::before{
-  content:'';position:absolute;inset:0;
-  background-image:radial-gradient(circle,var(--border2) 1px,transparent 1px);
-  background-size:24px 24px;opacity:.5;pointer-events:none;
-}
-#canvas-wrap{
-  position:relative;z-index:1;
-  box-shadow:var(--shadow-lg),0 0 0 1px var(--border);
-  border-radius:2px;
-  transition:transform .1s;
-}
-#canvas-wrap canvas{display:block}
-#drop-overlay{
-  position:absolute;inset:0;background:rgba(124,58,237,.05);
-  border:2px dashed var(--accent);border-radius:var(--radius-lg);
-  display:none;align-items:center;justify-content:center;z-index:200;pointer-events:none;
-}
-#drop-overlay span{
-  background:var(--surface);color:var(--accent);font-weight:600;font-size:15px;
-  padding:10px 22px;border-radius:var(--radius-lg);box-shadow:var(--shadow);
-}
-#page-nav{
-  position:absolute;bottom:20px;left:50%;transform:translateX(-50%);
-  background:var(--surface);border:1px solid var(--border);border-radius:22px;
-  padding:5px 14px;display:flex;align-items:center;gap:8px;z-index:10;
-  box-shadow:var(--shadow);
-}
-.pnav-btn{background:none;border:none;cursor:pointer;color:var(--text2);font-size:20px;line-height:1;padding:0 2px;border-radius:4px;transition:all .12s}
-.pnav-btn:hover{background:var(--surface2);color:var(--text)}
-.pnav-btn:disabled{opacity:.3;cursor:default}
-.pnav-text{font:500 12px 'DM Mono',monospace;color:var(--text2);min-width:48px;text-align:center}
-
-/* ========== RIGHT PANEL (Properties) ========== */
-#right-panel{
-  width:0;flex-shrink:0;background:var(--surface);
-  border-left:1px solid var(--border);display:flex;flex-direction:column;
-  overflow:hidden;transition:width .2s ease;
-}
-#right-panel.open{width:200px}
-.rp-header{padding:10px 14px;border-bottom:1px solid var(--border);font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;flex-shrink:0}
-.rp-body{padding:14px;display:flex;flex-direction:column;gap:14px;overflow-y:auto;flex:1}
-.rp-prop label{font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:5px}
-.rp-num{width:100%;height:30px;background:var(--surface2);border:1.5px solid var(--border);color:var(--text);border-radius:7px;padding:0 10px;font:400 12px 'DM Mono',monospace;outline:none}
-.rp-num:focus{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-light)}
-.rp-range{width:100%;accent-color:var(--accent)}
-
-/* ========== MODALS ========== */
-.modal-bg{
-  position:fixed;inset:0;background:rgba(13,15,26,.5);z-index:1000;
-  display:flex;align-items:center;justify-content:center;
-  backdrop-filter:blur(8px);animation:fadein .15s ease;
-}
-@keyframes fadein{from{opacity:0}to{opacity:1}}
-.modal{
-  background:var(--surface);border-radius:20px;padding:40px 44px;
-  width:min(900px,95vw);max-height:90vh;overflow-y:auto;
-  box-shadow:0 32px 80px rgba(0,0,0,.2),0 0 0 1px var(--border);
-  animation:slideup .2s ease;
-}
-@keyframes slideup{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
-.modal-icon{width:36px;height:36px;background:var(--accent-light);border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:18px;margin-bottom:10px}
-.modal-badge{font-size:10px;font-weight:700;color:var(--accent);letter-spacing:.1em;font-family:'DM Mono',monospace;margin-bottom:8px;text-transform:uppercase}
-.modal-title{font-size:28px;font-weight:700;letter-spacing:-.03em;margin-bottom:6px;color:var(--text)}
-.modal-sub{font-size:14px;color:var(--text2);margin-bottom:32px;line-height:1.5}
-.tpl-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:28px}
-.tpl-card{
-  border:2px solid var(--border);border-radius:14px;padding:22px 20px;
-  cursor:pointer;text-align:left;font-family:inherit;transition:all .18s;
-  background:var(--surface);position:relative;overflow:hidden;
-}
-.tpl-card::before{content:'';position:absolute;inset:0;background:var(--tpl-bg,transparent);opacity:.6}
-.tpl-card:hover{transform:translateY(-3px);box-shadow:0 12px 32px rgba(0,0,0,.1);border-color:var(--border2)}
-.tpl-card-inner{position:relative;z-index:1}
-.tpl-emoji{font-size:30px;margin-bottom:12px;display:block}
-.tpl-name{font-size:16px;font-weight:700;margin-bottom:4px;color:var(--text)}
-.tpl-desc{font-size:12px;color:var(--text2);margin-bottom:12px;line-height:1.4}
-.tpl-pages{
-  font-size:10px;font-weight:700;font-family:'DM Mono',monospace;
-  padding:2px 9px;border-radius:5px;background:rgba(255,255,255,.85);
-  display:inline-block;
-}
-.modal-footer{display:flex;justify-content:center;gap:10px}
-.modal-btn{
-  height:40px;padding:0 28px;border-radius:10px;font:600 13px 'DM Sans',sans-serif;
-  border:2px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;transition:all .14s;
-}
-.modal-btn:hover{background:var(--surface2);border-color:var(--border2);color:var(--text)}
-
-/* ========== SHARE DRAWER ========== */
-#share-drawer{
-  position:fixed;top:0;right:-420px;width:420px;height:100vh;
-  background:var(--surface);border-left:1px solid var(--border);
-  box-shadow:-8px 0 48px rgba(0,0,0,.12);z-index:200;
-  display:flex;flex-direction:column;transition:right .25s ease;
-}
-#share-drawer.open{right:0}
-.sd-header{padding:20px 24px;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;justify-content:space-between;flex-shrink:0}
-.sd-title{font-size:16px;font-weight:700;color:var(--text);margin-bottom:3px}
-.sd-sub{font-size:12px;color:var(--text3)}
-.sd-close{width:30px;height:30px;background:var(--surface2);border:none;cursor:pointer;border-radius:7px;color:var(--text2);display:flex;align-items:center;justify-content:center;transition:all .12s}
-.sd-close:hover{background:var(--border);color:var(--text)}
-.sd-body{flex:1;overflow-y:auto;padding:20px 24px}
-.sd-section-label{font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px}
-.share-link-card{border:1.5px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:10px;transition:border-color .12s}
-.share-link-card:hover{border-color:var(--border2)}
-.slc-top{display:flex;align-items:center;gap:8px;margin-bottom:10px}
-.slc-name{flex:1;font-size:13px;font-weight:600;color:var(--text)}
-.slc-status{font-size:10px;font-weight:700;padding:2px 8px;border-radius:99px}
-.slc-status.on{background:#dcfce7;color:#15803d}
-.slc-status.off{background:var(--surface2);color:var(--text3)}
-.slc-url-row{display:flex;gap:6px;margin-bottom:10px}
-.slc-url{flex:1;font:400 11px 'DM Mono',monospace;color:var(--text2);background:var(--surface2);padding:5px 9px;border-radius:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border:1px solid var(--border)}
-.slc-copy{height:28px;padding:0 11px;background:var(--surface2);border:1.5px solid var(--border);border-radius:7px;font:600 11px 'DM Sans',sans-serif;color:var(--text2);cursor:pointer;white-space:nowrap;transition:all .12s}
-.slc-copy:hover{background:var(--surface);border-color:var(--border2)}
-.slc-copy.copied{background:#f0fdf4;border-color:#86efac;color:#15803d}
-.slc-meta{display:flex;gap:10px;font-size:11px;color:var(--text3);flex-wrap:wrap}
-.slc-actions{margin-top:10px;display:flex;justify-content:flex-end}
-.slc-toggle{font:500 12px 'DM Sans',sans-serif;background:none;border:none;cursor:pointer;transition:color .12s}
-.slc-toggle.disable{color:var(--danger)}
-.slc-toggle.enable{color:var(--success)}
-.new-link-form{border:2px dashed var(--border);border-radius:12px;padding:16px;margin-top:6px}
-.new-link-form.solid{border-style:solid;border-color:var(--border)}
-.nlf-title{font-size:13px;font-weight:700;color:var(--text);margin-bottom:14px}
-.nlf-field{margin-bottom:10px}
-.nlf-field label{font-size:11px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px}
-.nlf-field input[type=text],.nlf-field input[type=password]{
-  width:100%;height:34px;border:1.5px solid var(--border);border-radius:7px;
-  padding:0 10px;font:400 13px 'DM Sans',sans-serif;color:var(--text);outline:none;
-  background:var(--surface);transition:border-color .12s;
-}
-.nlf-field input:focus{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-light)}
-.nlf-toggle-row{display:flex;align-items:center;justify-content:space-between;padding:6px 0}
-.nlf-toggle-label{font-size:12px;color:var(--text2);font-weight:500}
-.toggle-sw{position:relative;width:34px;height:19px;cursor:pointer}
-.toggle-sw input{opacity:0;width:0;height:0;position:absolute}
-.toggle-track{position:absolute;inset:0;background:var(--border2);border-radius:99px;transition:background .2s}
-.toggle-thumb{position:absolute;width:15px;height:15px;background:#fff;border-radius:50%;top:2px;left:2px;transition:transform .2s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
-.toggle-sw input:checked ~ .toggle-track{background:var(--accent)}
-.toggle-sw input:checked ~ .toggle-thumb{transform:translateX(15px)}
-.nlf-actions{display:flex;gap:8px;margin-top:12px}
-.nlf-btn{height:32px;padding:0 16px;border-radius:7px;font:600 12px 'DM Sans',sans-serif;cursor:pointer;transition:all .12s}
-.nlf-btn.primary{background:var(--accent);border:none;color:#fff;box-shadow:0 2px 6px rgba(124,58,237,.3)}
-.nlf-btn.primary:hover{background:#6d28d9}
-.nlf-btn.ghost{background:none;border:1.5px solid var(--border);color:var(--text2)}
-.nlf-btn.ghost:hover{background:var(--surface2);border-color:var(--border2)}
-.add-link-btn{
-  width:100%;height:42px;background:none;border:2px dashed var(--border);
-  border-radius:12px;cursor:pointer;font:500 13px 'DM Sans',sans-serif;color:var(--text3);
-  display:flex;align-items:center;justify-content:center;gap:6px;transition:all .14s;
-}
-.add-link-btn:hover{border-color:var(--border2);color:var(--text2);background:var(--surface2)}
-
-/* ========== EMOJI PICKER ========== */
-.emoji-picker{
-  position:absolute;top:100%;left:0;z-index:500;
-  background:var(--surface);border:1px solid var(--border);border-radius:12px;
-  padding:10px;display:flex;flex-wrap:wrap;gap:3px;width:244px;
-  box-shadow:var(--shadow-lg);animation:fadeup .12s ease;
-}
-@keyframes fadeup{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
-.emoji-btn{font-size:20px;background:none;border:none;cursor:pointer;padding:4px;border-radius:6px;line-height:1;transition:all .1s}
-.emoji-btn:hover{background:var(--surface2);transform:scale(1.2)}
-
-/* Present modal */
-.present-modal{
-  position:fixed;inset:0;background:#000;z-index:2000;
-  display:none;flex-direction:column;align-items:center;justify-content:center;
-}
-.present-modal.open{display:flex}
-.present-close{
-  position:absolute;top:16px;right:16px;width:36px;height:36px;
-  background:rgba(255,255,255,.1);border:none;color:#fff;border-radius:8px;
-  cursor:pointer;font-size:20px;display:flex;align-items:center;justify-content:center;z-index:1;
-  transition:background .12s;
-}
-.present-close:hover{background:rgba(255,255,255,.2)}
-#present-canvas-wrap{max-width:90vw;max-height:85vh}
-</style>
-</head>
-<body>
-<div id="app">
-
-  <!-- TOP BAR -->
-  <div id="topbar">
-    <a class="tb-logo" href="#">
-      <div class="tb-logo-mark">
-        <svg viewBox="0 0 16 16" fill="none"><path d="M3 2h10a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1z" stroke="white" stroke-width="1.3"/><path d="M5 6h6M5 9h4" stroke="white" stroke-width="1.3" stroke-linecap="round"/></svg>
-      </div>
-      <span class="tb-logo-name">Backread</span>
-    </a>
-    <div class="tb-sep"></div>
-    <div class="tb-doc-area" style="position:relative">
-      <button class="tb-emoji-btn" id="emojiBtn" onclick="toggleEmoji()">📄</button>
-      <div class="emoji-picker" id="emojiPicker" style="display:none">
-        <button class="emoji-btn" onclick="setEmoji(this)">📄</button>
-        <button class="emoji-btn" onclick="setEmoji(this)">🚀</button>
-        <button class="emoji-btn" onclick="setEmoji(this)">💼</button>
-        <button class="emoji-btn" onclick="setEmoji(this)">📊</button>
-        <button class="emoji-btn" onclick="setEmoji(this)">📋</button>
-        <button class="emoji-btn" onclick="setEmoji(this)">🎯</button>
-        <button class="emoji-btn" onclick="setEmoji(this)">💡</button>
-        <button class="emoji-btn" onclick="setEmoji(this)">🔍</button>
-        <button class="emoji-btn" onclick="setEmoji(this)">📈</button>
-        <button class="emoji-btn" onclick="setEmoji(this)">🤝</button>
-        <button class="emoji-btn" onclick="setEmoji(this)">⚡</button>
-        <button class="emoji-btn" onclick="setEmoji(this)">🌟</button>
-        <button class="emoji-btn" onclick="setEmoji(this)">🔒</button>
-        <button class="emoji-btn" onclick="setEmoji(this)">📝</button>
-        <button class="emoji-btn" onclick="setEmoji(this)">🎨</button>
-      </div>
-      <input class="tb-doc-title" id="docTitle" value="Untitled document" />
-      <span class="tb-status draft" id="docStatus">DRAFT</span>
-    </div>
-    <div class="tb-actions">
-      <span class="tb-save" id="saveStatus"></span>
-      <button class="tb-btn" onclick="toggleTemplates()">
-        <svg viewBox="0 0 16 16" fill="none"><rect x="1.5" y="1.5" width="13" height="13" rx="2" stroke="currentColor" stroke-width="1.3"/><path d="M1.5 6h13M6 6v9" stroke="currentColor" stroke-width="1.3"/></svg>
-        Templates
-      </button>
-      <button class="tb-btn" onclick="presentMode()">
-        <svg viewBox="0 0 16 16" fill="none"><rect x="1" y="2.5" width="12" height="8" rx="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M5 13h6M8 10.5V13" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
-        Present
-      </button>
-      <button class="tb-btn" id="shareBtn" onclick="toggleShare()">
-        <svg viewBox="0 0 16 16" fill="none"><circle cx="13" cy="3" r="1.5" stroke="currentColor" stroke-width="1.2"/><circle cx="13" cy="13" r="1.5" stroke="currentColor" stroke-width="1.2"/><circle cx="3" cy="8" r="1.5" stroke="currentColor" stroke-width="1.2"/><path d="M4.4 7.3L11.6 4M4.4 8.7l7.2 3.3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
-        Share
-      </button>
-      <button class="tb-btn primary" onclick="publishDoc()">Publish</button>
-      <div class="tb-avatar">M</div>
-    </div>
-  </div>
-
-  <!-- TOOLBAR -->
-  <div id="toolbar">
-    <div class="tool-group">
-      <button class="tbtn active" id="tool-select" title="Select (V)" onclick="setTool('select')">
-        <svg viewBox="0 0 16 16" fill="none"><path d="M3.5 2.5l9 5-5 1.5-2.5 5-1.5-11.5z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>
-      </button>
-      <button class="tbtn" id="tool-text" title="Text (T)" onclick="addText()">
-        <svg viewBox="0 0 16 16" fill="none"><path d="M2.5 4.5h11M8 4.5v8M5 12.5h6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
-      </button>
-      <button class="tbtn" id="tool-rect" title="Rectangle" onclick="addShape('rect')">
-        <svg viewBox="0 0 16 16" fill="none"><rect x="2" y="3.5" width="12" height="9" rx="1.5" stroke="currentColor" stroke-width="1.3"/></svg>
-      </button>
-      <button class="tbtn" id="tool-circle" title="Ellipse" onclick="addShape('circle')">
-        <svg viewBox="0 0 16 16" fill="none"><ellipse cx="8" cy="8" rx="5.5" ry="5.5" stroke="currentColor" stroke-width="1.3"/></svg>
-      </button>
-      <button class="tbtn" id="tool-triangle" title="Triangle" onclick="addShape('triangle')">
-        <svg viewBox="0 0 16 16" fill="none"><path d="M8 2.5L14.5 13.5H1.5L8 2.5z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>
-      </button>
-      <button class="tbtn" id="tool-draw" title="Draw (D)" onclick="setTool('draw')">
-        <svg viewBox="0 0 16 16" fill="none"><path d="M3 13l2-1.5L13 4l-2-2-8 8.5-1.5 2 1.5.5zM11 4l1 1" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      </button>
-    </div>
-    <div class="tool-div"></div>
-    <div class="tool-group">
-      <label class="tbtn" title="Upload image" style="cursor:pointer">
-        <svg viewBox="0 0 16 16" fill="none"><rect x="1" y="3" width="14" height="10" rx="1.5" stroke="currentColor" stroke-width="1.3"/><circle cx="5.5" cy="7" r="1.2" fill="currentColor"/><path d="M1 11.5l4-4 3.5 3.5 2.5-3 3 4" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg>
-        <input type="file" accept="image/*" style="display:none" onchange="uploadImage(event)">
-      </label>
-    </div>
-    <div class="tool-div"></div>
-    <div class="tool-group">
-      <select class="font-select" id="fontFamily" onchange="updateFont()">
-        <option value="DM Sans">DM Sans</option>
-        <option value="Georgia">Georgia</option>
-        <option value="Playfair Display">Playfair Display</option>
-        <option value="Montserrat">Montserrat</option>
-        <option value="Courier New">Courier New</option>
-        <option value="Impact">Impact</option>
-        <option value="Trebuchet MS">Trebuchet MS</option>
-        <option value="Arial">Arial</option>
-      </select>
-      <input class="font-size-input" id="fontSize" type="number" value="18" min="6" max="200" onchange="updateFontSize()" />
-      <button class="fmt-btn" id="fmt-bold" title="Bold" onclick="toggleFormat('fontWeight','bold','normal')"><b>B</b></button>
-      <button class="fmt-btn" id="fmt-italic" title="Italic" onclick="toggleFormat('fontStyle','italic','normal')"><i>I</i></button>
-      <button class="fmt-btn" id="fmt-under" title="Underline" onclick="toggleUnderline()"><u>U</u></button>
-    </div>
-    <div class="tool-div"></div>
-    <div class="tool-group" style="gap:10px">
-      <div class="color-swatch-wrap">
-        <input type="color" id="textColor" value="#0d0f1a" title="Text color" onchange="applyColor('text')">
-        <label>TEXT</label>
-      </div>
-      <div class="color-swatch-wrap">
-        <input type="color" id="fillColor" value="#7c3aed" title="Fill color" onchange="applyColor('fill')">
-        <label>FILL</label>
-      </div>
-      <div class="color-swatch-wrap">
-        <input type="color" id="bgColor" value="#f0f1f5" title="Page background" onchange="applyBg()">
-        <label>PAGE</label>
-      </div>
-    </div>
-    <div class="tool-div"></div>
-    <div class="tool-group">
-      <button class="tbtn" title="Duplicate" onclick="duplicate()">
-        <svg viewBox="0 0 16 16" fill="none"><rect x="1" y="4.5" width="9" height="9.5" rx="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M5 4.5V3a1.5 1.5 0 0 1 1.5-1.5H13A1.5 1.5 0 0 1 14.5 3v7a1.5 1.5 0 0 1-1.5 1.5H11" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
-      </button>
-      <button class="tbtn" title="Delete (Del)" onclick="deleteSelected()">
-        <svg viewBox="0 0 16 16" fill="none"><path d="M2.5 4.5h11M6 4.5V3h4v1.5M6.5 12V7M9.5 12V7M3.5 4.5l1 8.5h7l1-8.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      </button>
-      <button class="tbtn" title="Bring to front" onclick="layerUp()">
-        <svg viewBox="0 0 16 16" fill="none"><path d="M8 2v12M4 5l4-4 4 4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      </button>
-      <button class="tbtn" title="Send to back" onclick="layerDown()">
-        <svg viewBox="0 0 16 16" fill="none"><path d="M8 2v12M4 11l4 4 4-4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      </button>
-      <button class="tbtn" title="Align left" onclick="alignObj('left')">
-        <svg viewBox="0 0 16 16" fill="none"><path d="M2 3h12M2 6.5h7M2 10h10M2 13.5h5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
-      </button>
-      <button class="tbtn" title="Align center" onclick="alignObj('center')">
-        <svg viewBox="0 0 16 16" fill="none"><path d="M2 3h12M4.5 6.5h7M3 10h10M5.5 13.5h5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
-      </button>
-    </div>
-    <div class="zoom-control">
-      <button class="zoom-btn" onclick="changeZoom(-0.1)">−</button>
-      <span class="zoom-val" id="zoomVal">75%</span>
-      <button class="zoom-btn" onclick="changeZoom(0.1)">+</button>
-    </div>
-  </div>
-
-  <!-- BODY -->
-  <div id="body">
-
-    <!-- LEFT PANEL -->
-    <div id="left-panel">
-      <button class="side-btn active" onclick="setSidePanel('templates')" title="Templates">
-        <svg viewBox="0 0 24 24" fill="none"><path fill-rule="evenodd" clip-rule="evenodd" d="M3 11.3c0-3.6 0-5.4 1-6.6a4.5 4.5 0 0 1 .75-.75C5.9 3 7.7 3 11.3 3h1.4c3.6 0 5.4 0 6.6 1a4.5 4.5 0 0 1 .75.75C21 5.9 21 7.7 21 11.3v1.4c0 3.6 0 5.4-1 6.6a4.5 4.5 0 0 1-.75.75C18.1 21 16.3 21 12.7 21h-1.4c-3.6 0-5.4 0-6.6-1a4.5 4.5 0 0 1-.75-.75C3 18.1 3 16.3 3 12.7v-1.4ZM11.3 4.5H13.5v15h-2.2c-1.8 0-3.1 0-4-.1-.9-.1-1.4-.3-1.7-.5a3 3 0 0 1-.5-.5c-.2-.3-.4-.75-.5-1.66-.1-.95-.1-2.2-.1-4v-1.4c0-1.8 0-3.1.1-4 .1-.9.3-1.4.5-1.7a3 3 0 0 1 .5-.5c.3-.2.75-.4 1.66-.5.95-.1 2.2-.1 4-.1ZM15 19.5c.67-.01 1.22-.04 1.7-.1.9-.1 1.4-.3 1.7-.5.19-.15.35-.31.5-.5.24-.3.43-.75.53-1.66.11-.95.11-2.2.11-4v-1.66H15v8.47Zm4.49-9.97c-.01-.9-.04-1.62-.11-2.21-.1-.9-.29-1.4-.53-1.66a3 3 0 0 0-.5-.5c-.3-.24-.75-.43-1.66-.53-.43-.05-1-.07-1.69-.07v5h4.49Z" fill="currentColor"/></svg>
-        <span>Templates</span>
-      </button>
-      <button class="side-btn" onclick="setSidePanel('elements')" title="Elements">
-        <svg viewBox="0 0 24 24" fill="none"><path fill-rule="evenodd" d="M6.55 11.24a1.5 1.5 0 0 0 1.42 0l.01-.01.03-.02.08-.05a10 10 0 0 0 1.14-.79c.64-.51 1.48-1.31 2.03-2.37a2.99 2.99 0 0 0-4-4.16A2.99 2.99 0 0 0 3.2 7.91c.54 1.1 1.4 1.93 2.05 2.45a10 10 0 0 0 1.25.85l.03.01.01.01ZM12.98 15.46a4.21 4.21 0 1 1-8.42 0 4.21 4.21 0 0 1 8.42 0Zm-1.5 0a2.71 2.71 0 1 1-5.42 0 2.71 2.71 0 0 1 5.42 0ZM17.54 4a1.03 1.03 0 0 0-1.78 0l-3.3 5.7a1.03 1.03 0 0 0 .89 1.54h6.61c.79 0 1.29-.86.89-1.54L17.54 4ZM16.65 5.47l-2.49 4.28h4.97l-2.48-4.28ZM20.86 17.17a4.21 4.21 0 1 1-8.43 0 4.21 4.21 0 0 1 8.43 0Zm-1.5 0a2.71 2.71 0 1 1-5.42 0 2.71 2.71 0 0 1 5.42 0Z" fill="currentColor"/></svg>
-        <span>Elements</span>
-      </button>
-      <button class="side-btn" onclick="setSidePanel('text')" title="Text">
-        <svg viewBox="0 0 24 24" fill="none"><path d="M4.3 5.8a1.5 1.5 0 0 1 1.5-1.5h12.4a1.5 1.5 0 0 1 1.5 1.5V7.6a.75.75 0 0 1-1.5 0v-1.3a.5.5 0 0 0-.5-.5H12.8v12a.5.5 0 0 0 .5.5h1.9a.75.75 0 0 1 0 1.5H8.8a.75.75 0 0 1 0-1.5h1.9a.5.5 0 0 0 .5-.5v-12H6.3a.5.5 0 0 0-.5.5V7.7a.75.75 0 0 1-1.5 0V5.8Z" fill="currentColor"/></svg>
-        <span>Text</span>
-      </button>
-      <button class="side-btn" onclick="setSidePanel('uploads')" title="Uploads">
-        <svg viewBox="0 0 24 24" fill="none"><path d="M11.25 3a5.33 5.33 0 0 0-5.32 4.8.2.2 0 0 1-.12.16 5.73 5.73 0 0 0 2 11.1 5.73 5.73 0 0 0 5.73-5.73v-.49l1.78 1.78a.75.75 0 0 0 1.06-1.06l-3.06-3.06a.75.75 0 0 0-1.06 0L9.18 13.54a.75.75 0 0 0 1.06 1.06l1.78-1.78v.49a4.23 4.23 0 1 1-5.7-3.96 1.7 1.7 0 0 0 1.09-1.42c.2-1.94 1.86-3.44 3.83-3.44a3.85 3.85 0 0 1 3.78 3.17c.14.77.78 1.37 1.57 1.43 2.14.18 3.85 2.02 3.85 4.22a4.23 4.23 0 0 1-4.23 4.23h-1.9a.75.75 0 0 0 0 1.5h1.9a5.73 5.73 0 0 0 5.73-5.73c0-2.98-2.3-5.47-5.23-5.71a.25.25 0 0 1-.21-.2A5.35 5.35 0 0 0 11.25 3Z" fill="currentColor"/></svg>
-        <span>Uploads</span>
-      </button>
-      <div class="side-div"></div>
-      <button class="side-btn" onclick="setSidePanel('ai')" title="AI Tools">
-        <svg viewBox="0 0 24 24" fill="none"><path d="M12 2l1.8 5.5H19l-4.4 3.5 1.5 5.5-4.1-3L7.9 16.5l1.5-5.5L5 7.5h5.2L12 2z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>
-        <span>AI</span>
-        <div class="side-badge"></div>
-      </button>
-      <button class="side-btn" onclick="setSidePanel('charts')" title="Charts">
-        <svg viewBox="0 0 24 24" fill="none"><path d="M3 20h18M7 10v10M12 6v14M17 14v6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
-        <span>Charts</span>
-      </button>
-    </div>
-
-    <!-- PAGE STRIP -->
-    <div id="page-strip">
-      <div class="ps-header">
-        <span class="ps-label">Pages</span>
-        <button class="ps-add" onclick="addPage()" title="Add page">+</button>
-      </div>
-      <div class="ps-list" id="pageList"></div>
-      <div class="ps-footer"><span class="ps-count" id="pageCount">1 page</span></div>
-    </div>
-
-    <!-- CANVAS AREA -->
-    <div id="canvas-area"
-      ondragover="event.preventDefault();document.getElementById('drop-overlay').style.display='flex'"
-      ondragleave="document.getElementById('drop-overlay').style.display='none'"
-      ondrop="handleDrop(event)">
-      <div id="drop-overlay"><span>Drop image here</span></div>
-      <div id="canvas-wrap">
-        <canvas id="main-canvas"></canvas>
-      </div>
-      <div id="page-nav">
-        <button class="pnav-btn" id="prevBtn" onclick="switchPage(currentPage-1)">‹</button>
-        <span class="pnav-text" id="pageNavText">1 / 1</span>
-        <button class="pnav-btn" id="nextBtn" onclick="switchPage(currentPage+1)">›</button>
-      </div>
-    </div>
-
-    <!-- RIGHT PANEL (Properties) -->
-    <div id="right-panel">
-      <div class="rp-header">Properties</div>
-      <div class="rp-body" id="propPanel"></div>
-    </div>
-
-  </div>
-</div>
-
-<!-- TEMPLATE MODAL -->
-<div class="modal-bg" id="templateModal" style="display:none" onclick="if(event.target===this&&pages.length>0)this.style.display='none'">
-  <div class="modal">
-    <div class="modal-icon">✦</div>
-    <div class="modal-badge">Backread Editor</div>
-    <h2 class="modal-title">Start with a template</h2>
-    <p class="modal-sub">Professionally designed starting points. Pick one and make it yours.</p>
-    <div class="tpl-grid" id="tplGrid"></div>
-    <div class="modal-footer">
-      <button class="modal-btn" onclick="startBlank()">Start blank</button>
-      <button class="modal-btn" id="cancelTplBtn" onclick="document.getElementById('templateModal').style.display='none'" style="display:none">Cancel</button>
-    </div>
-  </div>
-</div>
-
-<!-- SHARE DRAWER -->
-<div id="share-drawer">
-  <div class="sd-header">
-    <div>
-      <div class="sd-title">Share document</div>
-      <div class="sd-sub" id="shareSubtitle">0 links created</div>
-    </div>
-    <button class="sd-close" onclick="toggleShare()">
-      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 3l10 10M13 3L3 13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
-    </button>
-  </div>
-  <div class="sd-body" id="shareBody">
-    <div class="sd-section-label" id="linksLabel" style="display:none">Active links</div>
-    <div id="linksList"></div>
-    <div id="newLinkArea"></div>
-  </div>
-</div>
-
-<!-- PRESENT MODAL -->
-<div class="present-modal" id="presentModal">
-  <button class="present-close" onclick="closePresentMode()">✕</button>
-  <div id="present-canvas-wrap"></div>
-</div>
-
-<script>
-// ============================================================
-// CONSTANTS & STATE
-// ============================================================
-const CANVAS_W = 960, CANVAS_H = 540;
-const FONTS = ['DM Sans','Georgia','Playfair Display','Montserrat','Courier New','Impact','Trebuchet MS','Arial'];
-const EMOJIS = ['📄','🚀','💼','📊','📋','🎯','💡','🔍','📈','🤝','⚡','🌟','🔒','📝','🎨'];
-
-let fc = null;
-let pages = [];
-let currentPage = 0;
-let zoom = 0.75;
-let activeTool = 'select';
-let shareLinks = [];
-let shareOpen = false;
-let autoSaveTimer = null;
-let showNewLinkForm = false;
-
-// ============================================================
-// TEMPLATE DEFINITIONS
-// ============================================================
-const W = CANVAS_W, H = CANVAS_H;
-function t(text, o={}) {
-  return {type:'textbox',left:o.left??60,top:o.top??60,width:o.width??400,text,fontSize:o.fs??18,fontFamily:o.ff??'DM Sans',fill:o.fill??'#0d0f1a',fontWeight:o.fw??'normal',opacity:1,selectable:true,editable:true};
-}
-function r(o={}) {
-  return {type:'rect',left:o.left??0,top:o.top??0,width:o.w??200,height:o.h??60,fill:o.fill??'#7c3aed',rx:o.rx??0,ry:o.rx??0,selectable:true,opacity:o.op??1};
-}
-function makePage(bg='#fff',objects=[]) { return {version:'5.3.0',objects,background:bg}; }
+// ─── Template library ─────────────────────────────────────────────────────────
+const TEMPLATE_CATEGORIES = [
+  { id: 'startup',    label: 'Startup & Fundraising' },
+  { id: 'freelance',  label: 'Freelance & Agency' },
+  { id: 'business',   label: 'Business & Strategy' },
+  { id: 'marketing',  label: 'Marketing & Brand' },
+  { id: 'report',     label: 'Reports & Analysis' },
+]
 
 const TEMPLATES = [
-  {id:'pitch',name:'Pitch Deck',emoji:'📊',pages:6,desc:'Investor-ready slides',accent:'#7c3aed',bg:'linear-gradient(135deg,#f5f3ff,#ede9fe)'},
-  {id:'proposal',name:'Proposal',emoji:'📋',pages:4,desc:'Client proposals',accent:'#2563eb',bg:'linear-gradient(135deg,#eff6ff,#dbeafe)'},
-  {id:'report',name:'Report',emoji:'📈',pages:5,desc:'Data & analysis',accent:'#059669',bg:'linear-gradient(135deg,#ecfdf5,#d1fae5)'},
-  {id:'mediakit',name:'Media Kit',emoji:'🎨',pages:4,desc:'Brand press kit',accent:'#db2777',bg:'linear-gradient(135deg,#fdf2f8,#fce7f3)'},
-  {id:'casestudy',name:'Case Study',emoji:'🔬',pages:5,desc:'Client success story',accent:'#dc2626',bg:'linear-gradient(135deg,#fff1f2,#fee2e2)'},
-  {id:'onepager',name:'One-Pager',emoji:'⚡',pages:1,desc:'Single page overview',accent:'#d97706',bg:'linear-gradient(135deg,#fffbeb,#fef3c7)'},
-];
+  // Startup & Fundraising
+  { id: 'pitch-deck',        cat: 'startup',   label: 'Pitch Deck',           desc: 'Seed to Series B investor slides', pages: 10, size: 'presentation-169' },
+  { id: 'investor-update',   cat: 'startup',   label: 'Investor Update',      desc: 'Monthly / quarterly investor email', pages: 4,  size: 'a4-portrait' },
+  { id: 'product-roadmap',   cat: 'startup',   label: 'Product Roadmap',      desc: 'Quarterly roadmap presentation', pages: 6,  size: 'presentation-169' },
+  { id: 'team-deck',         cat: 'startup',   label: 'Team Introduction',    desc: 'Meet the founding team', pages: 5, size: 'presentation-169' },
+  { id: 'exec-summary',      cat: 'startup',   label: 'Executive Summary',    desc: 'One-page business overview', pages: 1,  size: 'a4-portrait' },
+  { id: 'competitive',       cat: 'startup',   label: 'Competitive Analysis', desc: 'Market landscape comparison', pages: 4,  size: 'presentation-169' },
+  // Freelance & Agency
+  { id: 'client-proposal',   cat: 'freelance', label: 'Client Proposal',      desc: 'Win new clients with ease', pages: 6,  size: 'a4-portrait' },
+  { id: 'invoice',           cat: 'freelance', label: 'Invoice',              desc: 'Professional billing template', pages: 1,  size: 'a4-portrait' },
+  { id: 'project-scope',     cat: 'freelance', label: 'Project Scope',        desc: 'Define deliverables clearly', pages: 3,  size: 'a4-portrait' },
+  { id: 'case-study',        cat: 'freelance', label: 'Case Study',           desc: 'Showcase your best work', pages: 5,  size: 'presentation-169' },
+  { id: 'service-brochure',  cat: 'freelance', label: 'Services Brochure',    desc: 'What you offer, beautifully', pages: 4,  size: 'a4-portrait' },
+  { id: 'portfolio',         cat: 'freelance', label: 'Portfolio Deck',       desc: 'Show your best work', pages: 8,  size: 'presentation-169' },
+  // Business & Strategy
+  { id: 'business-plan',     cat: 'business',  label: 'Business Plan',        desc: 'Full business plan structure', pages: 12, size: 'a4-portrait' },
+  { id: 'sales-deck',        cat: 'business',  label: 'Sales Deck',           desc: 'Close deals faster', pages: 8,  size: 'presentation-169' },
+  { id: 'partnership',       cat: 'business',  label: 'Partnership Proposal', desc: 'Strategic partnership pitch', pages: 6,  size: 'presentation-169' },
+  { id: 'company-overview',  cat: 'business',  label: 'Company Overview',     desc: 'Who you are and what you do', pages: 5,  size: 'presentation-169' },
+  // Marketing & Brand
+  { id: 'brand-guidelines',  cat: 'marketing', label: 'Brand Guidelines',     desc: 'Comprehensive brand system', pages: 8,  size: 'presentation-169' },
+  { id: 'media-kit',         cat: 'marketing', label: 'Press & Media Kit',    desc: 'For journalists and partners', pages: 5,  size: 'a4-portrait' },
+  { id: 'marketing-plan',    cat: 'marketing', label: 'Marketing Plan',       desc: 'Campaign strategy & channels', pages: 7,  size: 'presentation-169' },
+  { id: 'social-media-kit',  cat: 'marketing', label: 'Social Media Kit',     desc: 'Posts, stories, and banners', pages: 6,  size: 'square' },
+  // Reports & Analysis
+  { id: 'quarterly-report',  cat: 'report',    label: 'Quarterly Report',     desc: 'Q-over-Q performance review', pages: 8,  size: 'presentation-169' },
+  { id: 'annual-report',     cat: 'report',    label: 'Annual Report',        desc: 'Year in review', pages: 12, size: 'a4-portrait' },
+  { id: 'market-research',   cat: 'report',    label: 'Market Research',      desc: 'Data-driven market insights', pages: 6,  size: 'presentation-169' },
+]
 
-function buildTemplate(id) {
-  switch(id) {
-    case 'pitch': return [
-      makePage('#0d0f1a',[r({w:W,h:H,fill:'#0d0f1a'}),r({left:0,top:H-4,w:W,h:4,fill:'#7c3aed'}),r({left:60,top:160,w:3,h:80,fill:'#7c3aed'}),t('YOUR COMPANY',{left:80,top:155,fs:52,fw:'700',fill:'#fff',width:W-140,ff:'DM Sans'}),t('The one-line pitch that changes everything.',{left:80,top:225,fs:18,fill:'#8b91a8',width:W-140}),t('Series A · 2025',{left:80,top:H-60,fs:12,fill:'#7c3aed',ff:'DM Mono'})]),
-      makePage('#fff',[r({left:0,top:0,w:W,h:4,fill:'#7c3aed'}),t('The Problem',{left:60,top:48,fs:36,fw:'700',width:500}),r({left:60,top:118,w:380,h:200,fill:'#f5f3ff',rx:12}),t('Pain Point #1',{left:80,top:138,fs:16,fw:'600',fill:'#7c3aed',width:340}),t('Describe the core frustration your customers face every day.',{left:80,top:165,fs:13,fill:'#4b5068',width:340}),r({left:480,top:118,w:420,h:200,fill:'#f8f9fb',rx:12}),t('Pain Point #2',{left:500,top:138,fs:16,fw:'600',width:380}),t('The secondary problem that compounds the first.',{left:500,top:165,fs:13,fill:'#4b5068',width:380}),t('$XXB total addressable market with no adequate solution today.',{left:60,top:348,fs:15,fill:'#7c3aed',fw:'600',width:W-120})]),
-      makePage('#fff',[r({left:0,top:0,w:W,h:4,fill:'#7c3aed'}),t('Our Solution',{left:60,top:48,fs:36,fw:'700',width:500}),r({left:60,top:118,w:250,h:190,fill:'#0d0f1a',rx:14}),t('01',{left:80,top:138,fs:32,fw:'700',fill:'#7c3aed',width:210,ff:'DM Mono'}),t('Feature One',{left:80,top:182,fs:16,fw:'600',fill:'#fff',width:210}),t('What it does and why it matters.',{left:80,top:206,fs:12,fill:'#8b91a8',width:210}),r({left:350,top:118,w:250,h:190,fill:'#f5f3ff',rx:14}),t('02',{left:370,top:138,fs:32,fw:'700',fill:'#7c3aed',width:210,ff:'DM Mono'}),t('Feature Two',{left:370,top:182,fs:16,fw:'600',width:210}),t('What it does and why it matters.',{left:370,top:206,fs:12,fill:'#4b5068',width:210}),r({left:640,top:118,w:250,h:190,fill:'#f8f9fb',rx:14}),t('03',{left:660,top:138,fs:32,fw:'700',fill:'#7c3aed',width:210,ff:'DM Mono'}),t('Feature Three',{left:660,top:182,fs:16,fw:'600',width:210}),t('What it does and why it matters.',{left:660,top:206,fs:12,fill:'#4b5068',width:210})]),
-      makePage('#fff',[r({left:0,top:0,w:W,h:4,fill:'#7c3aed'}),t('Traction',{left:60,top:48,fs:36,fw:'700',width:500}),r({left:60,top:118,w:220,h:150,fill:'#f5f3ff',rx:14}),t('$0M',{left:80,top:140,fs:44,fw:'700',fill:'#7c3aed',width:180,ff:'DM Sans'}),t('ARR',{left:80,top:194,fs:12,fill:'#8b91a8',width:180}),r({left:320,top:118,w:220,h:150,fill:'#f0fdf4',rx:14}),t('0K',{left:340,top:140,fs:44,fw:'700',fill:'#059669',width:180}),t('ACTIVE USERS',{left:340,top:194,fs:12,fill:'#8b91a8',width:180}),r({left:580,top:118,w:220,h:150,fill:'#eff6ff',rx:14}),t('0%',{left:600,top:140,fs:44,fw:'700',fill:'#2563eb',width:180}),t('MOM GROWTH',{left:600,top:194,fs:12,fill:'#8b91a8',width:180})]),
-      makePage('#fff',[r({left:0,top:0,w:W,h:4,fill:'#7c3aed'}),t('The Ask',{left:60,top:48,fs:36,fw:'700',width:500}),r({left:60,top:118,w:W-120,h:70,fill:'#0d0f1a',rx:10}),t('Raising $X.XM Seed Round',{left:80,top:138,fs:28,fw:'700',fill:'#fff',width:700}),t('40% Product & Engineering',{left:60,top:220,fs:14,fill:'#0d0f1a',fw:'600',width:270}),t('30% Sales & Growth',{left:60,top:244,fs:14,fill:'#4b5068',width:270}),t('20% Marketing',{left:360,top:220,fs:14,fill:'#0d0f1a',fw:'600',width:270}),t('10% Operations',{left:360,top:244,fs:14,fill:'#4b5068',width:270})]),
-      makePage('#7c3aed',[t('Thank You',{left:60,top:140,fs:72,fw:'700',fill:'#fff',width:W-120}),t("Let's build something great.",{left:60,top:242,fs:20,fill:'#ede9fe',width:600}),t('hello@backread.com',{left:60,top:H-80,fs:14,fill:'#c4b5fd',ff:'DM Mono'})]),
-    ];
-    case 'proposal': return [
-      makePage('#f8f9fb',[r({w:320,h:H,fill:'#0d0f1a'}),t('PROJECT\nPROPOSAL',{left:40,top:60,fs:28,fw:'700',fill:'#fff',width:240}),t('Prepared for:',{left:40,top:220,fs:11,fill:'#4b5068',width:240}),t('Client Name',{left:40,top:240,fs:17,fw:'600',fill:'#fff',width:240}),t('Month YYYY',{left:40,top:H-60,fs:11,fill:'#4b5068',ff:'DM Mono',width:240}),t('Proposal Title\nGoes Here',{left:360,top:100,fs:42,fw:'700',fill:'#0d0f1a',width:540}),t('A compelling one-sentence summary of this proposal.',{left:360,top:230,fs:15,fill:'#4b5068',width:540})]),
-      makePage('#fff',[r({left:0,top:0,w:4,h:H,fill:'#2563eb'}),t('Executive Summary',{left:40,top:48,fs:32,fw:'700',width:W-80}),t('Describe the project context and why this proposal is ideal.',{left:40,top:118,fs:15,fill:'#4b5068',width:W-80}),r({left:40,top:240,w:(W-100)/2,h:120,fill:'#eff6ff',rx:12}),t('Challenge',{left:60,top:258,fs:15,fw:'600',fill:'#2563eb',width:400}),t('Define the core problem clearly.',{left:60,top:282,fs:13,fill:'#4b5068',width:400}),r({left:(W-100)/2+60,top:240,w:(W-100)/2,h:120,fill:'#f0fdf4',rx:12}),t('Solution',{left:(W-100)/2+80,top:258,fs:15,fw:'600',fill:'#059669',width:400}),t('How this proposal solves it.',{left:(W-100)/2+80,top:282,fs:13,fill:'#4b5068',width:400})]),
-    ];
-    case 'report': return [
-      makePage('#f8f9fb',[r({left:0,top:0,w:6,h:H,fill:'#059669'}),t('QUARTERLY\nREPORT',{left:40,top:60,fs:52,fw:'700',fill:'#0d0f1a',width:560}),t('Q1 2025',{left:40,top:256,fs:16,fill:'#059669',fw:'600',ff:'DM Mono'}),t('Backread Platform · Confidential',{left:40,top:H-50,fs:11,fill:'#8b91a8',ff:'DM Mono',width:500})]),
-      makePage('#fff',[r({left:0,top:0,w:4,h:H,fill:'#059669'}),t('Key Metrics',{left:40,top:48,fs:32,fw:'700',width:W-80}),r({left:40,top:110,w:200,h:140,fill:'#ecfdf5',rx:12}),t('0',{left:60,top:128,fs:52,fw:'700',fill:'#059669',width:160}),t('TOTAL VIEWS',{left:60,top:190,fs:10,fill:'#4b5068',width:160,ff:'DM Mono'}),r({left:260,top:110,w:200,h:140,fill:'#eff6ff',rx:12}),t('0:00',{left:280,top:128,fs:52,fw:'700',fill:'#2563eb',width:160}),t('AVG READ TIME',{left:280,top:190,fs:10,fill:'#4b5068',width:160,ff:'DM Mono'}),r({left:480,top:110,w:200,h:140,fill:'#fdf2f8',rx:12}),t('0%',{left:500,top:128,fs:52,fw:'700',fill:'#db2777',width:160}),t('COMPLETION',{left:500,top:190,fs:10,fill:'#4b5068',width:160,ff:'DM Mono'})]),
-    ];
-    case 'onepager':
-    default: return [
-      makePage('#fff',[r({left:0,top:0,w:W,h:6,fill:'#d97706'}),t('BACKREAD',{left:40,top:36,fs:16,fw:'700',fill:'#d97706',width:300,ff:'DM Mono'}),t('Your Headline\nGoes Here',{left:40,top:88,fs:46,fw:'700',fill:'#0d0f1a',width:W/2-60}),t('A compelling one-sentence pitch that makes someone stop scrolling.',{left:40,top:208,fs:15,fill:'#4b5068',width:W/2-60}),r({left:40,top:258,w:130,h:42,fill:'#d97706',rx:8}),t('Get Started →',{left:52,top:268,fs:13,fw:'600',fill:'#fff',width:106}),t('Key Benefit One',{left:40,top:340,fs:15,fw:'600',fill:'#d97706'}),t('Short punchy description of your first benefit.',{left:40,top:364,fs:13,fill:'#4b5068',width:W/2-60}),r({left:W/2+20,top:66,w:W/2-60,h:H-140,fill:'#fffbeb',rx:18})])
-    ];
+// ─── Google Fonts list (100+) ─────────────────────────────────────────────────
+const FONT_LIST = [
+  'Jost','Inter','Space Grotesk','DM Sans','Outfit','Plus Jakarta Sans','Syne',
+  'Geist','Archivo','Nunito Sans','Source Sans 3','IBM Plex Sans','Rubik',
+  'Work Sans','Barlow','Mulish','Lato','Open Sans','Raleway','Montserrat',
+  'Oswald','Bebas Neue','Anton','Black Han Sans','Teko','Exo 2',
+  'Playfair Display','Cormorant Garamond','Libre Baskerville','Merriweather',
+  'EB Garamond','Lora','Crimson Text','Cardo','Neuton','Spectral','Arvo',
+  'PT Serif','Zilla Slab','Roboto Slab','Frank Ruhl Libre','Bodoni Moda',
+  'DM Mono','Roboto Mono','IBM Plex Mono','Space Mono','JetBrains Mono',
+  'Fira Code','Source Code Pro','Courier Prime','Inconsolata','Oxanium',
+  'Chakra Petch','Share Tech Mono','VT323','Silkscreen',
+  'Pacifico','Righteous','Fredoka One','Comfortaa','Caveat','Dancing Script',
+  'Great Vibes','Sacramento','Satisfy','Allura','Pinyon Script','Alex Brush',
+  'Abril Fatface','Alfa Slab One','Ultra','Passion One','Graduate','Boogaloo',
+  'Lobster','Lobster Two','Knewave','Bungee','Righteous','Russo One',
+  'Cinzel','Cinzel Decorative','Metamorphous','MedievalSharp',
+  'Noto Sans','Noto Serif','Poppins','Quicksand','Varela Round',
+  'Nunito','Josefin Sans','Josefin Slab','Karla','Manrope',
+]
+
+// ─── Color palettes ───────────────────────────────────────────────────────────
+const BRAND_PALETTE = [
+  '#0f172a','#1e293b','#334155','#475569','#64748b','#94a3b8','#cbd5e1','#e2e8f0','#f8fafc','#ffffff',
+  '#4f46e5','#6366f1','#818cf8','#a5b4fc','#c7d2fe',
+  '#0ea5e9','#38bdf8','#7dd3fc','#bae6fd',
+  '#10b981','#34d399','#6ee7b7','#a7f3d0',
+  '#f59e0b','#fbbf24','#fcd34d','#fde68a',
+  '#ef4444','#f87171','#fca5a5','#fecaca',
+  '#ec4899','#f472b6','#f9a8d4','#fbcfe8',
+  '#8b5cf6','#a78bfa','#c4b5fd','#ddd6fe',
+]
+
+// ─── Page layout library (design styles) ─────────────────────────────────────
+const PAGE_LAYOUTS = [
+  { id: 'hero-dark',       label: 'Hero Dark',       bg: '#0f172a', thumb: '#0f172a' },
+  { id: 'hero-light',      label: 'Hero Light',      bg: '#ffffff', thumb: '#f8fafc' },
+  { id: 'hero-accent',     label: 'Hero Accent',     bg: '#4f46e5', thumb: '#4f46e5' },
+  { id: 'split-left',      label: 'Split Left',      bg: '#ffffff', thumb: '#e0e7ff' },
+  { id: 'split-right',     label: 'Split Right',     bg: '#ffffff', thumb: '#fce7f3' },
+  { id: 'metrics',         label: 'Metrics Row',     bg: '#ffffff', thumb: '#f0fdf4' },
+  { id: 'timeline',        label: 'Timeline',        bg: '#ffffff', thumb: '#fffbeb' },
+  { id: 'team-grid',       label: 'Team Grid',       bg: '#f8fafc', thumb: '#eff6ff' },
+  { id: 'quote-block',     label: 'Pull Quote',      bg: '#0f172a', thumb: '#312e81' },
+  { id: 'feature-cols',    label: '3-Column',        bg: '#ffffff', thumb: '#fdf4ff' },
+  { id: 'table-layout',    label: 'Data Table',      bg: '#ffffff', thumb: '#ecfdf5' },
+  { id: 'invoice-layout',  label: 'Invoice',         bg: '#ffffff', thumb: '#fff7ed' },
+]
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+function makePage(bg = '#ffffff', objects: any[] = []) {
+  return { version: '5.3.0', objects, background: bg }
+}
+function t(text: string, o: any = {}) {
+  return { type: 'textbox', left: o.l ?? 60, top: o.t ?? 60, width: o.w ?? 400, text,
+    fontSize: o.fs ?? 16, fontFamily: o.ff ?? 'Jost', fill: o.fill ?? '#0f172a',
+    fontWeight: o.fw ?? '400', opacity: 1, selectable: true, editable: true,
+    lineHeight: o.lh ?? 1.4, textAlign: o.ta ?? 'left' }
+}
+function r(o: any = {}) {
+  return { type: 'rect', left: o.l ?? 0, top: o.t ?? 0, width: o.w ?? 200, height: o.h ?? 60,
+    fill: o.fill ?? '#4f46e5', rx: o.rx ?? 0, ry: o.rx ?? 0, selectable: true, opacity: o.op ?? 1 }
+}
+
+// Build a template's pages
+function buildTemplate(id: string, sizeId: string): any[] {
+  const size = CANVAS_SIZES.find(s => s.id === sizeId) || CANVAS_SIZES[0]
+  const W = size.w, H = size.h
+  const isDoc = H > W // portrait document
+
+  switch (id) {
+    case 'pitch-deck': return buildPitchDeck(W, H)
+    case 'client-proposal': return buildProposal(W, H)
+    case 'invoice': return buildInvoice(W, H)
+    case 'quarterly-report': return buildReport(W, H)
+    case 'brand-guidelines': return buildBrandGuidelines(W, H)
+    case 'sales-deck': return buildSalesDeck(W, H)
+    case 'case-study': return buildCaseStudy(W, H)
+    default: return buildPitchDeck(W, H)
   }
 }
 
-// ============================================================
-// INIT
-// ============================================================
-window.addEventListener('load', () => {
-  fc = new fabric.Canvas('main-canvas', {width: CANVAS_W, height: CANVAS_H, backgroundColor:'#fff', selection:true, preserveObjectStacking:true});
+function buildPitchDeck(W: number, H: number): any[] {
+  return [
+    // Cover
+    makePage('#0a0a0f', [
+      r({l:0,t:0,w:W,h:H,fill:'#0a0a0f'}),
+      r({l:0,t:H-3,w:W,h:3,fill:'#4f46e5'}),
+      r({l:60,t:Math.round(H*.38),w:4,h:Math.round(H*.24),fill:'#4f46e5'}),
+      t('COMPANY NAME', {l:80,t:Math.round(H*.38),fs:isFS(W,44),fw:'700',fill:'#ffffff',w:W-140,ff:'Jost'}),
+      t('The one-sentence pitch that makes investors lean forward.', {l:80,t:Math.round(H*.38)+isFS(W,44)+14,fs:isFS(W,18),fill:'#94a3b8',w:W-160}),
+      t('Series A · 2025', {l:80,t:H-50,fs:12,fill:'#4f46e5',ff:'JetBrains Mono'}),
+    ]),
+    // Problem
+    makePage('#ffffff', [
+      r({l:0,t:0,w:W,h:4,fill:'#4f46e5'}),
+      t('The Problem', {l:60,t:50,fs:isFS(W,34),fw:'700',fill:'#0f172a',w:W-120}),
+      r({l:60,t:50+isFS(W,34)+12,w:50,h:3,fill:'#4f46e5',rx:2}),
+      r({l:60,t:Math.round(H*.32),w:Math.round((W-140)*.47),h:Math.round(H*.38),fill:'#f0f9ff',rx:12}),
+      t('Pain Point One', {l:80,t:Math.round(H*.32)+20,fs:isFS(W,16),fw:'700',fill:'#0ea5e9',w:Math.round((W-140)*.47)-40}),
+      t('Describe the core frustration your customers experience daily.', {l:80,t:Math.round(H*.32)+50,fs:13,fill:'#475569',w:Math.round((W-140)*.47)-40,lh:1.6}),
+      r({l:Math.round(W*.53),t:Math.round(H*.32),w:Math.round((W-140)*.47),h:Math.round(H*.38),fill:'#fdf4ff',rx:12}),
+      t('Pain Point Two', {l:Math.round(W*.53)+20,t:Math.round(H*.32)+20,fs:isFS(W,16),fw:'700',fill:'#8b5cf6',w:Math.round((W-140)*.47)-40}),
+      t('The secondary problem that compounds and makes it worse.', {l:Math.round(W*.53)+20,t:Math.round(H*.32)+50,fs:13,fill:'#475569',w:Math.round((W-140)*.47)-40,lh:1.6}),
+    ]),
+    // Solution
+    makePage('#ffffff', [
+      r({l:0,t:0,w:W,h:4,fill:'#4f46e5'}),
+      t('Our Solution', {l:60,t:50,fs:isFS(W,34),fw:'700',fill:'#0f172a',w:W-120}),
+      r({l:60,t:50+isFS(W,34)+12,w:50,h:3,fill:'#4f46e5',rx:2}),
+      r({l:60,t:Math.round(H*.32),w:Math.round((W-160)/3),h:Math.round(H*.4),fill:'#0f172a',rx:14}),
+      t('01', {l:80,t:Math.round(H*.32)+16,fs:isFS(W,28),fw:'700',fill:'#4f46e5',w:Math.round((W-160)/3)-40,ff:'JetBrains Mono'}),
+      t('Feature One', {l:80,t:Math.round(H*.32)+70,fs:isFS(W,15),fw:'600',fill:'#ffffff',w:Math.round((W-160)/3)-40}),
+      t('What it does and why it matters.', {l:80,t:Math.round(H*.32)+96,fs:12,fill:'#94a3b8',w:Math.round((W-160)/3)-40,lh:1.5}),
+    ]),
+    // Traction
+    makePage('#ffffff', [
+      r({l:0,t:0,w:W,h:4,fill:'#4f46e5'}),
+      t('Traction', {l:60,t:50,fs:isFS(W,34),fw:'700',fill:'#0f172a',w:W-120}),
+      r({l:60,t:50+isFS(W,34)+12,w:50,h:3,fill:'#4f46e5',rx:2}),
+      r({l:60,t:Math.round(H*.32),w:Math.round((W-160)/3),h:130,fill:'#eff6ff',rx:12}),
+      t('$0M', {l:80,t:Math.round(H*.32)+14,fs:isFS(W,38),fw:'700',fill:'#4f46e5',w:Math.round((W-160)/3)-40,ff:'Jost'}),
+      t('ARR', {l:80,t:Math.round(H*.32)+14+isFS(W,38)+4,fs:11,fill:'#94a3b8',w:Math.round((W-160)/3)-40,ff:'JetBrains Mono'}),
+    ]),
+    // The Ask
+    makePage('#ffffff', [
+      r({l:0,t:0,w:W,h:4,fill:'#4f46e5'}),
+      t('The Ask', {l:60,t:50,fs:isFS(W,34),fw:'700',fill:'#0f172a',w:W-120}),
+      r({l:60,t:Math.round(H*.3),w:W-120,h:70,fill:'#0f172a',rx:10}),
+      t('Raising $X.XM Seed Round', {l:80,t:Math.round(H*.3)+18,fs:isFS(W,26),fw:'700',fill:'#ffffff',w:W-160}),
+    ]),
+    // Thank You
+    makePage('#4f46e5', [
+      t('Thank you.', {l:60,t:Math.round(H*.35),fs:isFS(W,60),fw:'700',fill:'#ffffff',w:W-120,ff:'Jost'}),
+      t('hello@company.com · company.io', {l:60,t:Math.round(H*.35)+isFS(W,60)+20,fs:isFS(W,16),fill:'#c7d2fe',w:W-120}),
+    ]),
+  ]
+}
 
-  // Events
-  fc.on('selection:created', onSelect);
-  fc.on('selection:updated', onSelect);
-  fc.on('selection:cleared', () => { document.getElementById('right-panel').classList.remove('open'); });
-  fc.on('object:modified', scheduleAutoSave);
-  fc.on('object:added', scheduleAutoSave);
-  fc.on('object:removed', scheduleAutoSave);
+function buildProposal(W: number, H: number): any[] {
+  return [
+    makePage('#f8fafc', [
+      r({l:0,t:0,w:260,h:H,fill:'#0f172a'}),
+      t('PROJECT\nPROPOSAL', {l:30,t:60,fs:isFS(W,24),fw:'700',fill:'#ffffff',w:200,lh:1.1,ff:'Jost'}),
+      r({l:30,t:180,w:36,h:3,fill:'#4f46e5'}),
+      t('Prepared for', {l:30,t:200,fs:10,fill:'#64748b',w:200}),
+      t('Client Name', {l:30,t:218,fs:isFS(W,15),fw:'600',fill:'#ffffff',w:200}),
+      t('Month YYYY', {l:30,t:H-50,fs:10,fill:'#475569',w:200,ff:'JetBrains Mono'}),
+      t('Proposal Title\nGoes Here', {l:300,t:90,fs:isFS(W,38),fw:'700',fill:'#0f172a',w:W-360,lh:1.1}),
+      t('One compelling sentence summarizing the value you will deliver.', {l:300,t:90+isFS(W,38)*2+20,fs:isFS(W,14),fill:'#64748b',w:W-360,lh:1.6}),
+    ]),
+    makePage('#ffffff', [
+      r({l:0,t:0,w:4,h:H,fill:'#4f46e5'}),
+      t('Executive Summary', {l:50,t:50,fs:isFS(W,28),fw:'700',fill:'#0f172a',w:W-100}),
+      r({l:50,t:50+isFS(W,28)+10,w:W-100,h:1,fill:'#e2e8f0'}),
+      t('Describe the project context, why this is the right time, and what success looks like in clear, specific terms.', {l:50,t:50+isFS(W,28)+28,fs:isFS(W,14),fill:'#475569',w:W-100,lh:1.7}),
+    ]),
+    makePage('#ffffff', [
+      r({l:0,t:0,w:4,h:H,fill:'#4f46e5'}),
+      t('Scope & Deliverables', {l:50,t:50,fs:isFS(W,28),fw:'700',fill:'#0f172a',w:W-100}),
+      r({l:50,t:50+isFS(W,28)+10,w:W-100,h:1,fill:'#e2e8f0'}),
+    ]),
+    makePage('#0f172a', [
+      t('Investment', {l:60,t:60,fs:isFS(W,32),fw:'700',fill:'#ffffff',w:W-120}),
+      r({l:60,t:60+isFS(W,32)+20,w:W-120,h:90,fill:'#1e293b',rx:14}),
+      t('$XX,000', {l:80,t:60+isFS(W,32)+34,fs:isFS(W,40),fw:'700',fill:'#4f46e5',w:400,ff:'Jost'}),
+      t('50% upfront · 50% on delivery', {l:80,t:60+isFS(W,32)+34+isFS(W,40)+8,fs:12,fill:'#64748b',w:W-160}),
+    ]),
+  ]
+}
 
-  // Build template grid
-  buildTplGrid();
+function buildInvoice(W: number, H: number): any[] {
+  return [
+    makePage('#ffffff', [
+      r({l:0,t:0,w:W,h:6,fill:'#4f46e5'}),
+      t('INVOICE', {l:60,t:40,fs:isFS(W,32),fw:'700',fill:'#0f172a',w:300,ff:'Jost'}),
+      t('#INV-0001', {l:60,t:40+isFS(W,32)+6,fs:13,fill:'#4f46e5',w:200,ff:'JetBrains Mono'}),
+      t('Issue date: DD/MM/YYYY\nDue date: DD/MM/YYYY', {l:W-280,t:40,fs:12,fill:'#475569',w:220,ta:'right',lh:1.6,ff:'JetBrains Mono'}),
+      r({l:60,t:140,w:W-120,h:1,fill:'#e2e8f0'}),
+      t('Bill To', {l:60,t:160,fs:10,fw:'700',fill:'#94a3b8',w:200}),
+      t('Client Name\nClient Address\nclient@email.com', {l:60,t:178,fs:13,fill:'#0f172a',w:300,lh:1.6}),
+      t('From', {l:W-240,t:160,fs:10,fw:'700',fill:'#94a3b8',w:180,ta:'right'}),
+      t('Your Name / Company\nyour@email.com\nyourwebsite.com', {l:W-240,t:178,fs:13,fill:'#0f172a',w:180,ta:'right',lh:1.6}),
+      r({l:60,t:310,w:W-120,h:36,fill:'#0f172a',rx:6}),
+      t('Description', {l:76,t:320,fs:11,fw:'700',fill:'#ffffff',w:Math.round((W-120)*.5)}),
+      t('Qty', {l:60+Math.round((W-120)*.5),t:320,fs:11,fw:'700',fill:'#ffffff',w:Math.round((W-120)*.15),ta:'center'}),
+      t('Rate', {l:60+Math.round((W-120)*.65),t:320,fs:11,fw:'700',fill:'#ffffff',w:Math.round((W-120)*.15),ta:'right'}),
+      t('Amount', {l:60+Math.round((W-120)*.8),t:320,fs:11,fw:'700',fill:'#ffffff',w:Math.round((W-120)*.2),ta:'right'}),
+      t('Service or product description goes here', {l:76,t:366,fs:12,fill:'#0f172a',w:Math.round((W-120)*.5)}),
+      t('1', {l:60+Math.round((W-120)*.5),t:366,fs:12,fill:'#0f172a',w:Math.round((W-120)*.15),ta:'center'}),
+      t('$0,000.00', {l:60+Math.round((W-120)*.65),t:366,fs:12,fill:'#0f172a',w:Math.round((W-120)*.15),ta:'right',ff:'JetBrains Mono'}),
+      t('$0,000.00', {l:60+Math.round((W-120)*.8),t:366,fs:12,fill:'#0f172a',w:Math.round((W-120)*.2),ta:'right',fw:'600',ff:'JetBrains Mono'}),
+      r({l:60,t:410,w:W-120,h:1,fill:'#e2e8f0'}),
+      t('Total Due', {l:W-240,t:430,fs:14,fw:'700',fill:'#0f172a',w:180,ta:'right'}),
+      t('$0,000.00', {l:W-240,t:455,fs:isFS(W,24),fw:'700',fill:'#4f46e5',w:180,ta:'right',ff:'Jost'}),
+      t('Payment terms: Net 30\nBank: Bank Name · Account: 000000000 · Sort: 00-00-00', {l:60,t:H-80,fs:11,fill:'#94a3b8',w:W-120,lh:1.5}),
+    ]),
+  ]
+}
 
-  // Show template modal
-  document.getElementById('templateModal').style.display = 'flex';
-  applyZoom();
+function buildReport(W: number, H: number): any[] {
+  return [
+    makePage('#f8fafc', [
+      r({l:0,t:0,w:6,h:H,fill:'#10b981'}),
+      t('QUARTERLY\nREPORT', {l:40,t:60,fs:isFS(W,50),fw:'700',fill:'#0f172a',w:550,lh:1.0,ff:'Jost'}),
+      t('Q1 2025', {l:40,t:60+isFS(W,50)*2+20,fs:isFS(W,16),fill:'#10b981',fw:'600',w:200,ff:'JetBrains Mono'}),
+      t('Backread Platform · Confidential', {l:40,t:H-44,fs:11,fill:'#94a3b8',w:400,ff:'JetBrains Mono'}),
+    ]),
+    makePage('#ffffff', [
+      r({l:0,t:0,w:4,h:H,fill:'#10b981'}),
+      t('Key Metrics', {l:50,t:50,fs:isFS(W,28),fw:'700',fill:'#0f172a',w:W-100}),
+      r({l:50,t:110,w:Math.round((W-100)/3)-10,h:130,fill:'#ecfdf5',rx:12}),
+      t('0', {l:70,t:130,fs:isFS(W,44),fw:'700',fill:'#10b981',w:Math.round((W-100)/3)-50,ff:'Jost'}),
+      t('TOTAL VIEWS', {l:70,t:130+isFS(W,44)+6,fs:10,fill:'#6b7280',w:Math.round((W-100)/3)-50,ff:'JetBrains Mono'}),
+    ]),
+  ]
+}
+
+function buildBrandGuidelines(W: number, H: number): any[] {
+  return [
+    makePage('#0a0a0f', [
+      r({l:0,t:0,w:W,h:H,fill:'#0a0a0f'}),
+      t('BRAND\nGUIDELINES', {l:60,t:Math.round(H*.3),fs:isFS(W,52),fw:'700',fill:'#ffffff',w:W-120,lh:1.0,ff:'Jost'}),
+      r({l:60,t:Math.round(H*.3)+isFS(W,52)*2+24,w:80,h:4,fill:'#4f46e5',rx:2}),
+      t('2025 Brand System', {l:60,t:Math.round(H*.3)+isFS(W,52)*2+44,fs:isFS(W,15),fill:'#64748b',w:400}),
+    ]),
+    makePage('#ffffff', [
+      r({l:0,t:0,w:4,h:H,fill:'#4f46e5'}),
+      t('Color System', {l:50,t:50,fs:isFS(W,28),fw:'700',fill:'#0f172a',w:W-100}),
+      ...[['#0f172a',50],['#4f46e5',200],['#10b981',350],['#f59e0b',500],['#ef4444',650]].map(([col,x]) =>
+        r({l:x as number,t:130,w:120,h:120,fill:col as string,rx:12})
+      ),
+    ]),
+  ]
+}
+
+function buildSalesDeck(W: number, H: number): any[] {
+  return [
+    makePage('#ffffff', [
+      r({l:0,t:0,w:W,h:H,fill:'#ffffff'}),
+      r({l:0,t:0,w:4,h:H,fill:'#4f46e5'}),
+      t('Sales Deck', {l:60,t:50,fs:11,fw:'700',fill:'#4f46e5',w:200,ff:'JetBrains Mono'}),
+      t('Your Product\nfor Their Problem', {l:60,t:90,fs:isFS(W,44),fw:'700',fill:'#0f172a',w:W/2-80,lh:1.1,ff:'Jost'}),
+      t('One sentence that crystallizes exactly what you do and who it\'s for.', {l:60,t:90+isFS(W,44)*2+16,fs:isFS(W,15),fill:'#64748b',w:W/2-80,lh:1.6}),
+    ]),
+  ]
+}
+
+function buildCaseStudy(W: number, H: number): any[] {
+  return [
+    makePage('#ffffff', [
+      r({l:0,t:0,w:W,h:6,fill:'#ec4899'}),
+      t('CASE STUDY', {l:60,t:40,fs:10,fw:'700',fill:'#ec4899',w:200,ff:'JetBrains Mono'}),
+      t('How [Client] Achieved\nX% Growth with Backread', {l:60,t:70,fs:isFS(W,40),fw:'700',fill:'#0f172a',w:W-120,lh:1.1,ff:'Jost'}),
+    ]),
+  ]
+}
+
+function isFS(w: number, base: number): number {
+  return Math.max(Math.round(base * (w / 1280)), Math.round(base * 0.6))
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// MAIN COMPONENT
+// ═══════════════════════════════════════════════════════════════════════════════
+export default function DocumentEditorPage({ params }: { params: { id: string } }) {
+  const router = useRouter()
+  const [doc, setDoc] = useState<Document | null>(null)
+  const [title, setTitle] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [lastSaved, setLastSaved] = useState<Date | null>(null)
+  const [shareLinks, setShareLinks] = useState<ShareLink[]>([])
+  const [showShare, setShowShare] = useState(false)
+  const [showDrafter, setShowDrafter] = useState(false)
+  const [showTemplateModal, setShowTemplateModal] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+
+  // Canvas
+  const canvasEl = useRef<HTMLCanvasElement>(null)
+  const fabricRef = useRef<any>(null)
+  const [pages, setPages] = useState<any[]>([])
+  const [currentPage, setCurrentPage] = useState(0)
+  const [activeTool, setActiveTool] = useState('select')
+  const [activePanel, setActivePanel] = useState<string | null>(null)
+  const [zoom, setZoom] = useState(0.65)
+  const [selectedObj, setSelectedObj] = useState<any>(null)
+  const [fontColor, setFontColor] = useState('#0f172a')
+  const [fillColor, setFillColor] = useState('#4f46e5')
+  const [bgColor, setBgColor] = useState('#ffffff')
+  const [fontSize, setFontSize] = useState(18)
+  const [fontFamily, setFontFamily] = useState('Jost')
+  const [canvasW, setCanvasW] = useState(1280)
+  const [canvasH, setCanvasH] = useState(720)
+  const [isDragging, setIsDragging] = useState(false)
+  const [templateCat, setTemplateCat] = useState('startup')
+  const [fontsLoaded, setFontsLoaded] = useState(false)
+  const [showFontSearch, setShowFontSearch] = useState(false)
+  const [fontSearch, setFontSearch] = useState('')
+
+  const saveTimer = useRef<NodeJS.Timeout | null>(null)
+  const pagesRef = useRef<any[]>([])
+  const currentPageRef = useRef(0)
+  const canvasWRef = useRef(1280)
+  const canvasHRef = useRef(720)
+
+  useEffect(() => { pagesRef.current = pages }, [pages])
+  useEffect(() => { currentPageRef.current = currentPage }, [currentPage])
+  useEffect(() => { canvasWRef.current = canvasW }, [canvasW])
+  useEffect(() => { canvasHRef.current = canvasH }, [canvasH])
+
+  // Load Jost + core fonts
+  useEffect(() => {
+    const link = document.createElement('link')
+    link.rel = 'stylesheet'
+    link.href = 'https://fonts.googleapis.com/css2?family=Jost:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&family=Inter:wght@400;500;600&display=swap'
+    document.head.appendChild(link)
+    if (!(window as any).fabric) {
+      const s = document.createElement('script')
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.0/fabric.min.js'
+      document.head.appendChild(s)
+    }
+    // Load jsPDF for PDF export
+    if (!(window as any).jspdf) {
+      const s2 = document.createElement('script')
+      s2.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'
+      document.head.appendChild(s2)
+    }
+  }, [])
+
+  useEffect(() => { loadDocument(); loadShareLinks() }, [params.id])
+
+  async function loadDocument() {
+    const { data } = await supabase.from('documents').select('*').eq('id', params.id).single()
+    if (!data) { router.push('/dashboard'); return }
+    setDoc(data); setTitle(data.title)
+    const canvasData = (data as any).canvas_data
+    if (canvasData?.pages?.length) {
+      setPages(canvasData.pages)
+      if (canvasData.canvasW) { setCanvasW(canvasData.canvasW); canvasWRef.current = canvasData.canvasW }
+      if (canvasData.canvasH) { setCanvasH(canvasData.canvasH); canvasHRef.current = canvasData.canvasH }
+      setShowTemplateModal(false)
+    } else {
+      setShowTemplateModal(true)
+    }
+  }
+
+  async function loadShareLinks() {
+    const { data } = await supabase.from('share_links').select('*').eq('document_id', params.id).order('created_at', { ascending: false })
+    setShareLinks(data ?? [])
+  }
+
+  // Init Fabric
+  useEffect(() => {
+    const check = setInterval(() => {
+      if ((window as any).fabric && canvasEl.current && !fabricRef.current) {
+        clearInterval(check)
+        const fabric = (window as any).fabric
+        const fc = new fabric.Canvas(canvasEl.current, {
+          width: canvasWRef.current, height: canvasHRef.current,
+          backgroundColor: '#ffffff', selection: true, preserveObjectStacking: true,
+        })
+        fabricRef.current = fc
+        fc.on('selection:created', (e: any) => syncSelection(e.selected?.[0]))
+        fc.on('selection:updated', (e: any) => syncSelection(e.selected?.[0]))
+        fc.on('selection:cleared', () => setSelectedObj(null))
+        fc.on('object:modified', () => scheduleAutoSave())
+        fc.on('object:added', () => scheduleAutoSave())
+        fc.on('object:removed', () => scheduleAutoSave())
+      }
+    }, 100)
+    return () => clearInterval(check)
+  }, [])
+
+  useEffect(() => {
+    if (!fabricRef.current || !pages[currentPage]) return
+    fabricRef.current.loadFromJSON(pages[currentPage], () => fabricRef.current.renderAll())
+  }, [pages.length]) // eslint-disable-line
+
+  function syncSelection(obj: any) {
+    if (!obj) return
+    setSelectedObj(obj)
+    if (obj.fontSize) setFontSize(obj.fontSize)
+    if (obj.fontFamily) setFontFamily(obj.fontFamily)
+  }
+
+  function scheduleAutoSave() {
+    if (saveTimer.current) clearTimeout(saveTimer.current)
+    saveTimer.current = setTimeout(() => saveCanvas(), 1500)
+  }
+
+  const saveCanvas = useCallback(async () => {
+    if (!fabricRef.current) return
+    setSaving(true)
+    const currentJson = fabricRef.current.toJSON()
+    const allPages = [...pagesRef.current]; allPages[currentPageRef.current] = currentJson
+    setPages(allPages)
+    await supabase.from('documents').update({
+      canvas_data: { pages: allPages, canvasW: canvasWRef.current, canvasH: canvasHRef.current },
+      updated_at: new Date().toISOString(),
+    } as any).eq('id', params.id)
+    setSaving(false); setLastSaved(new Date())
+  }, [params.id])
+
+  async function saveTitle() {
+    await supabase.from('documents').update({ title: title || 'Untitled' }).eq('id', params.id)
+  }
+
+  async function deleteDocument() {
+    setDeleting(true)
+    // Delete share links first
+    await supabase.from('share_links').delete().eq('document_id', params.id)
+    await supabase.from('documents').delete().eq('id', params.id)
+    router.push('/dashboard')
+  }
+
+  async function publishDocument() {
+    await supabase.from('documents').update({ status: 'active' }).eq('id', params.id)
+    setDoc(prev => prev ? { ...prev, status: 'active' } : prev)
+    setShowShare(true)
+  }
+
+  // Page management
+  function switchPage(idx: number) {
+    if (!fabricRef.current) return
+    const updated = [...pagesRef.current]; updated[currentPageRef.current] = fabricRef.current.toJSON()
+    setPages(updated); setCurrentPage(idx)
+    fabricRef.current.loadFromJSON(updated[idx], () => fabricRef.current.renderAll())
+  }
+
+  function addPage() {
+    if (!fabricRef.current) return
+    const updated = [...pagesRef.current]; updated[currentPageRef.current] = fabricRef.current.toJSON()
+    const blank = makePage(bgColor); const newIdx = currentPageRef.current + 1
+    updated.splice(newIdx, 0, blank); setPages(updated); setCurrentPage(newIdx)
+    fabricRef.current.clear(); fabricRef.current.backgroundColor = bgColor; fabricRef.current.renderAll()
+  }
+
+  function removePage(idx: number) {
+    if (pagesRef.current.length <= 1) return
+    const updated = pagesRef.current.filter((_, i) => i !== idx); setPages(updated)
+    const newIdx = Math.min(currentPageRef.current, updated.length - 1); setCurrentPage(newIdx)
+    fabricRef.current?.loadFromJSON(updated[newIdx], () => fabricRef.current.renderAll())
+  }
+
+  // Template
+  function applyTemplate(id: string, sizeId: string) {
+    const size = CANVAS_SIZES.find(s => s.id === sizeId) || CANVAS_SIZES[0]
+    setCanvasW(size.w); setCanvasH(size.h)
+    canvasWRef.current = size.w; canvasHRef.current = size.h
+    const builtPages = buildTemplate(id, sizeId)
+    setPages(builtPages); setCurrentPage(0); setShowTemplateModal(false)
+    if (fabricRef.current) {
+      fabricRef.current.setWidth(size.w); fabricRef.current.setHeight(size.h)
+      fabricRef.current.loadFromJSON(builtPages[0], () => fabricRef.current.renderAll())
+    }
+  }
+
+  function startBlank(sizeId = 'presentation-169') {
+    const size = CANVAS_SIZES.find(s => s.id === sizeId) || CANVAS_SIZES[0]
+    setCanvasW(size.w); setCanvasH(size.h)
+    canvasWRef.current = size.w; canvasHRef.current = size.h
+    const blank = makePage('#ffffff'); setPages([blank]); setCurrentPage(0); setShowTemplateModal(false)
+    if (fabricRef.current) {
+      fabricRef.current.setWidth(size.w); fabricRef.current.setHeight(size.h)
+      fabricRef.current.clear(); fabricRef.current.backgroundColor = '#ffffff'; fabricRef.current.renderAll()
+    }
+  }
+
+  // Canvas tools
+  function addText(opts: any = {}) {
+    const fabric = (window as any).fabric; const fc = fabricRef.current; if (!fc || !fabric) return
+    const tb = new fabric.Textbox(opts.text || 'Click to edit', {
+      left: 100, top: 100, width: opts.width || 320,
+      fontSize: opts.fs || 24, fontFamily: opts.ff || fontFamily,
+      fill: opts.fill || fontColor, fontWeight: opts.fw || '400',
+      editable: true, lineHeight: 1.4,
+    })
+    fc.add(tb); fc.setActiveObject(tb); fc.renderAll()
+  }
+
+  function addShape(type: string, opts: any = {}) {
+    const fabric = (window as any).fabric; const fc = fabricRef.current; if (!fc || !fabric) return
+    const fill = opts.fill || fillColor
+    let shape: any
+    if (type === 'rect') shape = new fabric.Rect({ left: 100, top: 100, width: 200, height: 100, fill, rx: opts.rx || 0, ry: opts.rx || 0 })
+    else if (type === 'circle') shape = new fabric.Circle({ left: 100, top: 100, radius: 70, fill })
+    else if (type === 'triangle') shape = new fabric.Triangle({ left: 100, top: 100, width: 140, height: 120, fill })
+    else if (type === 'line') shape = new fabric.Line([100, 200, 400, 200], { stroke: fill, strokeWidth: 2, selectable: true })
+    if (shape) { fc.add(shape); fc.setActiveObject(shape); fc.renderAll() }
+  }
+
+  function addTable() {
+    const fabric = (window as any).fabric; const fc = fabricRef.current; if (!fc || !fabric) return
+    const rows = 4, cols = 3, cw = 160, rh = 40, x = 100, y = 100
+    const group: any[] = []
+    for (let i = 0; i < rows; i++) {
+      for (let j = 0; j < cols; j++) {
+        const isHeader = i === 0
+        group.push(new fabric.Rect({
+          left: x + j * cw, top: y + i * rh, width: cw, height: rh,
+          fill: isHeader ? '#0f172a' : (i % 2 === 0 ? '#f8fafc' : '#ffffff'),
+          stroke: '#e2e8f0', strokeWidth: 1, selectable: false,
+        }))
+        group.push(new fabric.Textbox(isHeader ? `Header ${j + 1}` : `Cell ${i},${j + 1}`, {
+          left: x + j * cw + 8, top: y + i * rh + 10, width: cw - 16,
+          fontSize: 12, fontFamily: 'Jost',
+          fill: isHeader ? '#ffffff' : '#374151',
+          fontWeight: isHeader ? '600' : '400', editable: true, selectable: false,
+        }))
+      }
+    }
+    group.forEach(obj => fc.add(obj))
+    fc.renderAll()
+  }
+
+  function loadGoogleFont(family: string) {
+    const safeName = family.replace(/ /g, '+')
+    const existing = document.querySelector(`link[data-font="${safeName}"]`)
+    if (existing) return
+    const link = document.createElement('link')
+    link.rel = 'stylesheet'
+    link.href = `https://fonts.googleapis.com/css2?family=${safeName}:wght@400;600;700&display=swap`
+    link.setAttribute('data-font', safeName)
+    document.head.appendChild(link)
+  }
+
+  function applyFont(family: string) {
+    loadGoogleFont(family)
+    setFontFamily(family); setShowFontSearch(false)
+    const fc = fabricRef.current; if (!fc) return
+    const obj = fc.getActiveObject(); if (obj) { obj.set('fontFamily', family); fc.renderAll(); scheduleAutoSave() }
+  }
+
+  function deleteSelected() {
+    const fc = fabricRef.current; if (!fc) return
+    fc.getActiveObjects().forEach((o: any) => fc.remove(o))
+    fc.discardActiveObject(); fc.renderAll()
+  }
+
+  function duplicateSelected() {
+    const fc = fabricRef.current; if (!fc) return
+    fc.getActiveObject()?.clone((c: any) => {
+      c.set({ left: c.left + 20, top: c.top + 20 }); fc.add(c); fc.setActiveObject(c); fc.renderAll()
+    })
+  }
+
+  function updateProp(prop: string, value: any) {
+    const fc = fabricRef.current; if (!fc) return
+    const obj = fc.getActiveObject(); if (!obj) return
+    obj.set(prop, value); fc.renderAll(); scheduleAutoSave()
+  }
+
+  function uploadImage(file: File) {
+    const fabric = (window as any).fabric; const fc = fabricRef.current; if (!fc || !fabric) return
+    const reader = new FileReader()
+    reader.onload = e => fabric.Image.fromURL(e.target?.result as string, (img: any) => {
+      const scale = Math.min(400 / img.width, 300 / img.height, 1)
+      img.set({ left: 120, top: 120, scaleX: scale, scaleY: scale })
+      fc.add(img); fc.setActiveObject(img); fc.renderAll()
+    })
+    reader.readAsDataURL(file)
+  }
+
+  function uploadFont(file: File) {
+    const reader = new FileReader()
+    reader.onload = e => {
+      const fontName = file.name.replace(/\.[^/.]+$/, '')
+      const style = document.createElement('style')
+      style.textContent = `@font-face { font-family: '${fontName}'; src: url('${e.target?.result}'); }`
+      document.head.appendChild(style)
+      setFontFamily(fontName)
+    }
+    reader.readAsDataURL(file)
+  }
+
+  async function exportPDF() {
+    const fc = fabricRef.current; if (!fc || !(window as any).jspdf) return
+    const { jsPDF } = (window as any).jspdf
+    const saved = [...pagesRef.current]; saved[currentPageRef.current] = fc.toJSON()
+    const orientation = canvasWRef.current > canvasHRef.current ? 'landscape' : 'portrait'
+    const pdf = new jsPDF({ orientation, unit: 'px', format: [canvasWRef.current, canvasHRef.current] })
+    for (let i = 0; i < saved.length; i++) {
+      if (i > 0) pdf.addPage()
+      await new Promise<void>(resolve => {
+        const tmp = document.createElement('canvas')
+        tmp.width = canvasWRef.current; tmp.height = canvasHRef.current
+        const tmpFc = new (window as any).fabric.StaticCanvas(tmp, { width: canvasWRef.current, height: canvasHRef.current })
+        tmpFc.loadFromJSON(saved[i], () => {
+          tmpFc.renderAll()
+          const imgData = tmpFc.toDataURL({ format: 'jpeg', quality: 0.95 })
+          pdf.addImage(imgData, 'JPEG', 0, 0, canvasWRef.current, canvasHRef.current)
+          tmpFc.dispose()
+          resolve()
+        })
+      })
+    }
+    pdf.save(`${title || 'document'}.pdf`)
+  }
+
+  async function exportPNG() {
+    const fc = fabricRef.current; if (!fc) return
+    const url = fc.toDataURL({ format: 'png', multiplier: 2 })
+    const a = document.createElement('a'); a.href = url; a.download = `${title || 'page'}.png`; a.click()
+  }
 
   // Keyboard shortcuts
-  window.addEventListener('keydown', onKey);
-  window.addEventListener('click', (e) => {
-    if (!e.target.closest('#emojiBtn') && !e.target.closest('#emojiPicker')) {
-      document.getElementById('emojiPicker').style.display = 'none';
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement).tagName
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return
+      if ((e.metaKey || e.ctrlKey) && e.key === 's') { e.preventDefault(); saveCanvas() }
+      if ((e.metaKey || e.ctrlKey) && e.key === 'd') { e.preventDefault(); duplicateSelected() }
+      if ((e.key === 'Delete' || e.key === 'Backspace') && fabricRef.current?.getActiveObject()) deleteSelected()
+      if (e.key === 'Escape') setActivePanel(null)
     }
-  });
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [saveCanvas])
 
-  buildShareUI();
-});
+  const isActive = doc?.status === 'active'
+  const filteredFonts = FONT_LIST.filter(f => f.toLowerCase().includes(fontSearch.toLowerCase()))
 
-function buildTplGrid() {
-  const grid = document.getElementById('tplGrid');
-  grid.innerHTML = TEMPLATES.map(t => `
-    <button class="tpl-card" onclick="applyTemplate('${t.id}')" style="--tpl-bg:${t.bg}">
-      <div class="tpl-card-inner">
-        <span class="tpl-emoji">${t.emoji}</span>
-        <div class="tpl-name">${t.name}</div>
-        <div class="tpl-desc">${t.desc}</div>
-        <span class="tpl-pages" style="color:${t.accent}">${t.pages} page${t.pages>1?'s':''}</span>
+  // ─── Render ───────────────────────────────────────────────────────────────────
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: '#f0f0f2', fontFamily: "'Jost', system-ui, sans-serif", color: '#0f172a' }}>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Jost:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap');
+        *{box-sizing:border-box;}
+        ::-webkit-scrollbar{width:4px;height:4px;}
+        ::-webkit-scrollbar-track{background:transparent;}
+        ::-webkit-scrollbar-thumb{background:#d1d5db;border-radius:99px;}
+        ::-webkit-scrollbar-thumb:hover{background:#9ca3af;}
+        input[type="color"]{-webkit-appearance:none;border:2px solid #e5e7eb;cursor:pointer;padding:0;border-radius:6px;}
+        input[type="color"]::-webkit-color-swatch-wrapper{padding:2px;}
+        input[type="color"]::-webkit-color-swatch{border:none;border-radius:4px;}
+        .rail-btn{width:56px;height:54px;border:none;background:transparent;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:#6b7280;transition:all .15s;border-radius:10px;font-family:'Jost',sans-serif;}
+        .rail-btn:hover{background:#f3f4f6;color:#111827;}
+        .rail-btn.active{background:#eef2ff;color:#4f46e5;}
+        .rail-btn span{font-size:9px;font-weight:600;letter-spacing:.03em;}
+        .tool-btn{width:34px;height:34px;border:none;cursor:pointer;border-radius:8px;background:transparent;color:#6b7280;display:flex;align-items:center;justify-content:center;transition:all .14s;}
+        .tool-btn:hover{background:#f3f4f6;color:#111827;}
+        .tool-btn.active{background:#eef2ff;color:#4f46e5;}
+        .page-thumb{cursor:pointer;border-radius:9px;border:2px solid #e5e7eb;overflow:hidden;transition:all .14s;background:white;}
+        .page-thumb:hover{border-color:#9ca3af;}
+        .page-thumb.active{border-color:#4f46e5;box-shadow:0 0 0 3px rgba(79,70,229,.15);}
+        .tpl-card{border:2px solid #e5e7eb;border-radius:14px;cursor:pointer;transition:all .16s;font-family:'Jost',sans-serif;}
+        .tpl-card:hover{border-color:#4f46e5;transform:translateY(-2px);box-shadow:0 8px 24px rgba(79,70,229,.12);}
+        .panel-section{margin-bottom:20px;}
+        .panel-label{font-size:10px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px;padding:0 2px;}
+        select{-webkit-appearance:none;appearance:none;background:white;border:1.5px solid #e5e7eb;border-radius:8px;padding:5px 10px;font:500 12px 'Jost',sans-serif;color:#374151;cursor:pointer;outline:none;}
+        select:focus{border-color:#4f46e5;}
+        .color-swatch{width:22px;height:22px;border-radius:5px;cursor:pointer;border:2px solid transparent;transition:transform .1s,border-color .1s;flex-shrink:0;}
+        .color-swatch:hover{transform:scale(1.15);}
+        .font-item{padding:7px 12px;cursor:pointer;font-size:13px;border-radius:7px;transition:background .1s;white-space:nowrap;}
+        .font-item:hover{background:#f3f4f6;}
+        .font-item.active{background:#eef2ff;color:#4f46e5;font-weight:600;}
+        .sp-inp{width:100%;background:#f9fafb;border:1.5px solid #e5e7eb;color:#0f172a;border-radius:8px;padding:6px 10px;font:400 12px 'Jost',sans-serif;outline:none;}
+        .sp-inp:focus{border-color:#4f46e5;}
+        .export-btn{padding:10px 14px;border-radius:10px;border:1.5px solid #e5e7eb;background:white;cursor:pointer;font:600 12px 'Jost',sans-serif;color:#374151;transition:all .13s;display:flex;align-items:center;gap:6px;}
+        .export-btn:hover{border-color:#4f46e5;background:#eef2ff;color:#4f46e5;}
+        .tb-divider{width:1px;height:22px;background:#e5e7eb;margin:0 5px;}
+      `}</style>
+
+      {/* ── Top bar ────────────────────────────────────────────────────────────── */}
+      <div style={{ height: 54, background: 'white', borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', padding: '0 14px', gap: 8, flexShrink: 0, boxShadow: '0 1px 3px rgba(0,0,0,.04)' }}>
+        <button onClick={() => router.push('/dashboard')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6b7280', display: 'flex', alignItems: 'center', gap: 5, fontSize: 13, fontFamily: 'Jost,sans-serif', fontWeight: 500, padding: '5px 8px', borderRadius: 8 }}>
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M9 2L4 7l5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>Docs
+        </button>
+        <svg width="5" height="10" viewBox="0 0 5 10" fill="none"><path d="M1 1l3 4-3 4" stroke="#d1d5db" strokeWidth="1.3" strokeLinecap="round"/></svg>
+        <input value={title} onChange={e => setTitle(e.target.value)} onBlur={saveTitle} placeholder="Untitled"
+          style={{ border: 'none', outline: 'none', fontSize: 14, fontWeight: 600, color: '#0f172a', background: 'transparent', fontFamily: 'Jost,sans-serif', flex: 1, maxWidth: 280 }}/>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginLeft: 'auto' }}>
+          <span style={{ fontSize: 11, color: saving ? '#4f46e5' : '#9ca3af', fontFamily: 'JetBrains Mono,monospace', minWidth: 80 }}>
+            {saving ? '● Saving…' : lastSaved ? `✓ ${lastSaved.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : ''}
+          </span>
+          <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: 10, fontWeight: 700, letterSpacing: '.05em', background: isActive ? '#dcfce7' : '#f1f5f9', color: isActive ? '#15803d' : '#64748b' }}>{isActive ? 'LIVE' : 'DRAFT'}</span>
+          <button onClick={() => setShowTemplateModal(true)} style={{ ...btnStyle }}>Templates</button>
+          <button onClick={() => setShowDrafter(true)} style={{ ...btnStyle, display: 'flex', alignItems: 'center', gap: 5 }}>
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 1L7.2 4.5H11L8.1 6.8L9.3 10.5L6 8.2L2.7 10.5L3.9 6.8L1 4.5H4.8L6 1Z" fill="#f59e0b"/></svg>AI Draft
+          </button>
+          <button onClick={() => router.push(`/documents/${params.id}/present`)} style={{ ...btnStyle, display: 'flex', alignItems: 'center', gap: 5 }}>
+            <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><rect x="1" y="2" width="11" height="8" rx="1.5" stroke="currentColor" strokeWidth="1.3"/><path d="M5 11h3M6.5 10v1" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>Present
+          </button>
+          <button onClick={() => setActivePanel(activePanel === 'export' ? null : 'export')} style={{ ...btnStyle, display: 'flex', alignItems: 'center', gap: 5 }}>
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 1v7M3 5l3 3 3-3M1 10h10" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>Export
+          </button>
+          {isActive
+            ? <button onClick={() => setShowShare(true)} style={{ ...primaryBtnStyle }}>Share</button>
+            : <button onClick={publishDocument} style={{ ...primaryBtnStyle }}>Publish & Share</button>}
+          <button onClick={() => setShowDeleteConfirm(true)} style={{ width: 32, height: 32, border: 'none', borderRadius: 8, background: 'transparent', cursor: 'pointer', color: '#ef4444', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title="Delete document">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 3.5h10M5 3.5V2h4v1.5M4.5 10.5v-5M9.5 10.5v-5M3 3.5l.9 8h6.2l.9-8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          </button>
+        </div>
       </div>
-    </button>
-  `).join('');
+
+      {/* ── Toolbar ──────────────────────────────────────────────────────────────── */}
+      <div style={{ height: 46, background: 'white', borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', padding: '0 10px', gap: 2, flexShrink: 0 }}>
+        {/* Core tools */}
+        {[
+          { id: 'select',   icon: <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M3 2l9 5-4.5 1.4-2.2 4.6L3 2z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/></svg>, tip: 'Select' },
+          { id: 'text',     icon: <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M2 4h11M7.5 4v8M4.5 12h6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>, tip: 'Text (T)' },
+          { id: 'rect',     icon: <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><rect x="2" y="3" width="11" height="9" rx="2" stroke="currentColor" strokeWidth="1.4"/></svg>, tip: 'Rectangle' },
+          { id: 'circle',   icon: <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><circle cx="7.5" cy="7.5" r="5.5" stroke="currentColor" strokeWidth="1.4"/></svg>, tip: 'Circle' },
+          { id: 'line',     icon: <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M2 13L13 2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>, tip: 'Line' },
+          { id: 'draw',     icon: <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M2.5 12.5l2-1L12 4 11 3 3.5 10.5l-1 2zm8-9l1 1" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>, tip: 'Draw' },
+        ].map(tool => (
+          <button key={tool.id} title={tool.tip} className={`tool-btn${activeTool === tool.id ? ' active' : ''}`}
+            onClick={() => {
+              if (tool.id === 'text') { addText(); setActiveTool('select'); return }
+              if (tool.id === 'rect') { addShape('rect'); return }
+              if (tool.id === 'circle') { addShape('circle'); return }
+              if (tool.id === 'line') { addShape('line'); return }
+              setActiveTool(tool.id)
+              if (fabricRef.current) { fabricRef.current.isDrawingMode = tool.id === 'draw'; if (tool.id === 'draw') fabricRef.current.freeDrawingBrush.color = fontColor }
+            }}>{tool.icon}
+          </button>
+        ))}
+
+        <div className="tb-divider"/>
+
+        {/* Table & Image */}
+        <button title="Insert table" className="tool-btn" onClick={addTable}>
+          <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><rect x="1" y="1" width="13" height="13" rx="2" stroke="currentColor" strokeWidth="1.3"/><path d="M1 5h13M1 9h13M5 5v8M10 5v8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/></svg>
+        </button>
+        <label title="Upload image" className="tool-btn" style={{ cursor: 'pointer' }}>
+          <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><rect x="1" y="3" width="13" height="9" rx="2" stroke="currentColor" strokeWidth="1.3"/><circle cx="5" cy="6.5" r="1.2" fill="currentColor"/><path d="M1 11l3.5-3L8 11l2.5-2.5L14 12" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/></svg>
+          <input type="file" accept="image/*" style={{ display: 'none' }} onChange={e => { const f = e.target.files?.[0]; if (f) uploadImage(f) }}/>
+        </label>
+
+        <div className="tb-divider"/>
+
+        {/* Font family with search */}
+        <div style={{ position: 'relative' }}>
+          <button onClick={() => setShowFontSearch(!showFontSearch)}
+            style={{ height: 32, padding: '0 10px', border: '1.5px solid #e5e7eb', borderRadius: 8, background: 'white', cursor: 'pointer', fontSize: 12, fontFamily: 'Jost,sans-serif', fontWeight: 500, color: '#374151', display: 'flex', alignItems: 'center', gap: 5, minWidth: 130 }}>
+            <span style={{ flex: 1, textAlign: 'left', fontFamily: `'${fontFamily}',sans-serif` }}>{fontFamily}</span>
+            <svg width="10" height="6" viewBox="0 0 10 6" fill="none"><path d="M1 1l4 4 4-4" stroke="#94a3b8" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          </button>
+          {showFontSearch && (
+            <div style={{ position: 'absolute', top: '110%', left: 0, background: 'white', border: '1px solid #e5e7eb', borderRadius: 12, boxShadow: '0 8px 32px rgba(0,0,0,.12)', zIndex: 200, width: 220 }}>
+              <div style={{ padding: '8px 8px 4px' }}>
+                <input value={fontSearch} onChange={e => setFontSearch(e.target.value)} placeholder="Search fonts…" className="sp-inp" autoFocus style={{ marginBottom: 4 }}/>
+              </div>
+              <div style={{ maxHeight: 240, overflow: 'auto', padding: '4px 8px 8px' }}>
+                {filteredFonts.slice(0, 60).map(f => (
+                  <div key={f} className={`font-item${fontFamily === f ? ' active' : ''}`} style={{ fontFamily: `'${f}',sans-serif` }} onClick={() => applyFont(f)}>{f}</div>
+                ))}
+              </div>
+              <div style={{ padding: '8px', borderTop: '1px solid #f3f4f6' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 11, color: '#6b7280', fontFamily: 'Jost,sans-serif' }}>
+                  <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M6.5 1v10M2 6.5h9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+                  Upload custom font (.ttf/.otf/.woff)
+                  <input type="file" accept=".ttf,.otf,.woff,.woff2" style={{ display: 'none' }} onChange={e => { const f = e.target.files?.[0]; if (f) uploadFont(f) }}/>
+                </label>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Font size */}
+        <input type="number" value={fontSize} min={6} max={300}
+          onChange={e => { const v = parseInt(e.target.value); setFontSize(v); updateProp('fontSize', v) }}
+          style={{ width: 52, height: 32, border: '1.5px solid #e5e7eb', borderRadius: 8, padding: '0 8px', fontSize: 12, fontFamily: 'JetBrains Mono,monospace', color: '#374151', outline: 'none', textAlign: 'center' }}/>
+
+        {/* Format buttons */}
+        <button title="Bold" onClick={() => { const o = fabricRef.current?.getActiveObject(); if(o){o.set('fontWeight',o.fontWeight==='bold'?'normal':'bold');fabricRef.current.renderAll()} }} style={{ ...fmtBtnStyle, fontWeight: 700, fontSize: 14 }}>B</button>
+        <button title="Italic" onClick={() => { const o = fabricRef.current?.getActiveObject(); if(o){o.set('fontStyle',o.fontStyle==='italic'?'normal':'italic');fabricRef.current.renderAll()} }} style={{ ...fmtBtnStyle, fontStyle: 'italic', fontSize: 14 }}>I</button>
+        <button title="Underline" onClick={() => { const o = fabricRef.current?.getActiveObject(); if(o){o.set('underline',!o.underline);fabricRef.current.renderAll()} }} style={{ ...fmtBtnStyle, textDecoration: 'underline', fontSize: 13 }}>U</button>
+
+        <div className="tb-divider"/>
+
+        {/* Colors */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          {[
+            { label: 'TEXT', val: fontColor, setter: (v: string) => { setFontColor(v); updateProp('fill', v) } },
+            { label: 'FILL', val: fillColor, setter: (v: string) => { setFillColor(v); updateProp('fill', v) } },
+            { label: 'BG',   val: bgColor,   setter: (v: string) => { setBgColor(v); if (fabricRef.current) { fabricRef.current.backgroundColor = v; fabricRef.current.renderAll() } } },
+          ].map(c => (
+            <div key={c.label} style={{ textAlign: 'center' }}>
+              <input type="color" value={c.val} onChange={e => c.setter(e.target.value)} title={c.label} style={{ width: 26, height: 26, display: 'block' }}/>
+              <div style={{ fontSize: 8, color: '#94a3b8', marginTop: 1, fontFamily: 'JetBrains Mono,monospace', fontWeight: 600 }}>{c.label}</div>
+            </div>
+          ))}
+        </div>
+
+        <div className="tb-divider"/>
+
+        {/* Actions */}
+        {[
+          { icon: <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="1" y="4" width="9" height="9" rx="1.5" stroke="currentColor" strokeWidth="1.3"/><path d="M4 4V2.5A1.5 1.5 0 015.5 1H11.5A1.5 1.5 0 0113 2.5V8.5A1.5 1.5 0 0111.5 10H10" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>, tip: 'Duplicate', fn: duplicateSelected },
+          { icon: <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 3.5h10M5 3.5V2h4v1.5M4.5 10.5v-5M9.5 10.5v-5M3 3.5l.9 8h6.2l.9-8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg>, tip: 'Delete', fn: deleteSelected },
+          { icon: <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 2v10M3 5l4-4 4 4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>, tip: 'Bring forward', fn: () => { const o=fabricRef.current?.getActiveObject();if(o){fabricRef.current.bringToFront(o);fabricRef.current.renderAll()} } },
+          { icon: <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 2v10M3 9l4 4 4-4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>, tip: 'Send backward', fn: () => { const o=fabricRef.current?.getActiveObject();if(o){fabricRef.current.sendToBack(o);fabricRef.current.renderAll()} } },
+        ].map(b => <button key={b.tip} title={b.tip} className="tool-btn" onClick={b.fn}>{b.icon}</button>)}
+
+        {/* Zoom */}
+        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 3, background: '#f9fafb', borderRadius: 9, padding: '3px 10px', border: '1.5px solid #e5e7eb' }}>
+          <button onClick={() => setZoom(z => Math.max(.15, z - .1))} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6b7280', fontSize: 18, lineHeight: 1, padding: '0 3px', fontWeight: 300 }}>−</button>
+          <span style={{ fontSize: 11, color: '#6b7280', minWidth: 38, textAlign: 'center', fontFamily: 'JetBrains Mono,monospace' }}>{Math.round(zoom * 100)}%</span>
+          <button onClick={() => setZoom(z => Math.min(2.5, z + .1))} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6b7280', fontSize: 18, lineHeight: 1, padding: '0 3px', fontWeight: 300 }}>+</button>
+        </div>
+      </div>
+
+      {/* ── Body ──────────────────────────────────────────────────────────────────── */}
+      <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+
+        {/* Left rail */}
+        <div style={{ width: 58, flexShrink: 0, background: 'white', borderRight: '1px solid #e5e7eb', display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: 8, gap: 2, zIndex: 10 }}>
+          {[
+            { id: 'pages',   tip: 'Pages',   icon: <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><rect x="2" y="2" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.4"/><rect x="11" y="2" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.4"/><rect x="2" y="11" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.4"/><rect x="11" y="11" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.4"/></svg> },
+            { id: 'elements',tip: 'Elements',icon: <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="7" cy="7" r="4" stroke="currentColor" strokeWidth="1.4"/><rect x="11" y="11" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.4"/><path d="M14 1l3.5 5.5H10.5L14 1z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/></svg> },
+            { id: 'text',    tip: 'Text',    icon: <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M3 5A1.5 1.5 0 0 1 4.5 3.5h11A1.5 1.5 0 0 1 17 5v1.5M10 3.5v13M7 16.5h6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg> },
+            { id: 'uploads', tip: 'Uploads', icon: <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M4 14v2a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2v-2M10 4v10M7 7l3-3 3 3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg> },
+            { id: 'bg',      tip: 'Background', icon: <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="7" stroke="currentColor" strokeWidth="1.4"/><path d="M10 3A7 7 0 0 1 10 17" fill="currentColor" opacity=".2"/></svg> },
+            { id: 'layers',  tip: 'Layers',  icon: <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M2 6l8-4 8 4-8 4L2 6z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/><path d="M2 10l8 4 8-4M2 14l8 4 8-4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg> },
+          ].map(item => (
+            <button key={item.id} className={`rail-btn${activePanel === item.id ? ' active' : ''}`} title={item.tip} onClick={() => setActivePanel(activePanel === item.id ? null : item.id)}>
+              {item.icon}<span>{item.tip}</span>
+            </button>
+          ))}
+        </div>
+
+        {/* Side panel */}
+        {activePanel && (
+          <div style={{ width: 260, flexShrink: 0, background: 'white', borderRight: '1px solid #e5e7eb', display: 'flex', flexDirection: 'column', overflow: 'hidden', zIndex: 9 }}>
+            <div style={{ height: 44, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 14px', borderBottom: '1px solid #e5e7eb', flexShrink: 0 }}>
+              <span style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>{activePanel.charAt(0).toUpperCase() + activePanel.slice(1)}</span>
+              <button onClick={() => setActivePanel(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', padding: 4, borderRadius: 6 }}>
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M3 3l8 8M11 3l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+              </button>
+            </div>
+            <div style={{ flex: 1, overflow: 'auto', padding: 14 }}>
+
+              {activePanel === 'pages' && (
+                <div>
+                  <div className="panel-section">
+                    <div className="panel-label">Page layouts</div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                      {PAGE_LAYOUTS.map(layout => (
+                        <div key={layout.id} onClick={() => {
+                          if (!fabricRef.current) return
+                          const saved = [...pagesRef.current]; saved[currentPageRef.current] = fabricRef.current.toJSON()
+                          const blank = makePage(layout.bg); const newIdx = currentPageRef.current + 1
+                          saved.splice(newIdx, 0, blank); setPages(saved); setCurrentPage(newIdx)
+                          fabricRef.current.clear(); fabricRef.current.backgroundColor = layout.bg; fabricRef.current.renderAll()
+                        }} style={{ aspectRatio: `${canvasW}/${canvasH}`, background: layout.thumb, borderRadius: 8, border: '1.5px solid #e5e7eb', cursor: 'pointer', display: 'flex', alignItems: 'flex-end', overflow: 'hidden', transition: 'all .13s' }}
+                          onMouseEnter={e => (e.currentTarget.style.borderColor = '#4f46e5')}
+                          onMouseLeave={e => (e.currentTarget.style.borderColor = '#e5e7eb')}>
+                          <div style={{ padding: '3px 5px', width: '100%', background: 'rgba(255,255,255,.8)', fontSize: 8, fontWeight: 600, color: '#374151', backdropFilter: 'blur(4px)' }}>{layout.label}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {activePanel === 'elements' && (
+                <div>
+                  <div className="panel-section">
+                    <div className="panel-label">Shapes</div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 6 }}>
+                      {[
+                        { type: 'rect', icon: <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><rect x="2" y="4" width="16" height="12" rx="2" stroke="currentColor" strokeWidth="1.4"/></svg> },
+                        { type: 'rect', opts: { rx: 40 }, icon: <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><rect x="2" y="4" width="16" height="12" rx="6" stroke="currentColor" strokeWidth="1.4"/></svg> },
+                        { type: 'circle', icon: <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="7" stroke="currentColor" strokeWidth="1.4"/></svg> },
+                        { type: 'triangle', icon: <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M10 2L19 18H1L10 2z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/></svg> },
+                        { type: 'line', icon: <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M2 18L18 2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg> },
+                      ].map((s, i) => (
+                        <div key={i} onClick={() => addShape(s.type, s.opts)} style={{ aspectRatio: '1', background: '#f9fafb', borderRadius: 8, border: '1.5px solid #e5e7eb', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6b7280', transition: 'all .12s' }}
+                          onMouseEnter={e => { e.currentTarget.style.borderColor = '#4f46e5'; e.currentTarget.style.color = '#4f46e5'; e.currentTarget.style.background = '#eef2ff' }}
+                          onMouseLeave={e => { e.currentTarget.style.borderColor = '#e5e7eb'; e.currentTarget.style.color = '#6b7280'; e.currentTarget.style.background = '#f9fafb' }}>
+                          {s.icon}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="panel-section">
+                    <div className="panel-label">Tables</div>
+                    {['Standard', 'Striped', 'Minimal', 'Bordered'].map(style => (
+                      <div key={style} onClick={addTable} style={{ padding: '8px 12px', borderRadius: 8, border: '1.5px solid #e5e7eb', marginBottom: 6, cursor: 'pointer', fontSize: 12, fontWeight: 500, color: '#374151', transition: 'all .12s' }}
+                        onMouseEnter={e => { e.currentTarget.style.borderColor = '#4f46e5'; e.currentTarget.style.background = '#eef2ff'; e.currentTarget.style.color = '#4f46e5' }}
+                        onMouseLeave={e => { e.currentTarget.style.borderColor = '#e5e7eb'; e.currentTarget.style.background = ''; e.currentTarget.style.color = '#374151' }}>
+                        {style} Table
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {activePanel === 'text' && (
+                <div>
+                  <div className="panel-section">
+                    <div className="panel-label">Add text</div>
+                    {[
+                      { label: 'Large Heading', fs: 52, fw: '700', text: 'Large Heading' },
+                      { label: 'Heading',       fs: 36, fw: '700', text: 'Heading' },
+                      { label: 'Subheading',    fs: 24, fw: '600', text: 'Subheading' },
+                      { label: 'Body Text',     fs: 15, fw: '400', text: 'Body text goes here' },
+                      { label: 'Caption',       fs: 11, fw: '400', text: 'Caption text' },
+                    ].map(preset => (
+                      <div key={preset.label} onClick={() => addText({ text: preset.text, fs: preset.fs, fw: preset.fw })} style={{ padding: '10px 12px', borderRadius: 8, border: '1.5px solid #e5e7eb', marginBottom: 7, cursor: 'pointer', transition: 'all .12s' }}
+                        onMouseEnter={e => { e.currentTarget.style.borderColor = '#4f46e5'; e.currentTarget.style.background = '#eef2ff' }}
+                        onMouseLeave={e => { e.currentTarget.style.borderColor = '#e5e7eb'; e.currentTarget.style.background = '' }}>
+                        <div style={{ fontSize: Math.min(preset.fs * 0.5, 22), fontWeight: parseInt(preset.fw), color: '#0f172a', fontFamily: 'Jost,sans-serif' }}>{preset.label}</div>
+                        <div style={{ fontSize: 9, color: '#94a3b8', marginTop: 2, fontFamily: 'JetBrains Mono,monospace' }}>{preset.fs}pt · {preset.fw}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {activePanel === 'uploads' && (
+                <div>
+                  <div className="panel-section">
+                    <label style={{ display: 'block', border: '2px dashed #d1d5db', borderRadius: 12, padding: '24px', textAlign: 'center', cursor: 'pointer', transition: 'all .14s' }}
+                      onMouseEnter={e => { e.currentTarget.style.borderColor = '#4f46e5'; e.currentTarget.style.background = '#eef2ff' }}
+                      onMouseLeave={e => { e.currentTarget.style.borderColor = '#d1d5db'; e.currentTarget.style.background = '' }}>
+                      <svg width="28" height="28" viewBox="0 0 28 28" fill="none" style={{ margin: '0 auto 8px', display: 'block', color: '#9ca3af' }}><path d="M5 20v2a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-2M14 4v16M9 9l5-5 5 5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 3 }}>Click to upload image</div>
+                      <div style={{ fontSize: 11, color: '#9ca3af' }}>PNG, JPG, GIF, WebP, SVG</div>
+                      <input type="file" accept="image/*" style={{ display: 'none' }} onChange={e => { const f = e.target.files?.[0]; if (f) uploadImage(f) }}/>
+                    </label>
+                  </div>
+                  <div className="panel-section">
+                    <div className="panel-label">Add from URL</div>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <input id="imgUrl" className="sp-inp" placeholder="https://…" style={{ flex: 1 }}/>
+                      <button onClick={() => {
+                        const url = (document.getElementById('imgUrl') as HTMLInputElement)?.value.trim(); if (!url || !fabricRef.current) return
+                        const fabric = (window as any).fabric
+                        fabric.Image.fromURL(url, (img: any) => {
+                          const scale = Math.min(400/img.width, 300/img.height, 1)
+                          img.set({ left: 120, top: 120, scaleX: scale, scaleY: scale, crossOrigin: 'anonymous' })
+                          fabricRef.current.add(img); fabricRef.current.renderAll()
+                        }, { crossOrigin: 'anonymous' })
+                      }} style={{ ...primaryBtnStyle, padding: '0 12px', height: 34 }}>Add</button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {activePanel === 'bg' && (
+                <div>
+                  <div className="panel-section">
+                    <div className="panel-label">Solid colors</div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6,1fr)', gap: 6, marginBottom: 12 }}>
+                      {['#ffffff','#f8fafc','#0f172a','#1e293b','#4f46e5','#0ea5e9','#10b981','#f59e0b','#ef4444','#ec4899','#8b5cf6','#f97316'].map(c => (
+                        <div key={c} className="color-swatch" style={{ background: c, border: c === bgColor ? '2px solid #4f46e5' : '2px solid #e5e7eb' }} onClick={() => { setBgColor(c); if (fabricRef.current) { fabricRef.current.backgroundColor = c; fabricRef.current.renderAll() } }}/>
+                      ))}
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ fontSize: 11, color: '#6b7280' }}>Custom:</span>
+                      <input type="color" value={bgColor} onChange={e => { setBgColor(e.target.value); if (fabricRef.current) { fabricRef.current.backgroundColor = e.target.value; fabricRef.current.renderAll() } }} style={{ width: 32, height: 32, borderRadius: 7, border: '1.5px solid #e5e7eb', cursor: 'pointer' }}/>
+                    </div>
+                  </div>
+                  <div className="panel-section">
+                    <div className="panel-label">Gradients</div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                      {[['#4f46e5','#7c3aed'],['#0ea5e9','#06b6d4'],['#10b981','#34d399'],['#f59e0b','#f97316'],['#ef4444','#ec4899'],['#0f172a','#334155'],['#1e293b','#4f46e5'],['#fce7f3','#ede9fe']].map(([a,b]) => (
+                        <div key={a} onClick={() => {
+                          if (!fabricRef.current) return
+                          const fabric = (window as any).fabric
+                          fabricRef.current.setBackgroundColor(new fabric.Gradient({ type: 'linear', gradientUnits: 'pixels', coords: { x1:0,y1:0,x2:canvasWRef.current,y2:canvasHRef.current }, colorStops: [{offset:0,color:a},{offset:1,color:b}] }), () => fabricRef.current.renderAll())
+                          scheduleAutoSave()
+                        }} style={{ height: 48, borderRadius: 8, background: `linear-gradient(135deg,${a},${b})`, cursor: 'pointer', border: '1.5px solid transparent', transition: 'all .12s' }}
+                          onMouseEnter={e => (e.currentTarget.style.borderColor = '#4f46e5')}
+                          onMouseLeave={e => (e.currentTarget.style.borderColor = 'transparent')}/>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {activePanel === 'layers' && (
+                <div>
+                  <div className="panel-label">Layers (top to bottom)</div>
+                  {fabricRef.current && [...fabricRef.current.getObjects()].reverse().map((obj: any, i: number) => {
+                    const realIdx = fabricRef.current.getObjects().length - 1 - i
+                    const label = obj.type === 'textbox' ? `"${(obj.text || '').substring(0, 16)}…"` : `${obj.type} ${realIdx + 1}`
+                    return (
+                      <div key={i} onClick={() => { fabricRef.current.setActiveObject(obj); fabricRef.current.renderAll(); setSelectedObj(obj) }}
+                        style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '6px 8px', borderRadius: 7, marginBottom: 3, cursor: 'pointer', border: `1.5px solid ${selectedObj === obj ? '#4f46e5' : 'transparent'}`, background: selectedObj === obj ? '#eef2ff' : 'transparent', transition: 'all .1s' }}>
+                        <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><rect x=".5" y=".5" width="11" height="11" rx="1.5" stroke="currentColor" strokeWidth="1.2"/></svg>
+                        <span style={{ fontSize: 11, color: '#374151', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{label}</span>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+
+              {activePanel === 'export' && (
+                <div>
+                  <div className="panel-label">Export as</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    <button className="export-btn" onClick={exportPDF}>
+                      <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M3 1h6l3 3v9H3V1z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/><path d="M8 1v4h3M4.5 8h1a1 1 0 0 1 0 2H4.5V7M8 7v3M8 7h1.5M8 9h1" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/></svg>
+                      Export as PDF (all pages)
+                    </button>
+                    <button className="export-btn" onClick={exportPNG}>
+                      <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="1" y="3" width="12" height="8" rx="1.5" stroke="currentColor" strokeWidth="1.3"/><circle cx="4.5" cy="5.5" r="1" fill="currentColor"/><path d="M1 9.5l3-2.5 3 3 2-2 3 3" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/></svg>
+                      Export current page as PNG
+                    </button>
+                    <button className="export-btn" onClick={() => {
+                      const saved = [...pagesRef.current]; saved[currentPageRef.current] = fabricRef.current?.toJSON()
+                      const blob = new Blob([JSON.stringify({ pages: saved, canvasW, canvasH }, null, 2)], { type: 'application/json' })
+                      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `${title || 'design'}.json`; a.click()
+                    }}>
+                      <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M3 1h6l3 3v9H3V1z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/><path d="M8 1v4h3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>
+                      Export as JSON (editable)
+                    </button>
+                  </div>
+                </div>
+              )}
+
+            </div>
+          </div>
+        )}
+
+        {/* Page strip */}
+        <div style={{ width: 140, flexShrink: 0, background: 'white', borderRight: '1px solid #e5e7eb', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ padding: '8px 10px', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.06em' }}>Pages</span>
+            <button onClick={addPage} title="Add page" style={{ background: '#4f46e5', border: 'none', borderRadius: 5, width: 20, height: 20, color: 'white', cursor: 'pointer', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}>+</button>
+          </div>
+          <div style={{ flex: 1, overflow: 'auto', padding: '8px 6px', display: 'flex', flexDirection: 'column', gap: 7 }}>
+            {pages.map((page, idx) => (
+              <div key={idx} onClick={() => switchPage(idx)} className={`page-thumb${currentPage === idx ? ' active' : ''}`}>
+                <div style={{ width: '100%', aspectRatio: `${canvasW}/${canvasH}`, background: page?.background ?? '#ffffff', position: 'relative' }}>
+                  <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '2px 5px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,.85)' }}>
+                    <span style={{ fontSize: 9, color: '#94a3b8', fontFamily: 'JetBrains Mono,monospace', fontWeight: 600 }}>{idx + 1}</span>
+                    {pages.length > 1 && <button onClick={e => { e.stopPropagation(); removePage(idx) }} style={{ width: 12, height: 12, borderRadius: 3, background: '#ef4444', border: 'none', color: 'white', fontSize: 8, cursor: 'pointer', lineHeight: 1 }}>×</button>}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div style={{ padding: '5px 10px', borderTop: '1px solid #e5e7eb', fontSize: 10, color: '#94a3b8', fontFamily: 'JetBrains Mono,monospace' }}>{pages.length}p</div>
+        </div>
+
+        {/* Canvas area */}
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f0f0f2', overflow: 'auto', position: 'relative' }}
+          onDragOver={e => { e.preventDefault(); setIsDragging(true) }}
+          onDragLeave={() => setIsDragging(false)}
+          onDrop={e => { e.preventDefault(); setIsDragging(false); const f = e.dataTransfer.files?.[0]; if (f?.type.startsWith('image/')) uploadImage(f) }}>
+          {isDragging && <div style={{ position: 'absolute', inset: 0, zIndex: 50, background: 'rgba(79,70,229,.05)', border: '2px dashed #4f46e5', display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
+            <span style={{ background: 'white', color: '#4f46e5', fontWeight: 700, fontSize: 15, padding: '10px 22px', borderRadius: 10, boxShadow: '0 4px 12px rgba(0,0,0,.08)' }}>Drop image here</span>
+          </div>}
+          <div style={{ transform: `scale(${zoom})`, transformOrigin: 'center center', boxShadow: '0 4px 40px rgba(0,0,0,.1)', borderRadius: 2, outline: '1px solid #e5e7eb' }}>
+            <canvas ref={canvasEl}/>
+          </div>
+          {pages.length > 1 && (
+            <div style={{ position: 'absolute', bottom: 18, left: '50%', transform: 'translateX(-50%)', display: 'flex', gap: 6, alignItems: 'center', background: 'white', borderRadius: 22, padding: '5px 14px', boxShadow: '0 2px 12px rgba(0,0,0,.08)', border: '1px solid #e5e7eb' }}>
+              <button onClick={() => currentPage > 0 && switchPage(currentPage - 1)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6b7280', fontSize: 22, opacity: currentPage === 0 ? .3 : 1, lineHeight: 1 }}>‹</button>
+              <span style={{ fontSize: 11, color: '#6b7280', fontFamily: 'JetBrains Mono,monospace', minWidth: 52, textAlign: 'center' }}>{currentPage + 1} / {pages.length}</span>
+              <button onClick={() => currentPage < pages.length - 1 && switchPage(currentPage + 1)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6b7280', fontSize: 22, opacity: currentPage === pages.length - 1 ? .3 : 1, lineHeight: 1 }}>›</button>
+            </div>
+          )}
+        </div>
+
+        {/* Properties panel */}
+        {selectedObj && (
+          <div style={{ width: 200, flexShrink: 0, background: 'white', borderLeft: '1px solid #e5e7eb', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ padding: '10px 14px', borderBottom: '1px solid #e5e7eb', fontSize: 11, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.06em' }}>Properties</div>
+            <div style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 12, overflow: 'auto' }}>
+              <PropRow label="X"><NumIn value={Math.round(selectedObj.left ?? 0)} onChange={v => updateProp('left', v)}/></PropRow>
+              <PropRow label="Y"><NumIn value={Math.round(selectedObj.top ?? 0)} onChange={v => updateProp('top', v)}/></PropRow>
+              {selectedObj.width && <PropRow label="Width"><NumIn value={Math.round(selectedObj.width ?? 0)} onChange={v => updateProp('width', v)}/></PropRow>}
+              <PropRow label="Opacity">
+                <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                  <input type="range" min={0} max={1} step={.01} value={selectedObj.opacity ?? 1} onChange={e => updateProp('opacity', parseFloat(e.target.value))} style={{ flex: 1, accentColor: '#4f46e5' }}/>
+                  <span style={{ fontSize: 11, color: '#94a3b8', minWidth: 30, fontFamily: 'JetBrains Mono,monospace' }}>{Math.round((selectedObj.opacity ?? 1) * 100)}</span>
+                </div>
+              </PropRow>
+              {(selectedObj.type === 'textbox' || selectedObj.type === 'text') && <PropRow label="Font size"><NumIn value={selectedObj.fontSize ?? 18} onChange={v => updateProp('fontSize', v)}/></PropRow>}
+              {selectedObj.type === 'rect' && <PropRow label="Radius"><NumIn value={selectedObj.rx ?? 0} onChange={v => { updateProp('rx', v); updateProp('ry', v) }}/></PropRow>}
+              <PropRow label="Color">
+                <input type="color" value={typeof selectedObj.fill === 'string' ? selectedObj.fill : '#4f46e5'} onChange={e => updateProp('fill', e.target.value)} style={{ width: '100%', height: 32, borderRadius: 8, border: '1.5px solid #e5e7eb', cursor: 'pointer' }}/>
+              </PropRow>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ── Template modal ──────────────────────────────────────────────────────── */}
+      {showTemplateModal && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 100, background: 'rgba(15,23,42,.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(8px)' }}>
+          <div style={{ background: 'white', borderRadius: 22, width: 'min(960px,96vw)', maxHeight: '92vh', display: 'flex', flexDirection: 'column', boxShadow: '0 32px 80px rgba(0,0,0,.2)', overflow: 'hidden' }}>
+            {/* Modal header */}
+            <div style={{ padding: '22px 28px', borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+              <div>
+                <h2 style={{ fontSize: 22, fontWeight: 700, color: '#0f172a', margin: 0, letterSpacing: '-.02em', fontFamily: 'Jost,sans-serif' }}>Start your design</h2>
+                <p style={{ fontSize: 13, color: '#6b7280', margin: '3px 0 0', fontFamily: 'Jost,sans-serif' }}>Choose a canvas size or start from a template.</p>
+              </div>
+              {pages.length > 0 && <button onClick={() => setShowTemplateModal(false)} style={{ background: '#f3f4f6', border: 'none', borderRadius: 9, width: 32, height: 32, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6b7280' }}>
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M3 3l8 8M11 3l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+              </button>}
+            </div>
+            <div style={{ flex: 1, overflow: 'auto', padding: '24px 28px' }}>
+              {/* Canvas sizes */}
+              <div style={{ marginBottom: 28 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 12 }}>Canvas size</div>
+                {['Presentation', 'Document', 'Social'].map(cat => (
+                  <div key={cat} style={{ marginBottom: 16 }}>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: '#374151', marginBottom: 8 }}>{cat}</div>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      {CANVAS_SIZES.filter(s => s.cat === cat).map(s => (
+                        <button key={s.id} onClick={() => startBlank(s.id)}
+                          style={{ padding: '8px 16px', borderRadius: 9, border: '1.5px solid #e5e7eb', background: 'white', cursor: 'pointer', fontSize: 12, fontWeight: 600, color: '#374151', fontFamily: 'Jost,sans-serif', transition: 'all .13s', display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 2 }}
+                          onMouseEnter={e => { e.currentTarget.style.borderColor = '#4f46e5'; e.currentTarget.style.background = '#eef2ff'; e.currentTarget.style.color = '#4f46e5' }}
+                          onMouseLeave={e => { e.currentTarget.style.borderColor = '#e5e7eb'; e.currentTarget.style.background = 'white'; e.currentTarget.style.color = '#374151' }}>
+                          {s.label}
+                          <span style={{ fontSize: 9, color: '#94a3b8', fontFamily: 'JetBrains Mono,monospace', fontWeight: 400 }}>{s.w}×{s.h}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Template categories */}
+              <div style={{ marginBottom: 16 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 12 }}>Templates</div>
+                <div style={{ display: 'flex', gap: 6, marginBottom: 16, flexWrap: 'wrap' }}>
+                  {TEMPLATE_CATEGORIES.map(cat => (
+                    <button key={cat.id} onClick={() => setTemplateCat(cat.id)}
+                      style={{ padding: '5px 14px', borderRadius: 20, border: `1.5px solid ${templateCat === cat.id ? '#4f46e5' : '#e5e7eb'}`, background: templateCat === cat.id ? '#4f46e5' : 'white', color: templateCat === cat.id ? 'white' : '#374151', cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: 'Jost,sans-serif', transition: 'all .13s' }}>
+                      {cat.label}
+                    </button>
+                  ))}
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(180px,1fr))', gap: 12 }}>
+                  {TEMPLATES.filter(t => t.cat === templateCat).map(tpl => {
+                    const size = CANVAS_SIZES.find(s => s.id === tpl.size) || CANVAS_SIZES[0]
+                    return (
+                      <div key={tpl.id} className="tpl-card" onClick={() => applyTemplate(tpl.id, tpl.size)}>
+                        <div style={{ aspectRatio: `${size.w}/${size.h}`, background: 'linear-gradient(135deg,#eef2ff,#f0fdf4)', borderRadius: '12px 12px 0 0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <div style={{ textAlign: 'center' }}>
+                            <div style={{ width: 32, height: 4, background: '#4f46e5', borderRadius: 2, margin: '0 auto 8px' }}/>
+                            <div style={{ width: 60, height: 8, background: '#e5e7eb', borderRadius: 2, margin: '0 auto 4px' }}/>
+                            <div style={{ width: 48, height: 6, background: '#f3f4f6', borderRadius: 2, margin: '0 auto' }}/>
+                          </div>
+                        </div>
+                        <div style={{ padding: '12px 14px', background: 'white', borderRadius: '0 0 12px 12px' }}>
+                          <div style={{ fontWeight: 700, fontSize: 13, color: '#0f172a', marginBottom: 3 }}>{tpl.label}</div>
+                          <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 8 }}>{tpl.desc}</div>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <span style={{ fontSize: 9, color: '#4f46e5', background: '#eef2ff', borderRadius: 5, padding: '2px 8px', fontWeight: 700, fontFamily: 'JetBrains Mono,monospace' }}>{tpl.pages}p</span>
+                            <span style={{ fontSize: 9, color: '#94a3b8', fontFamily: 'JetBrains Mono,monospace' }}>{size.w}×{size.h}</span>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Share modal ──────────────────────────────────────────────────────────── */}
+      {showShare && <ShareModal documentId={params.id} links={shareLinks} onClose={() => setShowShare(false)} onRefresh={loadShareLinks} isActive={isActive} onPublish={publishDocument}/>}
+
+      {/* ── Delete confirm ───────────────────────────────────────────────────────── */}
+      {showDeleteConfirm && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,.5)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ background: 'white', borderRadius: 16, padding: '28px 32px', width: 380, boxShadow: '0 20px 60px rgba(0,0,0,.2)' }}>
+            <h3 style={{ fontSize: 18, fontWeight: 700, color: '#0f172a', margin: '0 0 8px', fontFamily: 'Jost,sans-serif' }}>Delete document?</h3>
+            <p style={{ fontSize: 13, color: '#6b7280', margin: '0 0 20px', lineHeight: 1.6, fontFamily: 'Jost,sans-serif' }}>This will permanently delete this document and all its share links. This action cannot be undone.</p>
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+              <button onClick={() => setShowDeleteConfirm(false)} style={{ ...btnStyle }}>Cancel</button>
+              <button onClick={deleteDocument} disabled={deleting} style={{ padding: '8px 18px', borderRadius: 9, border: 'none', background: '#ef4444', color: 'white', cursor: 'pointer', fontSize: 13, fontWeight: 700, fontFamily: 'Jost,sans-serif', opacity: deleting ? .6 : 1 }}>
+                {deleting ? 'Deleting…' : 'Delete permanently'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── AI Drafter ───────────────────────────────────────────────────────────── */}
+      {showDrafter && (
+        <AIDrafter documentType={doc?.type ?? 'document'} onDraftComplete={(html: string) => {
+          const stripped = html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
+          const page = makePage('#ffffff', [t(stripped, { l: 60, t: 60, w: canvasWRef.current - 120, fs: 16, fill: '#0f172a' })])
+          const updated = [...pagesRef.current, page]; setPages(updated)
+          const newIdx = updated.length - 1; setCurrentPage(newIdx)
+          fabricRef.current?.loadFromJSON(page, () => fabricRef.current.renderAll()); saveCanvas()
+        }} onClose={() => setShowDrafter(false)}/>
+      )}
+    </div>
+  )
 }
 
-function applyTemplate(id) {
-  const built = buildTemplate(id);
-  pages = built;
-  currentPage = 0;
-  document.getElementById('templateModal').style.display = 'none';
-  document.getElementById('cancelTplBtn').style.display = 'inline-block';
-  loadPage(0);
-  renderPageStrip();
-  applyZoom();
+// ─── Shared style constants ───────────────────────────────────────────────────
+const btnStyle: React.CSSProperties = { padding: '6px 13px', borderRadius: 8, fontSize: 12, fontWeight: 600, border: '1.5px solid #e5e7eb', background: 'white', cursor: 'pointer', color: '#374151', fontFamily: 'Jost,sans-serif', transition: 'all .12s' }
+const primaryBtnStyle: React.CSSProperties = { padding: '7px 18px', borderRadius: 9, fontSize: 13, fontWeight: 700, border: 'none', background: '#4f46e5', color: 'white', cursor: 'pointer', fontFamily: 'Jost,sans-serif', boxShadow: '0 2px 8px rgba(79,70,229,.25)' }
+const fmtBtnStyle: React.CSSProperties = { width: 28, height: 28, border: 'none', cursor: 'pointer', borderRadius: 6, background: 'transparent', color: '#6b7280', fontFamily: 'Jost,sans-serif' }
+
+function PropRow({ label, children }: { label: string; children: React.ReactNode }) {
+  return <div><div style={{ fontSize: 9, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 4 }}>{label}</div>{children}</div>
 }
 
-function startBlank() {
-  pages = [makePage('#fff',[])];
-  currentPage = 0;
-  document.getElementById('templateModal').style.display = 'none';
-  document.getElementById('cancelTplBtn').style.display = 'inline-block';
-  loadPage(0);
-  renderPageStrip();
-  applyZoom();
+function NumIn({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+  return <input type="number" value={value} onChange={e => onChange(parseFloat(e.target.value))} style={{ width: '100%', background: '#f9fafb', border: '1.5px solid #e5e7eb', color: '#0f172a', borderRadius: 8, padding: '5px 9px', fontSize: 12, fontFamily: 'JetBrains Mono,monospace', outline: 'none' }}/>
 }
 
-// ============================================================
-// PAGE MANAGEMENT
-// ============================================================
-function loadPage(idx) {
-  if (!fc) return;
-  fc.loadFromJSON(pages[idx], () => {
-    fc.renderAll();
-    updatePageNav();
-    document.getElementById('bgColor').value = rgbToHex(fc.backgroundColor || '#f0f1f5');
-  });
-}
+// ─── Share Modal ──────────────────────────────────────────────────────────────
+function ShareModal({ documentId, links, onClose, onRefresh, isActive, onPublish }: {
+  documentId: string; links: ShareLink[]; onClose: () => void; onRefresh: () => void; isActive: boolean; onPublish: () => void
+}) {
+  const [creating, setCreating] = useState(false)
+  const [label, setLabel] = useState('')
+  const [requireEmail, setRequireEmail] = useState(false)
+  const [allowDownload, setAllowDownload] = useState(false)
+  const [password, setPassword] = useState('')
+  const [copied, setCopied] = useState<string | null>(null)
+  const [showNew, setShowNew] = useState(links.length === 0)
 
-function saveCurrent() {
-  if (!fc) return;
-  pages[currentPage] = fc.toJSON();
-}
+  async function createLink() {
+    if (!isActive) { onPublish(); return }
+    setCreating(true)
+    const token = generateToken(14)
+    const { error } = await supabase.from('share_links').insert({
+      document_id: documentId, token, label: label || 'Share link',
+      require_email: requireEmail, allow_download: allowDownload,
+      password: password || null, is_active: true,
+    })
+    if (!error) { await onRefresh(); setShowNew(false); setLabel(''); setPassword(''); setRequireEmail(false); setAllowDownload(false) }
+    setCreating(false)
+  }
 
-function switchPage(idx) {
-  if (idx < 0 || idx >= pages.length) return;
-  saveCurrent();
-  currentPage = idx;
-  loadPage(idx);
-  renderPageStrip();
-}
+  function copyLink(token: string) {
+    const url = buildShareUrl(token)
+    navigator.clipboard.writeText(url)
+    setCopied(token); setTimeout(() => setCopied(null), 2500)
+  }
 
-function addPage() {
-  saveCurrent();
-  const blank = makePage('#fff', []);
-  const newIdx = currentPage + 1;
-  pages.splice(newIdx, 0, blank);
-  currentPage = newIdx;
-  fc.clear();
-  fc.backgroundColor = '#fff';
-  fc.renderAll();
-  renderPageStrip();
-  updatePageNav();
-  scheduleAutoSave();
-}
+  async function toggleLink(id: string, active: boolean) {
+    await supabase.from('share_links').update({ is_active: active }).eq('id', id)
+    onRefresh()
+  }
 
-function removePage(idx) {
-  if (pages.length <= 1) return;
-  pages.splice(idx, 1);
-  const newIdx = Math.min(currentPage, pages.length - 1);
-  currentPage = newIdx;
-  loadPage(newIdx);
-  renderPageStrip();
-  scheduleAutoSave();
-}
+  async function deleteLink(id: string) {
+    await supabase.from('share_links').delete().eq('id', id)
+    onRefresh()
+  }
 
-function renderPageStrip() {
-  const list = document.getElementById('pageList');
-  list.innerHTML = pages.map((p, i) => `
-    <div class="ps-page${i === currentPage ? ' active' : ''}" onclick="switchPage(${i})">
-      <div class="ps-page-thumb" style="background:${p.background||'#fff'}"></div>
-      <div class="ps-page-footer">
-        <span class="ps-page-num">${i+1}</span>
-        ${pages.length > 1 ? `<button class="ps-page-del" onclick="event.stopPropagation();removePage(${i})">×</button>` : ''}
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.4)', zIndex: 100, display: 'flex', alignItems: 'flex-end', justifyContent: 'flex-end' }} onClick={e => { if (e.target === e.currentTarget) onClose() }}>
+      <div style={{ width: 440, height: '100vh', background: 'white', borderLeft: '1px solid #e5e7eb', display: 'flex', flexDirection: 'column', boxShadow: '-8px 0 40px rgba(0,0,0,.1)' }}>
+        <div style={{ padding: '20px 24px', borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div>
+            <h2 style={{ margin: '0 0 3px', fontSize: 17, fontWeight: 700, color: '#0f172a', fontFamily: 'Jost,sans-serif' }}>Share & Track</h2>
+            <p style={{ margin: 0, fontSize: 12, color: '#94a3b8', fontFamily: 'Jost,sans-serif' }}>{links.length} link{links.length !== 1 ? 's' : ''} · {links.reduce((a, l) => a + (l.view_count || 0), 0)} total views</p>
+          </div>
+          <button onClick={onClose} style={{ background: '#f3f4f6', border: 'none', cursor: 'pointer', color: '#6b7280', padding: 7, borderRadius: 8 }}>
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M3 3l8 8M11 3l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+          </button>
+        </div>
+
+        {!isActive && (
+          <div style={{ margin: '16px 20px', padding: '12px 16px', background: '#fffbeb', border: '1.5px solid #fcd34d', borderRadius: 10 }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: '#92400e', marginBottom: 4, fontFamily: 'Jost,sans-serif' }}>Document not published</div>
+            <div style={{ fontSize: 11, color: '#b45309', marginBottom: 10, fontFamily: 'Jost,sans-serif' }}>Publish first to create shareable links.</div>
+            <button onClick={onPublish} style={{ ...primaryBtnStyle, fontSize: 12, padding: '6px 14px' }}>Publish now</button>
+          </div>
+        )}
+
+        <div style={{ flex: 1, overflow: 'auto', padding: '16px 20px' }}>
+          {links.length > 0 && (
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 10 }}>Active links</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {links.map(link => (
+                  <div key={link.id} style={{ border: '1.5px solid #e5e7eb', borderRadius: 14, padding: '14px 16px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                      <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: '#0f172a', fontFamily: 'Jost,sans-serif' }}>{link.label ?? 'Share link'}</span>
+                      <span style={{ padding: '3px 9px', borderRadius: 20, fontSize: 10, fontWeight: 700, background: link.is_active ? '#dcfce7' : '#f1f5f9', color: link.is_active ? '#15803d' : '#64748b', fontFamily: 'JetBrains Mono,monospace' }}>{link.is_active ? 'LIVE' : 'OFF'}</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
+                      <code style={{ flex: 1, fontSize: 10, color: '#64748b', background: '#f8fafc', padding: '5px 9px', borderRadius: 7, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block', fontFamily: 'JetBrains Mono,monospace', border: '1px solid #e5e7eb' }}>{buildShareUrl(link.token)}</code>
+                      <button onClick={() => copyLink(link.token)} style={{ padding: '5px 11px', background: copied === link.token ? '#f0fdf4' : '#f8fafc', border: `1.5px solid ${copied === link.token ? '#86efac' : '#e5e7eb'}`, borderRadius: 8, fontSize: 11, cursor: 'pointer', color: copied === link.token ? '#15803d' : '#64748b', fontFamily: 'Jost,sans-serif', fontWeight: 600, whiteSpace: 'nowrap' }}>
+                        {copied === link.token ? 'Copied!' : 'Copy'}
+                      </button>
+                    </div>
+                    <div style={{ display: 'flex', gap: 12, fontSize: 11, color: '#94a3b8', flexWrap: 'wrap', marginBottom: 8, fontFamily: 'JetBrains Mono,monospace' }}>
+                      <span>{link.view_count || 0} views</span>
+                      {link.require_email && <span>Email required</span>}
+                      {link.password && <span>Password protected</span>}
+                      {link.allow_download && <span>Downloads on</span>}
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+                      <button onClick={() => toggleLink(link.id, !link.is_active)} style={{ fontSize: 11, color: link.is_active ? '#f59e0b' : '#10b981', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'Jost,sans-serif', fontWeight: 600 }}>{link.is_active ? 'Disable' : 'Enable'}</button>
+                      <button onClick={() => deleteLink(link.id)} style={{ fontSize: 11, color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'Jost,sans-serif', fontWeight: 600 }}>Delete</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {!showNew
+            ? <button onClick={() => setShowNew(true)} style={{ width: '100%', padding: '12px', background: 'none', border: '2px dashed #e5e7eb', borderRadius: 12, cursor: 'pointer', fontSize: 13, color: '#94a3b8', fontFamily: 'Jost,sans-serif', fontWeight: 500, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1v12M1 7h12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>Create new link
+              </button>
+            : <div style={{ border: '1.5px solid #e5e7eb', borderRadius: 14, padding: '18px' }}>
+                <p style={{ margin: '0 0 16px', fontSize: 14, fontWeight: 700, color: '#0f172a', fontFamily: 'Jost,sans-serif' }}>New share link</p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <Input label="Link label" placeholder="e.g. Sequoia meeting, Website" value={label} onChange={(e: any) => setLabel(e.target.value)}/>
+                  <Input label="Password (optional)" type="password" placeholder="Leave empty for no password" value={password} onChange={(e: any) => setPassword(e.target.value)}/>
+                  <Toggle checked={requireEmail} onChange={setRequireEmail} label="Require email address to view"/>
+                  <Toggle checked={allowDownload} onChange={setAllowDownload} label="Allow document download"/>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <Button variant="primary" loading={creating} onClick={createLink} size="sm">{isActive ? 'Create link' : 'Publish & create link'}</Button>
+                    <Button variant="ghost" onClick={() => setShowNew(false)} size="sm">Cancel</Button>
+                  </div>
+                </div>
+              </div>
+          }
+        </div>
       </div>
     </div>
-  `).join('');
-  const count = pages.length;
-  document.getElementById('pageCount').textContent = `${count} page${count>1?'s':''}`;
-  updatePageNav();
+  )
 }
-
-function updatePageNav() {
-  const nav = document.getElementById('page-nav');
-  nav.style.display = pages.length > 1 ? 'flex' : 'none';
-  document.getElementById('pageNavText').textContent = `${currentPage+1} / ${pages.length}`;
-  document.getElementById('prevBtn').disabled = currentPage === 0;
-  document.getElementById('nextBtn').disabled = currentPage === pages.length - 1;
-}
-
-// ============================================================
-// TOOLS & DRAWING
-// ============================================================
-function setTool(tool) {
-  activeTool = tool;
-  ['select','text','rect','circle','triangle','draw'].forEach(id => {
-    const el = document.getElementById('tool-'+id);
-    if (el) el.classList.toggle('active', id === tool);
-  });
-  if (fc) {
-    fc.isDrawingMode = (tool === 'draw');
-    if (fc.freeDrawingBrush) {
-      fc.freeDrawingBrush.width = 3;
-      fc.freeDrawingBrush.color = document.getElementById('textColor').value;
-    }
-  }
-}
-
-function addText() {
-  if (!fc) return;
-  const tb = new fabric.Textbox('Click to edit', {
-    left:120, top:120, width:300, fontSize:24,
-    fontFamily: document.getElementById('fontFamily').value,
-    fill: document.getElementById('textColor').value,
-    editable:true
-  });
-  fc.add(tb);
-  fc.setActiveObject(tb);
-  fc.renderAll();
-  setTool('select');
-}
-
-function addShape(type) {
-  if (!fc) return;
-  const fill = document.getElementById('fillColor').value;
-  let shape;
-  if (type === 'rect') shape = new fabric.Rect({left:120,top:120,width:200,height:120,fill,rx:8,ry:8});
-  else if (type === 'circle') shape = new fabric.Circle({left:120,top:120,radius:70,fill});
-  else if (type === 'triangle') shape = new fabric.Triangle({left:120,top:120,width:140,height:140,fill});
-  fc.add(shape);
-  fc.setActiveObject(shape);
-  fc.renderAll();
-  setTool('select');
-}
-
-function deleteSelected() {
-  if (!fc) return;
-  fc.getActiveObjects().forEach(o => fc.remove(o));
-  fc.discardActiveObject();
-  fc.renderAll();
-  scheduleAutoSave();
-}
-
-function duplicate() {
-  if (!fc) return;
-  const obj = fc.getActiveObject();
-  if (!obj) return;
-  obj.clone(c => { c.set({left:c.left+20,top:c.top+20}); fc.add(c); fc.setActiveObject(c); fc.renderAll(); });
-}
-
-function layerUp() {
-  if (!fc) return;
-  const o = fc.getActiveObject();
-  if (o) { fc.bringToFront(o); fc.renderAll(); }
-}
-
-function layerDown() {
-  if (!fc) return;
-  const o = fc.getActiveObject();
-  if (o) { fc.sendToBack(o); fc.renderAll(); }
-}
-
-function alignObj(dir) {
-  if (!fc) return;
-  const o = fc.getActiveObject();
-  if (!o) return;
-  if (dir === 'left') o.set('left', 0);
-  else if (dir === 'center') o.set('left', (CANVAS_W - o.getScaledWidth()) / 2);
-  fc.renderAll();
-}
-
-function uploadImage(e) {
-  const file = e.target.files[0];
-  if (!file || !fc) return;
-  const reader = new FileReader();
-  reader.onload = ev => {
-    fabric.Image.fromURL(ev.target.result, img => {
-      const scale = Math.min(400/img.width, 300/img.height, 1);
-      img.set({left:120,top:120,scaleX:scale,scaleY:scale});
-      fc.add(img); fc.setActiveObject(img); fc.renderAll();
-    });
-  };
-  reader.readAsDataURL(file);
-}
-
-function handleDrop(e) {
-  e.preventDefault();
-  document.getElementById('drop-overlay').style.display = 'none';
-  const file = e.dataTransfer.files[0];
-  if (file && file.type.startsWith('image/')) uploadImage({target:{files:[file]}});
-}
-
-// ============================================================
-// FORMATTING
-// ============================================================
-function updateFont() {
-  const obj = fc?.getActiveObject();
-  if (obj) { obj.set('fontFamily', document.getElementById('fontFamily').value); fc.renderAll(); }
-}
-
-function updateFontSize() {
-  const v = parseInt(document.getElementById('fontSize').value);
-  const obj = fc?.getActiveObject();
-  if (obj) { obj.set('fontSize', v); fc.renderAll(); }
-}
-
-function toggleFormat(prop, onVal, offVal) {
-  const obj = fc?.getActiveObject();
-  if (!obj) return;
-  const cur = obj[prop];
-  obj.set(prop, cur === onVal ? offVal : onVal);
-  fc.renderAll();
-  updateFormatBtns(obj);
-}
-
-function toggleUnderline() {
-  const obj = fc?.getActiveObject();
-  if (!obj) return;
-  obj.set('underline', !obj.underline);
-  fc.renderAll();
-}
-
-function applyColor(type) {
-  const obj = fc?.getActiveObject();
-  if (!obj) return;
-  if (type === 'text') obj.set('fill', document.getElementById('textColor').value);
-  else if (type === 'fill') obj.set('fill', document.getElementById('fillColor').value);
-  fc.renderAll();
-}
-
-function applyBg() {
-  if (!fc) return;
-  fc.backgroundColor = document.getElementById('bgColor').value;
-  fc.renderAll();
-}
-
-function onSelect(e) {
-  const obj = e.selected?.[0];
-  if (!obj) return;
-  // Update toolbar
-  if (obj.fontSize) document.getElementById('fontSize').value = obj.fontSize;
-  if (obj.fontFamily) document.getElementById('fontFamily').value = obj.fontFamily;
-  updateFormatBtns(obj);
-  // Show props panel
-  renderPropsPanel(obj);
-  document.getElementById('right-panel').classList.add('open');
-}
-
-function updateFormatBtns(obj) {
-  document.getElementById('fmt-bold').classList.toggle('on', obj.fontWeight === 'bold');
-  document.getElementById('fmt-italic').classList.toggle('on', obj.fontStyle === 'italic');
-  document.getElementById('fmt-under').classList.toggle('on', !!obj.underline);
-}
-
-function renderPropsPanel(obj) {
-  const panel = document.getElementById('propPanel');
-  const op = Math.round((obj.opacity ?? 1) * 100);
-  const rx = obj.rx ?? 0;
-  panel.innerHTML = `
-    <div class="rp-prop"><label>X</label><input class="rp-num" type="number" value="${Math.round(obj.left??0)}" onchange="setProp('left',this.value)" /></div>
-    <div class="rp-prop"><label>Y</label><input class="rp-num" type="number" value="${Math.round(obj.top??0)}" onchange="setProp('top',this.value)" /></div>
-    ${obj.width?`<div class="rp-prop"><label>Width</label><input class="rp-num" type="number" value="${Math.round(obj.width??0)}" onchange="setProp('width',this.value)" /></div>`:''}
-    <div class="rp-prop">
-      <label>Opacity <span style="float:right;color:var(--text)">${op}%</span></label>
-      <input class="rp-range" type="range" min="0" max="100" value="${op}" oninput="setProp('opacity',this.value/100);this.previousElementSibling.querySelector('span').textContent=this.value+'%'" />
-    </div>
-    ${obj.type==='rect'?`<div class="rp-prop"><label>Radius</label><input class="rp-num" type="number" value="${rx}" onchange="setRoundness(this.value)" /></div>`:''}
-    ${obj.fontSize?`<div class="rp-prop"><label>Font size</label><input class="rp-num" type="number" value="${obj.fontSize}" onchange="setProp('fontSize',this.value)" /></div>`:''}
-  `;
-}
-
-function setProp(prop, val) {
-  const obj = fc?.getActiveObject();
-  if (obj) { obj.set(prop, parseFloat(val)); fc.renderAll(); scheduleAutoSave(); }
-}
-
-function setRoundness(val) {
-  const obj = fc?.getActiveObject();
-  if (obj) { obj.set('rx', parseFloat(val)); obj.set('ry', parseFloat(val)); fc.renderAll(); }
-}
-
-// ============================================================
-// ZOOM
-// ============================================================
-function applyZoom() {
-  const wrap = document.getElementById('canvas-wrap');
-  wrap.style.transform = `scale(${zoom})`;
-  wrap.style.transformOrigin = 'center center';
-  document.getElementById('zoomVal').textContent = Math.round(zoom*100)+'%';
-}
-
-function changeZoom(delta) {
-  zoom = Math.max(0.2, Math.min(2, zoom + delta));
-  applyZoom();
-}
-
-// ============================================================
-// AUTO-SAVE
-// ============================================================
-function scheduleAutoSave() {
-  if (autoSaveTimer) clearTimeout(autoSaveTimer);
-  autoSaveTimer = setTimeout(doSave, 1500);
-}
-
-async function doSave() {
-  saveCurrent();
-  const el = document.getElementById('saveStatus');
-  el.textContent = '● Saving…'; el.className = 'tb-save saving';
-  await new Promise(r => setTimeout(r, 600));
-  el.textContent = `✓ Saved ${new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}`;
-  el.className = 'tb-save';
-}
-
-// ============================================================
-// KEYBOARD
-// ============================================================
-function onKey(e) {
-  const tag = e.target.tagName;
-  if (tag === 'INPUT' || tag === 'TEXTAREA') return;
-  if ((e.metaKey||e.ctrlKey) && e.key === 's') { e.preventDefault(); doSave(); }
-  if ((e.key === 'Delete' || e.key === 'Backspace') && fc?.getActiveObject()) deleteSelected();
-  if (e.key === 'v' || e.key === 'V') setTool('select');
-  if (e.key === 't' || e.key === 'T') addText();
-}
-
-// ============================================================
-// EMOJI
-// ============================================================
-function toggleEmoji() {
-  const p = document.getElementById('emojiPicker');
-  p.style.display = p.style.display === 'none' ? 'flex' : 'none';
-}
-
-function setEmoji(btn) {
-  document.getElementById('emojiBtn').textContent = btn.textContent;
-  document.getElementById('emojiPicker').style.display = 'none';
-}
-
-// ============================================================
-// SIDE PANEL
-// ============================================================
-function setSidePanel(id) {
-  document.querySelectorAll('.side-btn').forEach(b => b.classList.remove('active'));
-  event.currentTarget.classList.add('active');
-}
-
-// ============================================================
-// TEMPLATE MODAL
-// ============================================================
-function toggleTemplates() {
-  const m = document.getElementById('templateModal');
-  m.style.display = m.style.display === 'none' ? 'flex' : 'none';
-  if (pages.length > 0) document.getElementById('cancelTplBtn').style.display = 'inline-block';
-}
-
-// ============================================================
-// PUBLISH
-// ============================================================
-function publishDoc() {
-  const el = document.getElementById('docStatus');
-  el.textContent = 'LIVE'; el.className = 'tb-status live';
-  const btn = document.querySelector('.tb-btn.primary');
-  btn.textContent = 'Published ✓';
-  setTimeout(() => { btn.textContent = 'Publish'; }, 2000);
-}
-
-// ============================================================
-// PRESENT
-// ============================================================
-function presentMode() {
-  const modal = document.getElementById('presentModal');
-  modal.classList.add('open');
-  const wrap = document.getElementById('present-canvas-wrap');
-  wrap.innerHTML = '';
-  const canvas = document.createElement('canvas');
-  const scale = Math.min(window.innerWidth*0.9/CANVAS_W, window.innerHeight*0.85/CANVAS_H);
-  canvas.width = CANVAS_W * scale;
-  canvas.height = CANVAS_H * scale;
-  wrap.appendChild(canvas);
-  const ctx = canvas.getContext('2d');
-  ctx.scale(scale, scale);
-  // Render current page
-  const pCanvas = document.getElementById('main-canvas');
-  ctx.drawImage(pCanvas, 0, 0);
-}
-
-function closePresentMode() {
-  document.getElementById('presentModal').classList.remove('open');
-}
-
-// ============================================================
-// SHARE DRAWER
-// ============================================================
-function toggleShare() {
-  const drawer = document.getElementById('share-drawer');
-  shareOpen = !shareOpen;
-  drawer.classList.toggle('open', shareOpen);
-}
-
-function buildShareUI() {
-  renderShareLinks();
-}
-
-function renderShareLinks() {
-  const body = document.getElementById('shareBody');
-  const linksLabel = document.getElementById('linksLabel');
-  const linksList = document.getElementById('linksList');
-  const newLinkArea = document.getElementById('newLinkArea');
-  document.getElementById('shareSubtitle').textContent = `${shareLinks.length} link${shareLinks.length!==1?'s':''} created`;
-
-  if (shareLinks.length > 0) {
-    linksLabel.style.display = 'block';
-    linksList.innerHTML = shareLinks.map((link, i) => `
-      <div class="share-link-card">
-        <div class="slc-top">
-          <span class="slc-name">${link.label}</span>
-          <span class="slc-status ${link.active?'on':'off'}">${link.active?'Active':'Off'}</span>
-        </div>
-        <div class="slc-url-row">
-          <div class="slc-url">${link.url}</div>
-          <button class="slc-copy" id="copy-${i}" onclick="copyLink(${i})">Copy</button>
-        </div>
-        <div class="slc-meta">
-          <span>👁 ${link.views} views</span>
-          ${link.email?'<span>📧 Email req.</span>':''}
-          ${link.password?'<span>🔒 Password</span>':''}
-        </div>
-        <div class="slc-actions">
-          <button class="slc-toggle ${link.active?'disable':'enable'}" onclick="toggleLink(${i})">${link.active?'Disable link':'Enable link'}</button>
-        </div>
-      </div>
-    `).join('');
-  } else {
-    linksLabel.style.display = 'none';
-    linksList.innerHTML = '';
-  }
-
-  if (showNewLinkForm) {
-    newLinkArea.innerHTML = `
-      <div class="new-link-form solid">
-        <div class="nlf-title">New share link</div>
-        <div class="nlf-field"><label>Link label</label><input type="text" id="nlf-label" placeholder="e.g. Sequoia meeting" /></div>
-        <div class="nlf-field"><label>Password (optional)</label><input type="password" id="nlf-pw" placeholder="Leave empty for no password" /></div>
-        <div class="nlf-toggle-row">
-          <span class="nlf-toggle-label">Require email to view</span>
-          <label class="toggle-sw"><input type="checkbox" id="nlf-email"><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
-        </div>
-        <div class="nlf-toggle-row">
-          <span class="nlf-toggle-label">Allow download</span>
-          <label class="toggle-sw"><input type="checkbox" id="nlf-dl"><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
-        </div>
-        <div class="nlf-actions">
-          <button class="nlf-btn primary" onclick="createLink()">Create link</button>
-          <button class="nlf-btn ghost" onclick="showNewLinkForm=false;renderShareLinks()">Cancel</button>
-        </div>
-      </div>
-    `;
-  } else {
-    newLinkArea.innerHTML = `<button class="add-link-btn" onclick="showNewLinkForm=true;renderShareLinks()"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1v12M1 7h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg> Create new link</button>`;
-  }
-}
-
-function createLink() {
-  const label = document.getElementById('nlf-label').value || 'Share link';
-  const pw = document.getElementById('nlf-pw').value;
-  const email = document.getElementById('nlf-email').checked;
-  const token = Math.random().toString(36).slice(2,16);
-  shareLinks.push({ label, url:`https://app.backread.com/s/${token}`, active:true, views:0, email, password:pw, download: document.getElementById('nlf-dl').checked });
-  showNewLinkForm = false;
-  renderShareLinks();
-}
-
-function copyLink(i) {
-  const url = shareLinks[i].url;
-  navigator.clipboard.writeText(url).catch(()=>{});
-  const btn = document.getElementById(`copy-${i}`);
-  btn.textContent = '✓ Copied'; btn.classList.add('copied');
-  setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 2000);
-}
-
-function toggleLink(i) {
-  shareLinks[i].active = !shareLinks[i].active;
-  renderShareLinks();
-}
-
-// ============================================================
-// UTILS
-// ============================================================
-function rgbToHex(color) {
-  if (!color) return '#f0f1f5';
-  if (color.startsWith('#')) return color;
-  const m = color.match(/\d+/g);
-  if (!m) return '#f0f1f5';
-  return '#' + m.slice(0,3).map(x => (+x).toString(16).padStart(2,'0')).join('');
-}
-</script>
-</body>
-</html>
