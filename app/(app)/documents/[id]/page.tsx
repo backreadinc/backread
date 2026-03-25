@@ -1,618 +1,1201 @@
-'use client'
-import { useEffect, useState, useRef, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabase/client'
-import { buildShareUrl, generateToken } from '@/lib/utils'
-import Button from '@/components/ui/Button'
-import Input from '@/components/ui/Input'
-import { Badge, Toggle } from '@/components/ui'
-import AIDrafter from '@/components/editor/AIDrafter'
-import type { Database } from '@/lib/supabase/client'
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Backread Editor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.0/fabric.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f0f1f5;
+  --surface:#ffffff;
+  --surface2:#f8f9fb;
+  --border:#e2e4ea;
+  --border2:#d0d3dc;
+  --text:#0d0f1a;
+  --text2:#4b5068;
+  --text3:#8b91a8;
+  --accent:#7c3aed;
+  --accent-light:#ede9fe;
+  --accent2:#06b6d4;
+  --danger:#ef4444;
+  --success:#22c55e;
+  --radius:8px;
+  --radius-lg:12px;
+  --shadow:0 1px 3px rgba(0,0,0,.08),0 4px 16px rgba(0,0,0,.06);
+  --shadow-lg:0 8px 32px rgba(0,0,0,.12),0 2px 8px rgba(0,0,0,.06);
+}
+html,body{height:100%;overflow:hidden;font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text)}
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:99px}
 
-type Document = Database['public']['Tables']['documents']['Row']
-type ShareLink = Database['public']['Tables']['share_links']['Row']
+/* ========== APP SHELL ========== */
+#app{display:flex;flex-direction:column;height:100vh}
 
-const EMOJIS = ['📄','🚀','💼','📊','📋','🎯','💡','🔍','📈','🤝','🏢','⚡','🌟','🔒','📝']
-const CANVAS_W = 960
-const CANVAS_H = 540
-const FONTS = ['Inter','Georgia','Playfair Display','Montserrat','Roboto Mono','Lato','Oswald','Raleway']
+/* ========== TOP BAR ========== */
+#topbar{
+  height:52px;display:flex;align-items:center;gap:0;
+  background:var(--surface);border-bottom:1px solid var(--border);
+  padding:0 12px;flex-shrink:0;position:relative;z-index:100;
+  box-shadow:0 1px 0 var(--border);
+}
+.tb-logo{display:flex;align-items:center;gap:8px;padding:0 8px;text-decoration:none}
+.tb-logo-mark{width:28px;height:28px;background:var(--accent);border-radius:7px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.tb-logo-mark svg{width:16px;height:16px}
+.tb-logo-name{font-size:13.5px;font-weight:700;color:var(--text);letter-spacing:-.01em}
+.tb-sep{width:1px;height:28px;background:var(--border);margin:0 6px;flex-shrink:0}
+.tb-doc-area{display:flex;align-items:center;gap:6px;flex:1;min-width:0;max-width:320px}
+.tb-emoji-btn{font-size:18px;background:none;border:none;cursor:pointer;padding:3px 4px;border-radius:6px;line-height:1;transition:background .12s}
+.tb-emoji-btn:hover{background:var(--surface2)}
+.tb-doc-title{border:none;outline:none;font:600 14px/1 'DM Sans',sans-serif;color:var(--text);background:transparent;flex:1;min-width:0;padding:4px 6px;border-radius:6px;transition:background .12s}
+.tb-doc-title:hover{background:var(--surface2)}
+.tb-doc-title:focus{background:var(--surface2);box-shadow:0 0 0 2px var(--accent-light)}
+.tb-status{font-size:10.5px;font-weight:600;font-family:'DM Mono',monospace;padding:2px 8px;border-radius:99px;flex-shrink:0}
+.tb-status.live{background:#dcfce7;color:#15803d}
+.tb-status.draft{background:var(--surface2);color:var(--text3)}
+.tb-actions{display:flex;align-items:center;gap:6px;margin-left:auto;flex-shrink:0}
+.tb-save{font-size:10.5px;color:var(--text3);font-family:'DM Mono',monospace;min-width:90px;text-align:right}
+.tb-save.saving{color:var(--accent)}
+.tb-btn{height:32px;padding:0 12px;border-radius:var(--radius);font:500 13px 'DM Sans',sans-serif;border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;display:flex;align-items:center;gap:6px;transition:all .12s;white-space:nowrap}
+.tb-btn:hover{background:var(--surface2);border-color:var(--border2);color:var(--text)}
+.tb-btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600;box-shadow:0 2px 8px rgba(124,58,237,.25)}
+.tb-btn.primary:hover{background:#6d28d9;box-shadow:0 2px 12px rgba(124,58,237,.35)}
+.tb-btn svg{width:14px;height:14px;flex-shrink:0}
+.tb-avatar{width:30px;height:30px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;cursor:pointer;flex-shrink:0}
+
+/* ========== TOOLBAR ========== */
+#toolbar{
+  height:46px;background:var(--surface);border-bottom:1px solid var(--border);
+  display:flex;align-items:center;padding:0 10px;gap:2px;flex-shrink:0;
+  overflow-x:auto;
+}
+.tool-group{display:flex;align-items:center;gap:1px}
+.tool-div{width:1px;height:22px;background:var(--border);margin:0 6px;flex-shrink:0}
+.tbtn{width:32px;height:32px;border:none;background:transparent;color:var(--text2);border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .12s;flex-shrink:0;position:relative}
+.tbtn:hover{background:var(--surface2);color:var(--text)}
+.tbtn.active{background:var(--accent-light);color:var(--accent)}
+.tbtn svg{width:15px;height:15px;pointer-events:none}
+.tbtn[title]:hover::after{content:attr(title);position:absolute;bottom:-28px;left:50%;transform:translateX(-50%);background:var(--text);color:#fff;font-size:11px;padding:2px 7px;border-radius:4px;white-space:nowrap;pointer-events:none;z-index:999;font-family:'DM Sans',sans-serif}
+.font-select{height:30px;border:1px solid var(--border);border-radius:6px;padding:0 24px 0 8px;font:400 12px 'DM Sans',sans-serif;color:var(--text);background:var(--surface) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%238b91a8'/%3E%3C/svg%3E") no-repeat right 7px center;-webkit-appearance:none;cursor:pointer;outline:none;min-width:130px}
+.font-select:focus{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-light)}
+.font-size-input{width:48px;height:30px;border:1px solid var(--border);border-radius:6px;padding:0 6px;font:400 12px 'DM Mono',monospace;color:var(--text);text-align:center;outline:none;background:var(--surface)}
+.font-size-input:focus{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-light)}
+.fmt-btn{width:28px;height:28px;border:none;background:transparent;color:var(--text2);border-radius:5px;cursor:pointer;font:600 14px 'DM Sans',sans-serif;display:flex;align-items:center;justify-content:center;transition:all .12s}
+.fmt-btn:hover{background:var(--surface2);color:var(--text)}
+.fmt-btn.on{background:var(--accent-light);color:var(--accent)}
+.color-swatch-wrap{display:flex;flex-direction:column;align-items:center;gap:2px}
+.color-swatch-wrap label{font-size:8.5px;color:var(--text3);font-family:'DM Mono',monospace;letter-spacing:.04em;text-transform:uppercase}
+input[type=color]{width:26px;height:26px;border:1.5px solid var(--border);border-radius:6px;cursor:pointer;padding:0;-webkit-appearance:none}
+input[type=color]::-webkit-color-swatch-wrapper{padding:2px}
+input[type=color]::-webkit-color-swatch{border:none;border-radius:3px}
+.zoom-control{display:flex;align-items:center;gap:4px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:2px 8px;height:30px;margin-left:auto}
+.zoom-btn{background:none;border:none;cursor:pointer;color:var(--text2);font-size:18px;line-height:1;width:20px;height:20px;display:flex;align-items:center;justify-content:center;border-radius:4px;transition:all .12s}
+.zoom-btn:hover{background:var(--border);color:var(--text)}
+.zoom-val{font:500 11px 'DM Mono',monospace;color:var(--text2);min-width:36px;text-align:center}
+
+/* ========== BODY ========== */
+#body{display:flex;flex:1;overflow:hidden}
+
+/* ========== LEFT PANEL ========== */
+#left-panel{
+  width:64px;flex-shrink:0;background:var(--surface);
+  border-right:1px solid var(--border);
+  display:flex;flex-direction:column;align-items:center;
+  padding:8px 0;gap:2px;overflow-y:auto;
+}
+.side-btn{
+  width:48px;height:52px;border:none;background:transparent;
+  border-radius:var(--radius);cursor:pointer;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:4px;transition:all .15s;
+  color:var(--text2);position:relative;
+}
+.side-btn:hover{background:var(--surface2);color:var(--text)}
+.side-btn.active{background:var(--accent-light);color:var(--accent)}
+.side-btn svg{width:20px;height:20px}
+.side-btn span{font-size:9.5px;font-weight:500;line-height:1;letter-spacing:.01em}
+.side-div{width:32px;height:1px;background:var(--border);margin:4px 0}
+.side-badge{position:absolute;top:6px;right:6px;width:7px;height:7px;border-radius:50%;background:var(--accent)}
+
+/* ========== PAGE STRIP ========== */
+#page-strip{
+  width:148px;flex-shrink:0;background:var(--surface);
+  border-right:1px solid var(--border);display:flex;flex-direction:column;
+}
+.ps-header{
+  height:44px;display:flex;align-items:center;justify-content:space-between;
+  padding:0 12px;border-bottom:1px solid var(--border);flex-shrink:0;
+}
+.ps-label{font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em}
+.ps-add{width:22px;height:22px;background:var(--accent);border:none;border-radius:5px;color:#fff;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .12s;line-height:1;box-shadow:0 2px 6px rgba(124,58,237,.3)}
+.ps-add:hover{background:#6d28d9;transform:scale(1.05)}
+.ps-list{flex:1;overflow-y:auto;padding:10px 8px;display:flex;flex-direction:column;gap:8px}
+.ps-page{
+  cursor:pointer;border-radius:var(--radius);border:2px solid var(--border);
+  overflow:hidden;transition:all .15s;background:#fff;position:relative;
+}
+.ps-page:hover{border-color:var(--border2);box-shadow:0 2px 8px rgba(0,0,0,.08)}
+.ps-page.active{border-color:var(--accent);box-shadow:0 0 0 3px rgba(124,58,237,.12)}
+.ps-page-thumb{width:100%;aspect-ratio:16/9;background:#fff;min-height:72px}
+.ps-page-footer{
+  position:absolute;bottom:0;left:0;right:0;padding:2px 6px;
+  background:rgba(255,255,255,.92);display:flex;justify-content:space-between;align-items:center;
+  backdrop-filter:blur(4px);
+}
+.ps-page-num{font:600 9px 'DM Mono',monospace;color:var(--text3)}
+.ps-page-del{
+  width:14px;height:14px;border-radius:3px;background:var(--danger);border:none;
+  color:#fff;font-size:9px;cursor:pointer;display:none;align-items:center;justify-content:center;
+}
+.ps-page:hover .ps-page-del{display:flex}
+.ps-footer{height:36px;border-top:1px solid var(--border);display:flex;align-items:center;padding:0 12px;flex-shrink:0}
+.ps-count{font-size:10px;color:var(--text3);font-family:'DM Mono',monospace}
+
+/* ========== CANVAS AREA ========== */
+#canvas-area{
+  flex:1;display:flex;align-items:center;justify-content:center;
+  background:var(--bg);overflow:auto;position:relative;
+}
+#canvas-area::before{
+  content:'';position:absolute;inset:0;
+  background-image:radial-gradient(circle,var(--border2) 1px,transparent 1px);
+  background-size:24px 24px;opacity:.5;pointer-events:none;
+}
+#canvas-wrap{
+  position:relative;z-index:1;
+  box-shadow:var(--shadow-lg),0 0 0 1px var(--border);
+  border-radius:2px;
+  transition:transform .1s;
+}
+#canvas-wrap canvas{display:block}
+#drop-overlay{
+  position:absolute;inset:0;background:rgba(124,58,237,.05);
+  border:2px dashed var(--accent);border-radius:var(--radius-lg);
+  display:none;align-items:center;justify-content:center;z-index:200;pointer-events:none;
+}
+#drop-overlay span{
+  background:var(--surface);color:var(--accent);font-weight:600;font-size:15px;
+  padding:10px 22px;border-radius:var(--radius-lg);box-shadow:var(--shadow);
+}
+#page-nav{
+  position:absolute;bottom:20px;left:50%;transform:translateX(-50%);
+  background:var(--surface);border:1px solid var(--border);border-radius:22px;
+  padding:5px 14px;display:flex;align-items:center;gap:8px;z-index:10;
+  box-shadow:var(--shadow);
+}
+.pnav-btn{background:none;border:none;cursor:pointer;color:var(--text2);font-size:20px;line-height:1;padding:0 2px;border-radius:4px;transition:all .12s}
+.pnav-btn:hover{background:var(--surface2);color:var(--text)}
+.pnav-btn:disabled{opacity:.3;cursor:default}
+.pnav-text{font:500 12px 'DM Mono',monospace;color:var(--text2);min-width:48px;text-align:center}
+
+/* ========== RIGHT PANEL (Properties) ========== */
+#right-panel{
+  width:0;flex-shrink:0;background:var(--surface);
+  border-left:1px solid var(--border);display:flex;flex-direction:column;
+  overflow:hidden;transition:width .2s ease;
+}
+#right-panel.open{width:200px}
+.rp-header{padding:10px 14px;border-bottom:1px solid var(--border);font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;flex-shrink:0}
+.rp-body{padding:14px;display:flex;flex-direction:column;gap:14px;overflow-y:auto;flex:1}
+.rp-prop label{font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:5px}
+.rp-num{width:100%;height:30px;background:var(--surface2);border:1.5px solid var(--border);color:var(--text);border-radius:7px;padding:0 10px;font:400 12px 'DM Mono',monospace;outline:none}
+.rp-num:focus{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-light)}
+.rp-range{width:100%;accent-color:var(--accent)}
+
+/* ========== MODALS ========== */
+.modal-bg{
+  position:fixed;inset:0;background:rgba(13,15,26,.5);z-index:1000;
+  display:flex;align-items:center;justify-content:center;
+  backdrop-filter:blur(8px);animation:fadein .15s ease;
+}
+@keyframes fadein{from{opacity:0}to{opacity:1}}
+.modal{
+  background:var(--surface);border-radius:20px;padding:40px 44px;
+  width:min(900px,95vw);max-height:90vh;overflow-y:auto;
+  box-shadow:0 32px 80px rgba(0,0,0,.2),0 0 0 1px var(--border);
+  animation:slideup .2s ease;
+}
+@keyframes slideup{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.modal-icon{width:36px;height:36px;background:var(--accent-light);border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:18px;margin-bottom:10px}
+.modal-badge{font-size:10px;font-weight:700;color:var(--accent);letter-spacing:.1em;font-family:'DM Mono',monospace;margin-bottom:8px;text-transform:uppercase}
+.modal-title{font-size:28px;font-weight:700;letter-spacing:-.03em;margin-bottom:6px;color:var(--text)}
+.modal-sub{font-size:14px;color:var(--text2);margin-bottom:32px;line-height:1.5}
+.tpl-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:28px}
+.tpl-card{
+  border:2px solid var(--border);border-radius:14px;padding:22px 20px;
+  cursor:pointer;text-align:left;font-family:inherit;transition:all .18s;
+  background:var(--surface);position:relative;overflow:hidden;
+}
+.tpl-card::before{content:'';position:absolute;inset:0;background:var(--tpl-bg,transparent);opacity:.6}
+.tpl-card:hover{transform:translateY(-3px);box-shadow:0 12px 32px rgba(0,0,0,.1);border-color:var(--border2)}
+.tpl-card-inner{position:relative;z-index:1}
+.tpl-emoji{font-size:30px;margin-bottom:12px;display:block}
+.tpl-name{font-size:16px;font-weight:700;margin-bottom:4px;color:var(--text)}
+.tpl-desc{font-size:12px;color:var(--text2);margin-bottom:12px;line-height:1.4}
+.tpl-pages{
+  font-size:10px;font-weight:700;font-family:'DM Mono',monospace;
+  padding:2px 9px;border-radius:5px;background:rgba(255,255,255,.85);
+  display:inline-block;
+}
+.modal-footer{display:flex;justify-content:center;gap:10px}
+.modal-btn{
+  height:40px;padding:0 28px;border-radius:10px;font:600 13px 'DM Sans',sans-serif;
+  border:2px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;transition:all .14s;
+}
+.modal-btn:hover{background:var(--surface2);border-color:var(--border2);color:var(--text)}
+
+/* ========== SHARE DRAWER ========== */
+#share-drawer{
+  position:fixed;top:0;right:-420px;width:420px;height:100vh;
+  background:var(--surface);border-left:1px solid var(--border);
+  box-shadow:-8px 0 48px rgba(0,0,0,.12);z-index:200;
+  display:flex;flex-direction:column;transition:right .25s ease;
+}
+#share-drawer.open{right:0}
+.sd-header{padding:20px 24px;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;justify-content:space-between;flex-shrink:0}
+.sd-title{font-size:16px;font-weight:700;color:var(--text);margin-bottom:3px}
+.sd-sub{font-size:12px;color:var(--text3)}
+.sd-close{width:30px;height:30px;background:var(--surface2);border:none;cursor:pointer;border-radius:7px;color:var(--text2);display:flex;align-items:center;justify-content:center;transition:all .12s}
+.sd-close:hover{background:var(--border);color:var(--text)}
+.sd-body{flex:1;overflow-y:auto;padding:20px 24px}
+.sd-section-label{font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px}
+.share-link-card{border:1.5px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:10px;transition:border-color .12s}
+.share-link-card:hover{border-color:var(--border2)}
+.slc-top{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.slc-name{flex:1;font-size:13px;font-weight:600;color:var(--text)}
+.slc-status{font-size:10px;font-weight:700;padding:2px 8px;border-radius:99px}
+.slc-status.on{background:#dcfce7;color:#15803d}
+.slc-status.off{background:var(--surface2);color:var(--text3)}
+.slc-url-row{display:flex;gap:6px;margin-bottom:10px}
+.slc-url{flex:1;font:400 11px 'DM Mono',monospace;color:var(--text2);background:var(--surface2);padding:5px 9px;border-radius:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border:1px solid var(--border)}
+.slc-copy{height:28px;padding:0 11px;background:var(--surface2);border:1.5px solid var(--border);border-radius:7px;font:600 11px 'DM Sans',sans-serif;color:var(--text2);cursor:pointer;white-space:nowrap;transition:all .12s}
+.slc-copy:hover{background:var(--surface);border-color:var(--border2)}
+.slc-copy.copied{background:#f0fdf4;border-color:#86efac;color:#15803d}
+.slc-meta{display:flex;gap:10px;font-size:11px;color:var(--text3);flex-wrap:wrap}
+.slc-actions{margin-top:10px;display:flex;justify-content:flex-end}
+.slc-toggle{font:500 12px 'DM Sans',sans-serif;background:none;border:none;cursor:pointer;transition:color .12s}
+.slc-toggle.disable{color:var(--danger)}
+.slc-toggle.enable{color:var(--success)}
+.new-link-form{border:2px dashed var(--border);border-radius:12px;padding:16px;margin-top:6px}
+.new-link-form.solid{border-style:solid;border-color:var(--border)}
+.nlf-title{font-size:13px;font-weight:700;color:var(--text);margin-bottom:14px}
+.nlf-field{margin-bottom:10px}
+.nlf-field label{font-size:11px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px}
+.nlf-field input[type=text],.nlf-field input[type=password]{
+  width:100%;height:34px;border:1.5px solid var(--border);border-radius:7px;
+  padding:0 10px;font:400 13px 'DM Sans',sans-serif;color:var(--text);outline:none;
+  background:var(--surface);transition:border-color .12s;
+}
+.nlf-field input:focus{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-light)}
+.nlf-toggle-row{display:flex;align-items:center;justify-content:space-between;padding:6px 0}
+.nlf-toggle-label{font-size:12px;color:var(--text2);font-weight:500}
+.toggle-sw{position:relative;width:34px;height:19px;cursor:pointer}
+.toggle-sw input{opacity:0;width:0;height:0;position:absolute}
+.toggle-track{position:absolute;inset:0;background:var(--border2);border-radius:99px;transition:background .2s}
+.toggle-thumb{position:absolute;width:15px;height:15px;background:#fff;border-radius:50%;top:2px;left:2px;transition:transform .2s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+.toggle-sw input:checked ~ .toggle-track{background:var(--accent)}
+.toggle-sw input:checked ~ .toggle-thumb{transform:translateX(15px)}
+.nlf-actions{display:flex;gap:8px;margin-top:12px}
+.nlf-btn{height:32px;padding:0 16px;border-radius:7px;font:600 12px 'DM Sans',sans-serif;cursor:pointer;transition:all .12s}
+.nlf-btn.primary{background:var(--accent);border:none;color:#fff;box-shadow:0 2px 6px rgba(124,58,237,.3)}
+.nlf-btn.primary:hover{background:#6d28d9}
+.nlf-btn.ghost{background:none;border:1.5px solid var(--border);color:var(--text2)}
+.nlf-btn.ghost:hover{background:var(--surface2);border-color:var(--border2)}
+.add-link-btn{
+  width:100%;height:42px;background:none;border:2px dashed var(--border);
+  border-radius:12px;cursor:pointer;font:500 13px 'DM Sans',sans-serif;color:var(--text3);
+  display:flex;align-items:center;justify-content:center;gap:6px;transition:all .14s;
+}
+.add-link-btn:hover{border-color:var(--border2);color:var(--text2);background:var(--surface2)}
+
+/* ========== EMOJI PICKER ========== */
+.emoji-picker{
+  position:absolute;top:100%;left:0;z-index:500;
+  background:var(--surface);border:1px solid var(--border);border-radius:12px;
+  padding:10px;display:flex;flex-wrap:wrap;gap:3px;width:244px;
+  box-shadow:var(--shadow-lg);animation:fadeup .12s ease;
+}
+@keyframes fadeup{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
+.emoji-btn{font-size:20px;background:none;border:none;cursor:pointer;padding:4px;border-radius:6px;line-height:1;transition:all .1s}
+.emoji-btn:hover{background:var(--surface2);transform:scale(1.2)}
+
+/* Present modal */
+.present-modal{
+  position:fixed;inset:0;background:#000;z-index:2000;
+  display:none;flex-direction:column;align-items:center;justify-content:center;
+}
+.present-modal.open{display:flex}
+.present-close{
+  position:absolute;top:16px;right:16px;width:36px;height:36px;
+  background:rgba(255,255,255,.1);border:none;color:#fff;border-radius:8px;
+  cursor:pointer;font-size:20px;display:flex;align-items:center;justify-content:center;z-index:1;
+  transition:background .12s;
+}
+.present-close:hover{background:rgba(255,255,255,.2)}
+#present-canvas-wrap{max-width:90vw;max-height:85vh}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- TOP BAR -->
+  <div id="topbar">
+    <a class="tb-logo" href="#">
+      <div class="tb-logo-mark">
+        <svg viewBox="0 0 16 16" fill="none"><path d="M3 2h10a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1z" stroke="white" stroke-width="1.3"/><path d="M5 6h6M5 9h4" stroke="white" stroke-width="1.3" stroke-linecap="round"/></svg>
+      </div>
+      <span class="tb-logo-name">Backread</span>
+    </a>
+    <div class="tb-sep"></div>
+    <div class="tb-doc-area" style="position:relative">
+      <button class="tb-emoji-btn" id="emojiBtn" onclick="toggleEmoji()">📄</button>
+      <div class="emoji-picker" id="emojiPicker" style="display:none">
+        <button class="emoji-btn" onclick="setEmoji(this)">📄</button>
+        <button class="emoji-btn" onclick="setEmoji(this)">🚀</button>
+        <button class="emoji-btn" onclick="setEmoji(this)">💼</button>
+        <button class="emoji-btn" onclick="setEmoji(this)">📊</button>
+        <button class="emoji-btn" onclick="setEmoji(this)">📋</button>
+        <button class="emoji-btn" onclick="setEmoji(this)">🎯</button>
+        <button class="emoji-btn" onclick="setEmoji(this)">💡</button>
+        <button class="emoji-btn" onclick="setEmoji(this)">🔍</button>
+        <button class="emoji-btn" onclick="setEmoji(this)">📈</button>
+        <button class="emoji-btn" onclick="setEmoji(this)">🤝</button>
+        <button class="emoji-btn" onclick="setEmoji(this)">⚡</button>
+        <button class="emoji-btn" onclick="setEmoji(this)">🌟</button>
+        <button class="emoji-btn" onclick="setEmoji(this)">🔒</button>
+        <button class="emoji-btn" onclick="setEmoji(this)">📝</button>
+        <button class="emoji-btn" onclick="setEmoji(this)">🎨</button>
+      </div>
+      <input class="tb-doc-title" id="docTitle" value="Untitled document" />
+      <span class="tb-status draft" id="docStatus">DRAFT</span>
+    </div>
+    <div class="tb-actions">
+      <span class="tb-save" id="saveStatus"></span>
+      <button class="tb-btn" onclick="toggleTemplates()">
+        <svg viewBox="0 0 16 16" fill="none"><rect x="1.5" y="1.5" width="13" height="13" rx="2" stroke="currentColor" stroke-width="1.3"/><path d="M1.5 6h13M6 6v9" stroke="currentColor" stroke-width="1.3"/></svg>
+        Templates
+      </button>
+      <button class="tb-btn" onclick="presentMode()">
+        <svg viewBox="0 0 16 16" fill="none"><rect x="1" y="2.5" width="12" height="8" rx="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M5 13h6M8 10.5V13" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+        Present
+      </button>
+      <button class="tb-btn" id="shareBtn" onclick="toggleShare()">
+        <svg viewBox="0 0 16 16" fill="none"><circle cx="13" cy="3" r="1.5" stroke="currentColor" stroke-width="1.2"/><circle cx="13" cy="13" r="1.5" stroke="currentColor" stroke-width="1.2"/><circle cx="3" cy="8" r="1.5" stroke="currentColor" stroke-width="1.2"/><path d="M4.4 7.3L11.6 4M4.4 8.7l7.2 3.3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+        Share
+      </button>
+      <button class="tb-btn primary" onclick="publishDoc()">Publish</button>
+      <div class="tb-avatar">M</div>
+    </div>
+  </div>
+
+  <!-- TOOLBAR -->
+  <div id="toolbar">
+    <div class="tool-group">
+      <button class="tbtn active" id="tool-select" title="Select (V)" onclick="setTool('select')">
+        <svg viewBox="0 0 16 16" fill="none"><path d="M3.5 2.5l9 5-5 1.5-2.5 5-1.5-11.5z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>
+      </button>
+      <button class="tbtn" id="tool-text" title="Text (T)" onclick="addText()">
+        <svg viewBox="0 0 16 16" fill="none"><path d="M2.5 4.5h11M8 4.5v8M5 12.5h6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+      </button>
+      <button class="tbtn" id="tool-rect" title="Rectangle" onclick="addShape('rect')">
+        <svg viewBox="0 0 16 16" fill="none"><rect x="2" y="3.5" width="12" height="9" rx="1.5" stroke="currentColor" stroke-width="1.3"/></svg>
+      </button>
+      <button class="tbtn" id="tool-circle" title="Ellipse" onclick="addShape('circle')">
+        <svg viewBox="0 0 16 16" fill="none"><ellipse cx="8" cy="8" rx="5.5" ry="5.5" stroke="currentColor" stroke-width="1.3"/></svg>
+      </button>
+      <button class="tbtn" id="tool-triangle" title="Triangle" onclick="addShape('triangle')">
+        <svg viewBox="0 0 16 16" fill="none"><path d="M8 2.5L14.5 13.5H1.5L8 2.5z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>
+      </button>
+      <button class="tbtn" id="tool-draw" title="Draw (D)" onclick="setTool('draw')">
+        <svg viewBox="0 0 16 16" fill="none"><path d="M3 13l2-1.5L13 4l-2-2-8 8.5-1.5 2 1.5.5zM11 4l1 1" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+    </div>
+    <div class="tool-div"></div>
+    <div class="tool-group">
+      <label class="tbtn" title="Upload image" style="cursor:pointer">
+        <svg viewBox="0 0 16 16" fill="none"><rect x="1" y="3" width="14" height="10" rx="1.5" stroke="currentColor" stroke-width="1.3"/><circle cx="5.5" cy="7" r="1.2" fill="currentColor"/><path d="M1 11.5l4-4 3.5 3.5 2.5-3 3 4" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg>
+        <input type="file" accept="image/*" style="display:none" onchange="uploadImage(event)">
+      </label>
+    </div>
+    <div class="tool-div"></div>
+    <div class="tool-group">
+      <select class="font-select" id="fontFamily" onchange="updateFont()">
+        <option value="DM Sans">DM Sans</option>
+        <option value="Georgia">Georgia</option>
+        <option value="Playfair Display">Playfair Display</option>
+        <option value="Montserrat">Montserrat</option>
+        <option value="Courier New">Courier New</option>
+        <option value="Impact">Impact</option>
+        <option value="Trebuchet MS">Trebuchet MS</option>
+        <option value="Arial">Arial</option>
+      </select>
+      <input class="font-size-input" id="fontSize" type="number" value="18" min="6" max="200" onchange="updateFontSize()" />
+      <button class="fmt-btn" id="fmt-bold" title="Bold" onclick="toggleFormat('fontWeight','bold','normal')"><b>B</b></button>
+      <button class="fmt-btn" id="fmt-italic" title="Italic" onclick="toggleFormat('fontStyle','italic','normal')"><i>I</i></button>
+      <button class="fmt-btn" id="fmt-under" title="Underline" onclick="toggleUnderline()"><u>U</u></button>
+    </div>
+    <div class="tool-div"></div>
+    <div class="tool-group" style="gap:10px">
+      <div class="color-swatch-wrap">
+        <input type="color" id="textColor" value="#0d0f1a" title="Text color" onchange="applyColor('text')">
+        <label>TEXT</label>
+      </div>
+      <div class="color-swatch-wrap">
+        <input type="color" id="fillColor" value="#7c3aed" title="Fill color" onchange="applyColor('fill')">
+        <label>FILL</label>
+      </div>
+      <div class="color-swatch-wrap">
+        <input type="color" id="bgColor" value="#f0f1f5" title="Page background" onchange="applyBg()">
+        <label>PAGE</label>
+      </div>
+    </div>
+    <div class="tool-div"></div>
+    <div class="tool-group">
+      <button class="tbtn" title="Duplicate" onclick="duplicate()">
+        <svg viewBox="0 0 16 16" fill="none"><rect x="1" y="4.5" width="9" height="9.5" rx="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M5 4.5V3a1.5 1.5 0 0 1 1.5-1.5H13A1.5 1.5 0 0 1 14.5 3v7a1.5 1.5 0 0 1-1.5 1.5H11" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+      </button>
+      <button class="tbtn" title="Delete (Del)" onclick="deleteSelected()">
+        <svg viewBox="0 0 16 16" fill="none"><path d="M2.5 4.5h11M6 4.5V3h4v1.5M6.5 12V7M9.5 12V7M3.5 4.5l1 8.5h7l1-8.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <button class="tbtn" title="Bring to front" onclick="layerUp()">
+        <svg viewBox="0 0 16 16" fill="none"><path d="M8 2v12M4 5l4-4 4 4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <button class="tbtn" title="Send to back" onclick="layerDown()">
+        <svg viewBox="0 0 16 16" fill="none"><path d="M8 2v12M4 11l4 4 4-4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <button class="tbtn" title="Align left" onclick="alignObj('left')">
+        <svg viewBox="0 0 16 16" fill="none"><path d="M2 3h12M2 6.5h7M2 10h10M2 13.5h5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+      </button>
+      <button class="tbtn" title="Align center" onclick="alignObj('center')">
+        <svg viewBox="0 0 16 16" fill="none"><path d="M2 3h12M4.5 6.5h7M3 10h10M5.5 13.5h5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+      </button>
+    </div>
+    <div class="zoom-control">
+      <button class="zoom-btn" onclick="changeZoom(-0.1)">−</button>
+      <span class="zoom-val" id="zoomVal">75%</span>
+      <button class="zoom-btn" onclick="changeZoom(0.1)">+</button>
+    </div>
+  </div>
+
+  <!-- BODY -->
+  <div id="body">
+
+    <!-- LEFT PANEL -->
+    <div id="left-panel">
+      <button class="side-btn active" onclick="setSidePanel('templates')" title="Templates">
+        <svg viewBox="0 0 24 24" fill="none"><path fill-rule="evenodd" clip-rule="evenodd" d="M3 11.3c0-3.6 0-5.4 1-6.6a4.5 4.5 0 0 1 .75-.75C5.9 3 7.7 3 11.3 3h1.4c3.6 0 5.4 0 6.6 1a4.5 4.5 0 0 1 .75.75C21 5.9 21 7.7 21 11.3v1.4c0 3.6 0 5.4-1 6.6a4.5 4.5 0 0 1-.75.75C18.1 21 16.3 21 12.7 21h-1.4c-3.6 0-5.4 0-6.6-1a4.5 4.5 0 0 1-.75-.75C3 18.1 3 16.3 3 12.7v-1.4ZM11.3 4.5H13.5v15h-2.2c-1.8 0-3.1 0-4-.1-.9-.1-1.4-.3-1.7-.5a3 3 0 0 1-.5-.5c-.2-.3-.4-.75-.5-1.66-.1-.95-.1-2.2-.1-4v-1.4c0-1.8 0-3.1.1-4 .1-.9.3-1.4.5-1.7a3 3 0 0 1 .5-.5c.3-.2.75-.4 1.66-.5.95-.1 2.2-.1 4-.1ZM15 19.5c.67-.01 1.22-.04 1.7-.1.9-.1 1.4-.3 1.7-.5.19-.15.35-.31.5-.5.24-.3.43-.75.53-1.66.11-.95.11-2.2.11-4v-1.66H15v8.47Zm4.49-9.97c-.01-.9-.04-1.62-.11-2.21-.1-.9-.29-1.4-.53-1.66a3 3 0 0 0-.5-.5c-.3-.24-.75-.43-1.66-.53-.43-.05-1-.07-1.69-.07v5h4.49Z" fill="currentColor"/></svg>
+        <span>Templates</span>
+      </button>
+      <button class="side-btn" onclick="setSidePanel('elements')" title="Elements">
+        <svg viewBox="0 0 24 24" fill="none"><path fill-rule="evenodd" d="M6.55 11.24a1.5 1.5 0 0 0 1.42 0l.01-.01.03-.02.08-.05a10 10 0 0 0 1.14-.79c.64-.51 1.48-1.31 2.03-2.37a2.99 2.99 0 0 0-4-4.16A2.99 2.99 0 0 0 3.2 7.91c.54 1.1 1.4 1.93 2.05 2.45a10 10 0 0 0 1.25.85l.03.01.01.01ZM12.98 15.46a4.21 4.21 0 1 1-8.42 0 4.21 4.21 0 0 1 8.42 0Zm-1.5 0a2.71 2.71 0 1 1-5.42 0 2.71 2.71 0 0 1 5.42 0ZM17.54 4a1.03 1.03 0 0 0-1.78 0l-3.3 5.7a1.03 1.03 0 0 0 .89 1.54h6.61c.79 0 1.29-.86.89-1.54L17.54 4ZM16.65 5.47l-2.49 4.28h4.97l-2.48-4.28ZM20.86 17.17a4.21 4.21 0 1 1-8.43 0 4.21 4.21 0 0 1 8.43 0Zm-1.5 0a2.71 2.71 0 1 1-5.42 0 2.71 2.71 0 0 1 5.42 0Z" fill="currentColor"/></svg>
+        <span>Elements</span>
+      </button>
+      <button class="side-btn" onclick="setSidePanel('text')" title="Text">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M4.3 5.8a1.5 1.5 0 0 1 1.5-1.5h12.4a1.5 1.5 0 0 1 1.5 1.5V7.6a.75.75 0 0 1-1.5 0v-1.3a.5.5 0 0 0-.5-.5H12.8v12a.5.5 0 0 0 .5.5h1.9a.75.75 0 0 1 0 1.5H8.8a.75.75 0 0 1 0-1.5h1.9a.5.5 0 0 0 .5-.5v-12H6.3a.5.5 0 0 0-.5.5V7.7a.75.75 0 0 1-1.5 0V5.8Z" fill="currentColor"/></svg>
+        <span>Text</span>
+      </button>
+      <button class="side-btn" onclick="setSidePanel('uploads')" title="Uploads">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M11.25 3a5.33 5.33 0 0 0-5.32 4.8.2.2 0 0 1-.12.16 5.73 5.73 0 0 0 2 11.1 5.73 5.73 0 0 0 5.73-5.73v-.49l1.78 1.78a.75.75 0 0 0 1.06-1.06l-3.06-3.06a.75.75 0 0 0-1.06 0L9.18 13.54a.75.75 0 0 0 1.06 1.06l1.78-1.78v.49a4.23 4.23 0 1 1-5.7-3.96 1.7 1.7 0 0 0 1.09-1.42c.2-1.94 1.86-3.44 3.83-3.44a3.85 3.85 0 0 1 3.78 3.17c.14.77.78 1.37 1.57 1.43 2.14.18 3.85 2.02 3.85 4.22a4.23 4.23 0 0 1-4.23 4.23h-1.9a.75.75 0 0 0 0 1.5h1.9a5.73 5.73 0 0 0 5.73-5.73c0-2.98-2.3-5.47-5.23-5.71a.25.25 0 0 1-.21-.2A5.35 5.35 0 0 0 11.25 3Z" fill="currentColor"/></svg>
+        <span>Uploads</span>
+      </button>
+      <div class="side-div"></div>
+      <button class="side-btn" onclick="setSidePanel('ai')" title="AI Tools">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M12 2l1.8 5.5H19l-4.4 3.5 1.5 5.5-4.1-3L7.9 16.5l1.5-5.5L5 7.5h5.2L12 2z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>
+        <span>AI</span>
+        <div class="side-badge"></div>
+      </button>
+      <button class="side-btn" onclick="setSidePanel('charts')" title="Charts">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M3 20h18M7 10v10M12 6v14M17 14v6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+        <span>Charts</span>
+      </button>
+    </div>
+
+    <!-- PAGE STRIP -->
+    <div id="page-strip">
+      <div class="ps-header">
+        <span class="ps-label">Pages</span>
+        <button class="ps-add" onclick="addPage()" title="Add page">+</button>
+      </div>
+      <div class="ps-list" id="pageList"></div>
+      <div class="ps-footer"><span class="ps-count" id="pageCount">1 page</span></div>
+    </div>
+
+    <!-- CANVAS AREA -->
+    <div id="canvas-area"
+      ondragover="event.preventDefault();document.getElementById('drop-overlay').style.display='flex'"
+      ondragleave="document.getElementById('drop-overlay').style.display='none'"
+      ondrop="handleDrop(event)">
+      <div id="drop-overlay"><span>Drop image here</span></div>
+      <div id="canvas-wrap">
+        <canvas id="main-canvas"></canvas>
+      </div>
+      <div id="page-nav">
+        <button class="pnav-btn" id="prevBtn" onclick="switchPage(currentPage-1)">‹</button>
+        <span class="pnav-text" id="pageNavText">1 / 1</span>
+        <button class="pnav-btn" id="nextBtn" onclick="switchPage(currentPage+1)">›</button>
+      </div>
+    </div>
+
+    <!-- RIGHT PANEL (Properties) -->
+    <div id="right-panel">
+      <div class="rp-header">Properties</div>
+      <div class="rp-body" id="propPanel"></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- TEMPLATE MODAL -->
+<div class="modal-bg" id="templateModal" style="display:none" onclick="if(event.target===this&&pages.length>0)this.style.display='none'">
+  <div class="modal">
+    <div class="modal-icon">✦</div>
+    <div class="modal-badge">Backread Editor</div>
+    <h2 class="modal-title">Start with a template</h2>
+    <p class="modal-sub">Professionally designed starting points. Pick one and make it yours.</p>
+    <div class="tpl-grid" id="tplGrid"></div>
+    <div class="modal-footer">
+      <button class="modal-btn" onclick="startBlank()">Start blank</button>
+      <button class="modal-btn" id="cancelTplBtn" onclick="document.getElementById('templateModal').style.display='none'" style="display:none">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- SHARE DRAWER -->
+<div id="share-drawer">
+  <div class="sd-header">
+    <div>
+      <div class="sd-title">Share document</div>
+      <div class="sd-sub" id="shareSubtitle">0 links created</div>
+    </div>
+    <button class="sd-close" onclick="toggleShare()">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 3l10 10M13 3L3 13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+    </button>
+  </div>
+  <div class="sd-body" id="shareBody">
+    <div class="sd-section-label" id="linksLabel" style="display:none">Active links</div>
+    <div id="linksList"></div>
+    <div id="newLinkArea"></div>
+  </div>
+</div>
+
+<!-- PRESENT MODAL -->
+<div class="present-modal" id="presentModal">
+  <button class="present-close" onclick="closePresentMode()">✕</button>
+  <div id="present-canvas-wrap"></div>
+</div>
+
+<script>
+// ============================================================
+// CONSTANTS & STATE
+// ============================================================
+const CANVAS_W = 960, CANVAS_H = 540;
+const FONTS = ['DM Sans','Georgia','Playfair Display','Montserrat','Courier New','Impact','Trebuchet MS','Arial'];
+const EMOJIS = ['📄','🚀','💼','📊','📋','🎯','💡','🔍','📈','🤝','⚡','🌟','🔒','📝','🎨'];
+
+let fc = null;
+let pages = [];
+let currentPage = 0;
+let zoom = 0.75;
+let activeTool = 'select';
+let shareLinks = [];
+let shareOpen = false;
+let autoSaveTimer = null;
+let showNewLinkForm = false;
+
+// ============================================================
+// TEMPLATE DEFINITIONS
+// ============================================================
+const W = CANVAS_W, H = CANVAS_H;
+function t(text, o={}) {
+  return {type:'textbox',left:o.left??60,top:o.top??60,width:o.width??400,text,fontSize:o.fs??18,fontFamily:o.ff??'DM Sans',fill:o.fill??'#0d0f1a',fontWeight:o.fw??'normal',opacity:1,selectable:true,editable:true};
+}
+function r(o={}) {
+  return {type:'rect',left:o.left??0,top:o.top??0,width:o.w??200,height:o.h??60,fill:o.fill??'#7c3aed',rx:o.rx??0,ry:o.rx??0,selectable:true,opacity:o.op??1};
+}
+function makePage(bg='#fff',objects=[]) { return {version:'5.3.0',objects,background:bg}; }
 
 const TEMPLATES = [
-  { id:'pitch-deck',  name:'Pitch Deck',  emoji:'📊', pages:6, description:'Investor-ready slides',  accent:'#f97316', bg:'linear-gradient(135deg,#fff7ed,#ffedd5)' },
-  { id:'proposal',    name:'Proposal',    emoji:'📋', pages:4, description:'Client proposals',       accent:'#3b82f6', bg:'linear-gradient(135deg,#eff6ff,#dbeafe)' },
-  { id:'report',      name:'Report',      emoji:'📈', pages:5, description:'Data & analysis',        accent:'#10b981', bg:'linear-gradient(135deg,#ecfdf5,#d1fae5)' },
-  { id:'media-kit',   name:'Media Kit',   emoji:'🎨', pages:4, description:'Brand press kit',        accent:'#8b5cf6', bg:'linear-gradient(135deg,#f5f3ff,#ede9fe)' },
-  { id:'case-study',  name:'Case Study',  emoji:'🔬', pages:5, description:'Client success story',   accent:'#ec4899', bg:'linear-gradient(135deg,#fdf2f8,#fce7f3)' },
-  { id:'one-pager',   name:'One-Pager',   emoji:'⚡', pages:1, description:'Single page overview',   accent:'#f59e0b', bg:'linear-gradient(135deg,#fffbeb,#fef3c7)' },
-]
+  {id:'pitch',name:'Pitch Deck',emoji:'📊',pages:6,desc:'Investor-ready slides',accent:'#7c3aed',bg:'linear-gradient(135deg,#f5f3ff,#ede9fe)'},
+  {id:'proposal',name:'Proposal',emoji:'📋',pages:4,desc:'Client proposals',accent:'#2563eb',bg:'linear-gradient(135deg,#eff6ff,#dbeafe)'},
+  {id:'report',name:'Report',emoji:'📈',pages:5,desc:'Data & analysis',accent:'#059669',bg:'linear-gradient(135deg,#ecfdf5,#d1fae5)'},
+  {id:'mediakit',name:'Media Kit',emoji:'🎨',pages:4,desc:'Brand press kit',accent:'#db2777',bg:'linear-gradient(135deg,#fdf2f8,#fce7f3)'},
+  {id:'casestudy',name:'Case Study',emoji:'🔬',pages:5,desc:'Client success story',accent:'#dc2626',bg:'linear-gradient(135deg,#fff1f2,#fee2e2)'},
+  {id:'onepager',name:'One-Pager',emoji:'⚡',pages:1,desc:'Single page overview',accent:'#d97706',bg:'linear-gradient(135deg,#fffbeb,#fef3c7)'},
+];
 
-function makePage(bg = '#ffffff', objects: any[] = []) {
-  return { version: '5.3.0', objects, background: bg }
-}
-function txt(text: string, o: any = {}) {
-  return { type:'textbox', left:o.left??60, top:o.top??60, width:o.width??400, text, fontSize:o.fontSize??18, fontFamily:o.fontFamily??'Inter', fill:o.fill??'#0f172a', fontWeight:o.fontWeight??'normal', opacity:o.opacity??1, selectable:true, editable:true }
-}
-function rct(o: any = {}) {
-  return { type:'rect', left:o.left??0, top:o.top??0, width:o.width??200, height:o.height??60, fill:o.fill??'#f97316', rx:o.rx??0, ry:o.ry??0, selectable:true, opacity:o.opacity??1 }
-}
-
-function buildTemplate(id: string): any[] {
-  const W = CANVAS_W, H = CANVAS_H
-  switch (id) {
-    case 'pitch-deck': return [
-      makePage('#0f172a',[rct({left:0,top:0,width:W,height:H,fill:'#0f172a'}),rct({left:0,top:H-4,width:W,height:4,fill:'#f97316'}),rct({left:60,top:140,width:3,height:80,fill:'#f97316'}),txt('YOUR COMPANY',{left:80,top:140,fontSize:52,fontWeight:'700',fill:'#ffffff',width:W-140,fontFamily:'Inter'}),txt('The one-line pitch that changes everything.',{left:80,top:215,fontSize:20,fill:'#94a3b8',width:W-140}),txt('Series A · 2025',{left:80,top:H-60,fontSize:13,fill:'#f97316',fontFamily:'Roboto Mono'})]),
-      makePage('#ffffff',[rct({left:0,top:0,width:W,height:4,fill:'#f97316'}),txt('The Problem',{left:60,top:48,fontSize:38,fontWeight:'700',fill:'#0f172a',width:500}),rct({left:60,top:120,width:380,height:220,fill:'#fff7ed',rx:12,ry:12}),txt('Pain Point #1',{left:80,top:140,fontSize:18,fontWeight:'600',fill:'#f97316',width:340}),txt('Describe the core frustration your customers face every day.',{left:80,top:170,fontSize:14,fill:'#64748b',width:340}),rct({left:480,top:120,width:420,height:220,fill:'#f8fafc',rx:12,ry:12}),txt('Pain Point #2',{left:500,top:140,fontSize:18,fontWeight:'600',fill:'#0f172a',width:380}),txt('The secondary problem that compounds the first.',{left:500,top:170,fontSize:14,fill:'#64748b',width:380}),txt('$XXB total addressable market with no adequate solution today.',{left:60,top:370,fontSize:16,fill:'#f97316',fontWeight:'600',width:W-120})]),
-      makePage('#ffffff',[rct({left:0,top:0,width:W,height:4,fill:'#f97316'}),txt('Our Solution',{left:60,top:48,fontSize:38,fontWeight:'700',fill:'#0f172a',width:500}),rct({left:60,top:120,width:260,height:200,fill:'#0f172a',rx:16,ry:16}),txt('01',{left:80,top:140,fontSize:36,fontWeight:'700',fill:'#f97316',width:220,fontFamily:'Roboto Mono'}),txt('Feature One',{left:80,top:190,fontSize:18,fontWeight:'600',fill:'#ffffff',width:220}),txt('What it does and why it matters.',{left:80,top:216,fontSize:13,fill:'#94a3b8',width:220}),rct({left:360,top:120,width:260,height:200,fill:'#fff7ed',rx:16,ry:16}),txt('02',{left:380,top:140,fontSize:36,fontWeight:'700',fill:'#f97316',width:220,fontFamily:'Roboto Mono'}),txt('Feature Two',{left:380,top:190,fontSize:18,fontWeight:'600',fill:'#0f172a',width:220}),txt('What it does and why it matters.',{left:380,top:216,fontSize:13,fill:'#64748b',width:220}),rct({left:660,top:120,width:240,height:200,fill:'#f8fafc',rx:16,ry:16}),txt('03',{left:680,top:140,fontSize:36,fontWeight:'700',fill:'#f97316',width:200,fontFamily:'Roboto Mono'}),txt('Feature Three',{left:680,top:190,fontSize:18,fontWeight:'600',fill:'#0f172a',width:200}),txt('What it does and why it matters.',{left:680,top:216,fontSize:13,fill:'#64748b',width:200})]),
-      makePage('#ffffff',[rct({left:0,top:0,width:W,height:4,fill:'#f97316'}),txt('Traction',{left:60,top:48,fontSize:38,fontWeight:'700',fill:'#0f172a',width:500}),rct({left:60,top:120,width:220,height:160,fill:'#fff7ed',rx:16,ry:16}),txt('$0M',{left:80,top:145,fontSize:44,fontWeight:'700',fill:'#f97316',width:180,fontFamily:'Inter'}),txt('ARR',{left:80,top:200,fontSize:13,fill:'#94a3b8',width:180}),rct({left:320,top:120,width:220,height:160,fill:'#f0fdf4',rx:16,ry:16}),txt('0K',{left:340,top:145,fontSize:44,fontWeight:'700',fill:'#10b981',width:180,fontFamily:'Inter'}),txt('ACTIVE USERS',{left:340,top:200,fontSize:13,fill:'#94a3b8',width:180}),rct({left:580,top:120,width:220,height:160,fill:'#f0f9ff',rx:16,ry:16}),txt('0%',{left:600,top:145,fontSize:44,fontWeight:'700',fill:'#3b82f6',width:180,fontFamily:'Inter'}),txt('MONTH GROWTH',{left:600,top:200,fontSize:13,fill:'#94a3b8',width:180})]),
-      makePage('#ffffff',[rct({left:0,top:0,width:W,height:4,fill:'#f97316'}),txt('The Ask',{left:60,top:48,fontSize:38,fontWeight:'700',fill:'#0f172a',width:500}),rct({left:60,top:120,width:W-120,height:80,fill:'#0f172a',rx:12,ry:12}),txt('Raising $X.XM Seed Round',{left:80,top:143,fontSize:32,fontWeight:'700',fill:'#ffffff',width:700}),txt('40% Product & Engineering',{left:60,top:230,fontSize:15,fill:'#0f172a',fontWeight:'600',width:280}),txt('30% Sales & Growth',{left:60,top:256,fontSize:15,fill:'#64748b',width:280}),txt('20% Marketing',{left:360,top:230,fontSize:15,fill:'#0f172a',fontWeight:'600',width:280}),txt('10% Operations',{left:360,top:256,fontSize:15,fill:'#64748b',width:280})]),
-      makePage('#f97316',[txt('Thank You',{left:60,top:140,fontSize:80,fontWeight:'700',fill:'#ffffff',width:W-120,fontFamily:'Inter'}),txt("Questions? Let's build something great.",{left:60,top:250,fontSize:22,fill:'#fff7ed',width:600}),txt('hello@backread.com',{left:60,top:H-80,fontSize:16,fill:'#ffedd5',fontFamily:'Roboto Mono'})]),
-    ]
+function buildTemplate(id) {
+  switch(id) {
+    case 'pitch': return [
+      makePage('#0d0f1a',[r({w:W,h:H,fill:'#0d0f1a'}),r({left:0,top:H-4,w:W,h:4,fill:'#7c3aed'}),r({left:60,top:160,w:3,h:80,fill:'#7c3aed'}),t('YOUR COMPANY',{left:80,top:155,fs:52,fw:'700',fill:'#fff',width:W-140,ff:'DM Sans'}),t('The one-line pitch that changes everything.',{left:80,top:225,fs:18,fill:'#8b91a8',width:W-140}),t('Series A · 2025',{left:80,top:H-60,fs:12,fill:'#7c3aed',ff:'DM Mono'})]),
+      makePage('#fff',[r({left:0,top:0,w:W,h:4,fill:'#7c3aed'}),t('The Problem',{left:60,top:48,fs:36,fw:'700',width:500}),r({left:60,top:118,w:380,h:200,fill:'#f5f3ff',rx:12}),t('Pain Point #1',{left:80,top:138,fs:16,fw:'600',fill:'#7c3aed',width:340}),t('Describe the core frustration your customers face every day.',{left:80,top:165,fs:13,fill:'#4b5068',width:340}),r({left:480,top:118,w:420,h:200,fill:'#f8f9fb',rx:12}),t('Pain Point #2',{left:500,top:138,fs:16,fw:'600',width:380}),t('The secondary problem that compounds the first.',{left:500,top:165,fs:13,fill:'#4b5068',width:380}),t('$XXB total addressable market with no adequate solution today.',{left:60,top:348,fs:15,fill:'#7c3aed',fw:'600',width:W-120})]),
+      makePage('#fff',[r({left:0,top:0,w:W,h:4,fill:'#7c3aed'}),t('Our Solution',{left:60,top:48,fs:36,fw:'700',width:500}),r({left:60,top:118,w:250,h:190,fill:'#0d0f1a',rx:14}),t('01',{left:80,top:138,fs:32,fw:'700',fill:'#7c3aed',width:210,ff:'DM Mono'}),t('Feature One',{left:80,top:182,fs:16,fw:'600',fill:'#fff',width:210}),t('What it does and why it matters.',{left:80,top:206,fs:12,fill:'#8b91a8',width:210}),r({left:350,top:118,w:250,h:190,fill:'#f5f3ff',rx:14}),t('02',{left:370,top:138,fs:32,fw:'700',fill:'#7c3aed',width:210,ff:'DM Mono'}),t('Feature Two',{left:370,top:182,fs:16,fw:'600',width:210}),t('What it does and why it matters.',{left:370,top:206,fs:12,fill:'#4b5068',width:210}),r({left:640,top:118,w:250,h:190,fill:'#f8f9fb',rx:14}),t('03',{left:660,top:138,fs:32,fw:'700',fill:'#7c3aed',width:210,ff:'DM Mono'}),t('Feature Three',{left:660,top:182,fs:16,fw:'600',width:210}),t('What it does and why it matters.',{left:660,top:206,fs:12,fill:'#4b5068',width:210})]),
+      makePage('#fff',[r({left:0,top:0,w:W,h:4,fill:'#7c3aed'}),t('Traction',{left:60,top:48,fs:36,fw:'700',width:500}),r({left:60,top:118,w:220,h:150,fill:'#f5f3ff',rx:14}),t('$0M',{left:80,top:140,fs:44,fw:'700',fill:'#7c3aed',width:180,ff:'DM Sans'}),t('ARR',{left:80,top:194,fs:12,fill:'#8b91a8',width:180}),r({left:320,top:118,w:220,h:150,fill:'#f0fdf4',rx:14}),t('0K',{left:340,top:140,fs:44,fw:'700',fill:'#059669',width:180}),t('ACTIVE USERS',{left:340,top:194,fs:12,fill:'#8b91a8',width:180}),r({left:580,top:118,w:220,h:150,fill:'#eff6ff',rx:14}),t('0%',{left:600,top:140,fs:44,fw:'700',fill:'#2563eb',width:180}),t('MOM GROWTH',{left:600,top:194,fs:12,fill:'#8b91a8',width:180})]),
+      makePage('#fff',[r({left:0,top:0,w:W,h:4,fill:'#7c3aed'}),t('The Ask',{left:60,top:48,fs:36,fw:'700',width:500}),r({left:60,top:118,w:W-120,h:70,fill:'#0d0f1a',rx:10}),t('Raising $X.XM Seed Round',{left:80,top:138,fs:28,fw:'700',fill:'#fff',width:700}),t('40% Product & Engineering',{left:60,top:220,fs:14,fill:'#0d0f1a',fw:'600',width:270}),t('30% Sales & Growth',{left:60,top:244,fs:14,fill:'#4b5068',width:270}),t('20% Marketing',{left:360,top:220,fs:14,fill:'#0d0f1a',fw:'600',width:270}),t('10% Operations',{left:360,top:244,fs:14,fill:'#4b5068',width:270})]),
+      makePage('#7c3aed',[t('Thank You',{left:60,top:140,fs:72,fw:'700',fill:'#fff',width:W-120}),t("Let's build something great.",{left:60,top:242,fs:20,fill:'#ede9fe',width:600}),t('hello@backread.com',{left:60,top:H-80,fs:14,fill:'#c4b5fd',ff:'DM Mono'})]),
+    ];
     case 'proposal': return [
-      makePage('#fafafa',[rct({left:0,top:0,width:320,height:H,fill:'#0f172a'}),txt('PROJECT\nPROPOSAL',{left:40,top:60,fontSize:32,fontWeight:'700',fill:'#ffffff',width:240,fontFamily:'Inter'}),rct({left:40,top:200,width:40,height:3,fill:'#3b82f6'}),txt('Prepared for:',{left:40,top:222,fontSize:12,fill:'#64748b',width:240}),txt('Client Name',{left:40,top:240,fontSize:18,fontWeight:'600',fill:'#ffffff',width:240}),txt('Month YYYY',{left:40,top:H-60,fontSize:12,fill:'#475569',fontFamily:'Roboto Mono',width:240}),txt('Proposal Title\nGoes Here',{left:360,top:100,fontSize:44,fontWeight:'700',fill:'#0f172a',width:540}),txt('A compelling one-sentence summary of what this proposal delivers.',{left:360,top:230,fontSize:16,fill:'#64748b',width:540})]),
-      makePage('#ffffff',[rct({left:0,top:0,width:4,height:H,fill:'#3b82f6'}),txt('Executive Summary',{left:40,top:48,fontSize:34,fontWeight:'700',fill:'#0f172a',width:W-80}),rct({left:40,top:108,width:W-80,height:2,fill:'#e2e8f0'}),txt('Describe the project context, the challenge at hand, and why this proposal represents the ideal solution.',{left:40,top:128,fontSize:16,fill:'#475569',width:W-80}),rct({left:40,top:250,width:(W-100)/2,height:120,fill:'#eff6ff',rx:12,ry:12}),txt('Challenge',{left:60,top:268,fontSize:16,fontWeight:'600',fill:'#3b82f6',width:400}),txt('Define the core problem clearly.',{left:60,top:294,fontSize:14,fill:'#64748b',width:400}),rct({left:(W-100)/2+60,top:250,width:(W-100)/2,height:120,fill:'#f0fdf4',rx:12,ry:12}),txt('Solution',{left:(W-100)/2+80,top:268,fontSize:16,fontWeight:'600',fill:'#10b981',width:400}),txt('How this proposal solves it.',{left:(W-100)/2+80,top:294,fontSize:14,fill:'#64748b',width:400})]),
-      makePage('#ffffff',[rct({left:0,top:0,width:4,height:H,fill:'#3b82f6'}),txt('Scope & Deliverables',{left:40,top:48,fontSize:34,fontWeight:'700',fill:'#0f172a',width:W-80}),rct({left:40,top:108,width:W-80,height:2,fill:'#e2e8f0'}),rct({left:40,top:130,width:20,height:20,fill:'#3b82f6',rx:4,ry:4}),txt('Phase 1 — Discovery & Strategy',{left:72,top:132,fontSize:16,fontWeight:'600',fill:'#0f172a',width:500}),txt('Week 1–2 · Research brief, competitive analysis, strategy document',{left:72,top:155,fontSize:13,fill:'#64748b',width:600}),rct({left:40,top:200,width:20,height:20,fill:'#3b82f6',rx:4,ry:4}),txt('Phase 2 — Design & Build',{left:72,top:202,fontSize:16,fontWeight:'600',fill:'#0f172a',width:500}),txt('Week 3–6 · Wireframes, design system, working product',{left:72,top:225,fontSize:13,fill:'#64748b',width:600}),rct({left:40,top:270,width:20,height:20,fill:'#3b82f6',rx:4,ry:4}),txt('Phase 3 — Launch & Handoff',{left:72,top:272,fontSize:16,fontWeight:'600',fill:'#0f172a',width:500}),txt('Week 7–8 · QA, documentation, launch support',{left:72,top:295,fontSize:13,fill:'#64748b',width:600})]),
-      makePage('#0f172a',[txt('Investment',{left:60,top:60,fontSize:38,fontWeight:'700',fill:'#ffffff',width:W-120}),rct({left:60,top:130,width:W-120,height:100,fill:'#1e293b',rx:16,ry:16}),txt('$XX,000',{left:80,top:153,fontSize:48,fontWeight:'700',fill:'#3b82f6',width:400,fontFamily:'Inter'}),txt('Total investment',{left:80,top:210,fontSize:13,fill:'#64748b',width:300}),txt('50% due on project start · 50% on final delivery',{left:60,top:258,fontSize:15,fill:'#94a3b8',width:W-120}),txt('All work is covered by a 30-day satisfaction guarantee.',{left:60,top:286,fontSize:15,fill:'#94a3b8',width:W-120})]),
-    ]
+      makePage('#f8f9fb',[r({w:320,h:H,fill:'#0d0f1a'}),t('PROJECT\nPROPOSAL',{left:40,top:60,fs:28,fw:'700',fill:'#fff',width:240}),t('Prepared for:',{left:40,top:220,fs:11,fill:'#4b5068',width:240}),t('Client Name',{left:40,top:240,fs:17,fw:'600',fill:'#fff',width:240}),t('Month YYYY',{left:40,top:H-60,fs:11,fill:'#4b5068',ff:'DM Mono',width:240}),t('Proposal Title\nGoes Here',{left:360,top:100,fs:42,fw:'700',fill:'#0d0f1a',width:540}),t('A compelling one-sentence summary of this proposal.',{left:360,top:230,fs:15,fill:'#4b5068',width:540})]),
+      makePage('#fff',[r({left:0,top:0,w:4,h:H,fill:'#2563eb'}),t('Executive Summary',{left:40,top:48,fs:32,fw:'700',width:W-80}),t('Describe the project context and why this proposal is ideal.',{left:40,top:118,fs:15,fill:'#4b5068',width:W-80}),r({left:40,top:240,w:(W-100)/2,h:120,fill:'#eff6ff',rx:12}),t('Challenge',{left:60,top:258,fs:15,fw:'600',fill:'#2563eb',width:400}),t('Define the core problem clearly.',{left:60,top:282,fs:13,fill:'#4b5068',width:400}),r({left:(W-100)/2+60,top:240,w:(W-100)/2,h:120,fill:'#f0fdf4',rx:12}),t('Solution',{left:(W-100)/2+80,top:258,fs:15,fw:'600',fill:'#059669',width:400}),t('How this proposal solves it.',{left:(W-100)/2+80,top:282,fs:13,fill:'#4b5068',width:400})]),
+    ];
     case 'report': return [
-      makePage('#f8fafc',[rct({left:0,top:0,width:6,height:H,fill:'#10b981'}),txt('QUARTERLY\nREPORT',{left:40,top:60,fontSize:58,fontWeight:'700',fill:'#0f172a',width:560,fontFamily:'Inter'}),txt('Q1 2025',{left:40,top:260,fontSize:18,fill:'#10b981',fontWeight:'600',fontFamily:'Roboto Mono'}),txt('Backread Intelligence Platform · Confidential',{left:40,top:H-50,fontSize:12,fill:'#94a3b8',fontFamily:'Roboto Mono',width:500})]),
-      makePage('#ffffff',[rct({left:0,top:0,width:4,height:H,fill:'#10b981'}),txt('Key Metrics',{left:40,top:48,fontSize:34,fontWeight:'700',fill:'#0f172a',width:W-80}),rct({left:40,top:110,width:200,height:140,fill:'#ecfdf5',rx:12,ry:12}),txt('0',{left:60,top:128,fontSize:54,fontWeight:'700',fill:'#10b981',width:160,fontFamily:'Inter'}),txt('TOTAL VIEWS',{left:60,top:192,fontSize:11,fill:'#6b7280',width:160,fontFamily:'Roboto Mono'}),rct({left:260,top:110,width:200,height:140,fill:'#f0f9ff',rx:12,ry:12}),txt('0:00',{left:280,top:128,fontSize:54,fontWeight:'700',fill:'#3b82f6',width:160,fontFamily:'Inter'}),txt('AVG READ TIME',{left:280,top:192,fontSize:11,fill:'#6b7280',width:160,fontFamily:'Roboto Mono'}),rct({left:480,top:110,width:200,height:140,fill:'#fdf4ff',rx:12,ry:12}),txt('0%',{left:500,top:128,fontSize:54,fontWeight:'700',fill:'#8b5cf6',width:160,fontFamily:'Inter'}),txt('COMPLETION',{left:500,top:192,fontSize:11,fill:'#6b7280',width:160,fontFamily:'Roboto Mono'})]),
-      makePage('#ffffff',[rct({left:0,top:0,width:4,height:H,fill:'#10b981'}),txt('Highlights & Insights',{left:40,top:48,fontSize:34,fontWeight:'700',fill:'#0f172a',width:W-80}),rct({left:40,top:120,width:W-80,height:80,fill:'#ecfdf5',rx:8,ry:8}),txt('✦  Highlight One',{left:60,top:142,fontSize:17,fontWeight:'600',fill:'#065f46',width:W-120}),txt('Describe what performed well and why it matters for the business.',{left:60,top:166,fontSize:13,fill:'#6b7280',width:W-120}),rct({left:40,top:218,width:W-80,height:80,fill:'#f8fafc',rx:8,ry:8}),txt('✦  Highlight Two',{left:60,top:240,fontSize:17,fontWeight:'600',fill:'#0f172a',width:W-120}),txt('A secondary insight worth highlighting this quarter.',{left:60,top:264,fontSize:13,fill:'#6b7280',width:W-120})]),
-      makePage('#ffffff',[rct({left:0,top:0,width:4,height:H,fill:'#10b981'}),txt('Recommendations',{left:40,top:48,fontSize:34,fontWeight:'700',fill:'#0f172a',width:W-80}),txt('Action 1',{left:40,top:120,fontSize:20,fontWeight:'600',fill:'#10b981',width:W-80}),txt('What to do, why it matters, and the expected outcome.',{left:40,top:148,fontSize:14,fill:'#64748b',width:W-80}),rct({left:40,top:178,width:60,height:2,fill:'#e2e8f0'}),txt('Action 2',{left:40,top:198,fontSize:20,fontWeight:'600',fill:'#0f172a',width:W-80}),txt('Second recommendation with supporting rationale.',{left:40,top:226,fontSize:14,fill:'#64748b',width:W-80})]),
-      makePage('#0f172a',[txt('Q2 Goals',{left:60,top:60,fontSize:44,fontWeight:'700',fill:'#ffffff',width:W-120}),txt('OKR 1: Grow active users by 40%',{left:60,top:160,fontSize:18,fill:'#10b981',fontWeight:'500',width:W-120}),txt('OKR 2: Reduce churn to under 3%',{left:60,top:198,fontSize:18,fill:'#94a3b8',fontWeight:'500',width:W-120}),txt('OKR 3: Launch enterprise tier',{left:60,top:236,fontSize:18,fill:'#94a3b8',fontWeight:'500',width:W-120})]),
-    ]
-    case 'media-kit': return [
-      makePage('#faf5ff',[rct({left:W/2,top:0,width:W/2,height:H,fill:'#8b5cf6',opacity:.07}),txt('BACKREAD',{left:60,top:80,fontSize:72,fontWeight:'700',fill:'#1a1a2e',width:W-120,fontFamily:'Inter'}),rct({left:60,top:170,width:80,height:5,fill:'#8b5cf6'}),txt('Brand Media Kit 2025',{left:60,top:196,fontSize:20,fill:'#8b5cf6',fontWeight:'500'}),txt('Press & Partnership Resources',{left:60,top:H-70,fontSize:14,fill:'#94a3b8'})]),
-      makePage('#ffffff',[rct({left:0,top:0,width:4,height:H,fill:'#8b5cf6'}),txt('About Backread',{left:40,top:48,fontSize:34,fontWeight:'700',fill:'#0f172a',width:W-80}),txt('Backread is a document intelligence platform that helps teams send, track, and understand exactly how their documents are read — page by page, second by second.',{left:40,top:115,fontSize:17,fill:'#475569',width:W-80})]),
-      makePage('#ffffff',[rct({left:0,top:0,width:4,height:H,fill:'#8b5cf6'}),txt('Brand Colors',{left:40,top:48,fontSize:34,fontWeight:'700',fill:'#0f172a',width:W-80}),rct({left:40,top:120,width:140,height:140,fill:'#f97316',rx:16,ry:16}),txt('Signal Orange',{left:40,top:272,fontSize:13,fontWeight:'600',fill:'#0f172a'}),txt('#F97316',{left:40,top:290,fontSize:12,fill:'#94a3b8',fontFamily:'Roboto Mono'}),rct({left:200,top:120,width:140,height:140,fill:'#8b5cf6',rx:16,ry:16}),txt('Deep Violet',{left:200,top:272,fontSize:13,fontWeight:'600',fill:'#0f172a'}),txt('#8B5CF6',{left:200,top:290,fontSize:12,fill:'#94a3b8',fontFamily:'Roboto Mono'}),rct({left:360,top:120,width:140,height:140,fill:'#0f172a',rx:16,ry:16}),txt('Obsidian',{left:360,top:272,fontSize:13,fontWeight:'600',fill:'#0f172a'}),txt('#0F172A',{left:360,top:290,fontSize:12,fill:'#94a3b8',fontFamily:'Roboto Mono'})]),
-      makePage('#8b5cf6',[txt('Get in Touch',{left:60,top:100,fontSize:52,fontWeight:'700',fill:'#ffffff',width:W-120}),txt('For press inquiries, partnerships, and brand licensing.',{left:60,top:190,fontSize:20,fill:'#ede9fe',width:500}),txt('press@backread.com',{left:60,top:320,fontSize:28,fontWeight:'600',fill:'#ffffff',fontFamily:'Inter'})]),
-    ]
-    case 'case-study': return [
-      makePage('#ffffff',[rct({left:0,top:0,width:W,height:6,fill:'#ec4899'}),txt('CASE STUDY',{left:60,top:50,fontSize:11,fill:'#ec4899',fontFamily:'Roboto Mono',fontWeight:'600'}),txt('How [Client]\nAchieved X\nwith Backread',{left:60,top:90,fontSize:52,fontWeight:'700',fill:'#0f172a',width:W-120,fontFamily:'Inter'})]),
-      makePage('#ffffff',[rct({left:0,top:0,width:4,height:H,fill:'#ec4899'}),txt('The Challenge',{left:40,top:48,fontSize:34,fontWeight:'700',fill:'#0f172a',width:500}),txt("Describe the client's core problem in vivid detail.",{left:40,top:110,fontSize:16,fill:'#475569',width:W-80}),rct({left:40,top:230,width:W-80,height:100,fill:'#fdf2f8',rx:12,ry:12}),txt('"Quote from the client describing their pain point."',{left:60,top:258,fontSize:18,fill:'#ec4899',fontWeight:'500',fontFamily:'Georgia',width:W-120})]),
-      makePage('#ffffff',[rct({left:0,top:0,width:4,height:H,fill:'#ec4899'}),txt('The Solution',{left:40,top:48,fontSize:34,fontWeight:'700',fill:'#0f172a',width:500}),txt('Explain exactly how Backread was implemented.',{left:40,top:110,fontSize:16,fill:'#475569',width:W-80})]),
-      makePage('#0f172a',[txt('The Results',{left:60,top:56,fontSize:38,fontWeight:'700',fill:'#ffffff',width:W-120}),rct({left:60,top:130,width:260,height:160,fill:'#1e293b',rx:16,ry:16}),txt('0%',{left:80,top:150,fontSize:60,fontWeight:'700',fill:'#ec4899',width:220,fontFamily:'Inter'}),txt('improvement in key metric',{left:80,top:222,fontSize:12,fill:'#64748b',width:220}),rct({left:360,top:130,width:260,height:160,fill:'#1e293b',rx:16,ry:16}),txt('0x',{left:380,top:150,fontSize:60,fontWeight:'700',fill:'#ffffff',width:220,fontFamily:'Inter'}),txt('faster than before',{left:380,top:222,fontSize:12,fill:'#64748b',width:220})]),
-      makePage('#ffffff',[rct({left:0,top:0,width:4,height:H,fill:'#ec4899'}),txt("What's Next",{left:40,top:48,fontSize:34,fontWeight:'700',fill:'#0f172a',width:500}),txt("Describe the client's plans going forward.",{left:40,top:110,fontSize:16,fill:'#475569',width:W-80})]),
-    ]
-    case 'one-pager':
+      makePage('#f8f9fb',[r({left:0,top:0,w:6,h:H,fill:'#059669'}),t('QUARTERLY\nREPORT',{left:40,top:60,fs:52,fw:'700',fill:'#0d0f1a',width:560}),t('Q1 2025',{left:40,top:256,fs:16,fill:'#059669',fw:'600',ff:'DM Mono'}),t('Backread Platform · Confidential',{left:40,top:H-50,fs:11,fill:'#8b91a8',ff:'DM Mono',width:500})]),
+      makePage('#fff',[r({left:0,top:0,w:4,h:H,fill:'#059669'}),t('Key Metrics',{left:40,top:48,fs:32,fw:'700',width:W-80}),r({left:40,top:110,w:200,h:140,fill:'#ecfdf5',rx:12}),t('0',{left:60,top:128,fs:52,fw:'700',fill:'#059669',width:160}),t('TOTAL VIEWS',{left:60,top:190,fs:10,fill:'#4b5068',width:160,ff:'DM Mono'}),r({left:260,top:110,w:200,h:140,fill:'#eff6ff',rx:12}),t('0:00',{left:280,top:128,fs:52,fw:'700',fill:'#2563eb',width:160}),t('AVG READ TIME',{left:280,top:190,fs:10,fill:'#4b5068',width:160,ff:'DM Mono'}),r({left:480,top:110,w:200,h:140,fill:'#fdf2f8',rx:12}),t('0%',{left:500,top:128,fs:52,fw:'700',fill:'#db2777',width:160}),t('COMPLETION',{left:500,top:190,fs:10,fill:'#4b5068',width:160,ff:'DM Mono'})]),
+    ];
+    case 'onepager':
     default: return [
-      makePage('#ffffff',[rct({left:0,top:0,width:W,height:6,fill:'#f59e0b'}),txt('BACKREAD',{left:40,top:36,fontSize:18,fontWeight:'700',fill:'#f59e0b',width:300,fontFamily:'Inter'}),txt('Your Headline Here',{left:40,top:90,fontSize:48,fontWeight:'700',fill:'#0f172a',width:W/2-60,fontFamily:'Inter'}),txt('A compelling one-sentence pitch that makes someone stop scrolling.',{left:40,top:180,fontSize:16,fill:'#64748b',width:W/2-60}),rct({left:40,top:230,width:130,height:44,fill:'#f59e0b',rx:8,ry:8}),txt('Get Started →',{left:52,top:242,fontSize:14,fontWeight:'600',fill:'#ffffff',width:106}),txt('Key Benefit One',{left:40,top:320,fontSize:16,fontWeight:'600',fill:'#f59e0b'}),txt('Short punchy description here.',{left:40,top:344,fontSize:14,fill:'#64748b',width:W/2-60}),txt('Key Benefit Two',{left:40,top:390,fontSize:16,fontWeight:'600',fill:'#0f172a'}),txt('Short punchy description here.',{left:40,top:414,fontSize:14,fill:'#64748b',width:W/2-60}),rct({left:W/2+20,top:70,width:W/2-60,height:H-140,fill:'#fffbeb',rx:20,ry:20}),txt('hello@backread.com',{left:40,top:H-44,fontSize:13,fill:'#94a3b8',fontFamily:'Roboto Mono'})]),
-    ]
+      makePage('#fff',[r({left:0,top:0,w:W,h:6,fill:'#d97706'}),t('BACKREAD',{left:40,top:36,fs:16,fw:'700',fill:'#d97706',width:300,ff:'DM Mono'}),t('Your Headline\nGoes Here',{left:40,top:88,fs:46,fw:'700',fill:'#0d0f1a',width:W/2-60}),t('A compelling one-sentence pitch that makes someone stop scrolling.',{left:40,top:208,fs:15,fill:'#4b5068',width:W/2-60}),r({left:40,top:258,w:130,h:42,fill:'#d97706',rx:8}),t('Get Started →',{left:52,top:268,fs:13,fw:'600',fill:'#fff',width:106}),t('Key Benefit One',{left:40,top:340,fs:15,fw:'600',fill:'#d97706'}),t('Short punchy description of your first benefit.',{left:40,top:364,fs:13,fill:'#4b5068',width:W/2-60}),r({left:W/2+20,top:66,w:W/2-60,h:H-140,fill:'#fffbeb',rx:18})])
+    ];
   }
 }
 
-export default function DocumentEditorPage({ params }: { params: { id: string } }) {
-  const router = useRouter()
-  const [doc, setDoc] = useState<Document | null>(null)
-  const [title, setTitle] = useState('')
-  const [emoji, setEmoji] = useState('📄')
-  const [saving, setSaving] = useState(false)
-  const [lastSaved, setLastSaved] = useState<Date | null>(null)
-  const [shareLinks, setShareLinks] = useState<ShareLink[]>([])
-  const [showShare, setShowShare] = useState(false)
-  const [showEmojiPicker, setShowEmojiPicker] = useState(false)
-  const [showDrafter, setShowDrafter] = useState(false)
-  const [showTemplates, setShowTemplates] = useState(false)
+// ============================================================
+// INIT
+// ============================================================
+window.addEventListener('load', () => {
+  fc = new fabric.Canvas('main-canvas', {width: CANVAS_W, height: CANVAS_H, backgroundColor:'#fff', selection:true, preserveObjectStacking:true});
 
-  const canvasEl = useRef<HTMLCanvasElement>(null)
-  const fabricRef = useRef<any>(null)
-  const [pages, setPages] = useState<any[]>([])
-  const [currentPage, setCurrentPage] = useState(0)
-  const [activeTool, setActiveTool] = useState('select')
-  const [zoom, setZoom] = useState(0.68)
-  const [selectedObj, setSelectedObj] = useState<any>(null)
-  const [fontColor, setFontColor] = useState('#0f172a')
-  const [fillColor, setFillColor] = useState('#f97316')
-  const [bgColor, setBgColor] = useState('#ffffff')
-  const [fontSize, setFontSize] = useState(18)
-  const [fontFamily, setFontFamily] = useState('Inter')
-  const [isDragging, setIsDragging] = useState(false)
-  const saveTimer = useRef<NodeJS.Timeout | null>(null)
-  const pagesRef = useRef<any[]>([])
-  const currentPageRef = useRef(0)
+  // Events
+  fc.on('selection:created', onSelect);
+  fc.on('selection:updated', onSelect);
+  fc.on('selection:cleared', () => { document.getElementById('right-panel').classList.remove('open'); });
+  fc.on('object:modified', scheduleAutoSave);
+  fc.on('object:added', scheduleAutoSave);
+  fc.on('object:removed', scheduleAutoSave);
 
-  useEffect(() => { pagesRef.current = pages }, [pages])
-  useEffect(() => { currentPageRef.current = currentPage }, [currentPage])
+  // Build template grid
+  buildTplGrid();
 
-  useEffect(() => {
-    const link = document.createElement('link')
-    link.rel = 'stylesheet'
-    link.href = 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@400;600&family=Playfair+Display:wght@700&family=Montserrat:wght@400;600;700&display=swap'
-    document.head.appendChild(link)
-    if (!(window as any).fabric) {
-      const s = document.createElement('script')
-      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.0/fabric.min.js'
-      document.head.appendChild(s)
+  // Show template modal
+  document.getElementById('templateModal').style.display = 'flex';
+  applyZoom();
+
+  // Keyboard shortcuts
+  window.addEventListener('keydown', onKey);
+  window.addEventListener('click', (e) => {
+    if (!e.target.closest('#emojiBtn') && !e.target.closest('#emojiPicker')) {
+      document.getElementById('emojiPicker').style.display = 'none';
     }
-  }, [])
+  });
 
-  useEffect(() => { loadDocument(); loadShareLinks() }, [params.id])
+  buildShareUI();
+});
 
-  async function loadDocument() {
-    const { data } = await supabase.from('documents').select('*').eq('id', params.id).single()
-    if (!data) { router.push('/dashboard'); return }
-    setDoc(data); setTitle(data.title); setEmoji(data.cover_emoji ?? '📄')
-    const canvasData = (data as any).canvas_data
-    if (canvasData?.pages?.length) { setPages(canvasData.pages); setShowTemplates(false) }
-    else setShowTemplates(true)
-  }
-
-  async function loadShareLinks() {
-    const { data } = await supabase.from('share_links').select('*').eq('document_id', params.id).order('created_at', { ascending: false })
-    setShareLinks(data ?? [])
-  }
-
-  useEffect(() => {
-    const check = setInterval(() => {
-      if ((window as any).fabric && canvasEl.current && !fabricRef.current) {
-        clearInterval(check)
-        const fabric = (window as any).fabric
-        const fc = new fabric.Canvas(canvasEl.current, { width: CANVAS_W, height: CANVAS_H, backgroundColor: '#ffffff', selection: true, preserveObjectStacking: true })
-        fabricRef.current = fc
-        fc.on('selection:created', (e: any) => { const o = e.selected?.[0]; setSelectedObj(o); if (o) { setFontSize(o.fontSize || 18); setFontFamily(o.fontFamily || 'Inter') } })
-        fc.on('selection:updated', (e: any) => { const o = e.selected?.[0]; setSelectedObj(o); if (o) { setFontSize(o.fontSize || 18); setFontFamily(o.fontFamily || 'Inter') } })
-        fc.on('selection:cleared', () => setSelectedObj(null))
-        fc.on('object:modified', () => scheduleAutoSave())
-        fc.on('object:added', () => scheduleAutoSave())
-        fc.on('object:removed', () => scheduleAutoSave())
-      }
-    }, 100)
-    return () => clearInterval(check)
-  }, [])
-
-  useEffect(() => {
-    if (!fabricRef.current || !pages[currentPage]) return
-    fabricRef.current.loadFromJSON(pages[currentPage], () => fabricRef.current.renderAll())
-  }, [pages.length]) // eslint-disable-line
-
-  function scheduleAutoSave() {
-    if (saveTimer.current) clearTimeout(saveTimer.current)
-    saveTimer.current = setTimeout(() => saveCanvas(), 1500)
-  }
-
-  const saveCanvas = useCallback(async () => {
-    if (!fabricRef.current) return
-    setSaving(true)
-    const currentJson = fabricRef.current.toJSON()
-    const allPages = [...pagesRef.current]; allPages[currentPageRef.current] = currentJson
-    setPages(allPages)
-    await supabase.from('documents').update({ canvas_data: { pages: allPages }, updated_at: new Date().toISOString() } as any).eq('id', params.id)
-    setSaving(false); setLastSaved(new Date())
-  }, [params.id])
-
-  function switchPage(idx: number) {
-    if (!fabricRef.current) return
-    const updated = [...pagesRef.current]; updated[currentPageRef.current] = fabricRef.current.toJSON()
-    setPages(updated); setCurrentPage(idx)
-    fabricRef.current.loadFromJSON(updated[idx], () => fabricRef.current.renderAll())
-  }
-
-  function addPage() {
-    if (!fabricRef.current) return
-    const updated = [...pagesRef.current]; updated[currentPageRef.current] = fabricRef.current.toJSON()
-    const blank = makePage(bgColor); const newIdx = currentPageRef.current + 1
-    updated.splice(newIdx, 0, blank); setPages(updated); setCurrentPage(newIdx)
-    fabricRef.current.clear(); fabricRef.current.backgroundColor = bgColor; fabricRef.current.renderAll()
-  }
-
-  function removePage(idx: number) {
-    if (pagesRef.current.length <= 1) return
-    const updated = pagesRef.current.filter((_, i) => i !== idx); setPages(updated)
-    const newIdx = Math.min(currentPageRef.current, updated.length - 1); setCurrentPage(newIdx)
-    fabricRef.current?.loadFromJSON(updated[newIdx], () => fabricRef.current.renderAll())
-  }
-
-  function applyTemplate(id: string) {
-    const builtPages = buildTemplate(id); setPages(builtPages); setCurrentPage(0); setShowTemplates(false)
-    const load = () => { if (fabricRef.current) fabricRef.current.loadFromJSON(builtPages[0], () => fabricRef.current.renderAll()); else setTimeout(load, 100) }
-    load()
-  }
-
-  function startBlank() {
-    const blank = makePage('#ffffff'); setPages([blank]); setCurrentPage(0); setShowTemplates(false)
-    if (fabricRef.current) { fabricRef.current.clear(); fabricRef.current.backgroundColor = '#ffffff'; fabricRef.current.renderAll() }
-  }
-
-  function addText() {
-    const fabric = (window as any).fabric; const fc = fabricRef.current; if (!fc || !fabric) return
-    const tb = new fabric.Textbox('Click to edit', { left: 120, top: 120, width: 320, fontSize: 24, fontFamily, fill: fontColor, editable: true })
-    fc.add(tb); fc.setActiveObject(tb); fc.renderAll()
-  }
-
-  function addShape(type: 'rect' | 'circle' | 'triangle') {
-    const fabric = (window as any).fabric; const fc = fabricRef.current; if (!fc || !fabric) return
-    const shapes: any = {
-      rect: new fabric.Rect({ left: 120, top: 120, width: 200, height: 100, fill: fillColor, rx: 8, ry: 8 }),
-      circle: new fabric.Circle({ left: 120, top: 120, radius: 70, fill: fillColor }),
-      triangle: new fabric.Triangle({ left: 120, top: 120, width: 140, height: 140, fill: fillColor }),
-    }
-    fc.add(shapes[type]); fc.setActiveObject(shapes[type]); fc.renderAll()
-  }
-
-  function deleteSelected() {
-    const fc = fabricRef.current; if (!fc) return
-    fc.getActiveObjects().forEach((o: any) => fc.remove(o)); fc.discardActiveObject(); fc.renderAll()
-  }
-
-  function duplicateSelected() {
-    const fc = fabricRef.current; if (!fc) return
-    fc.getActiveObject()?.clone((c: any) => { c.set({ left: c.left + 20, top: c.top + 20 }); fc.add(c); fc.setActiveObject(c); fc.renderAll() })
-  }
-
-  function updateSelectedProp(prop: string, value: any) {
-    const fc = fabricRef.current; if (!fc) return
-    const obj = fc.getActiveObject(); if (!obj) return
-    obj.set(prop, value); fc.renderAll(); scheduleAutoSave()
-  }
-
-  function uploadImage(file: File) {
-    const fabric = (window as any).fabric; const fc = fabricRef.current; if (!fc || !fabric) return
-    const reader = new FileReader()
-    reader.onload = e => fabric.Image.fromURL(e.target?.result as string, (img: any) => {
-      const scale = Math.min(400 / img.width, 300 / img.height, 1)
-      img.set({ left: 120, top: 120, scaleX: scale, scaleY: scale }); fc.add(img); fc.setActiveObject(img); fc.renderAll()
-    })
-    reader.readAsDataURL(file)
-  }
-
-  async function saveTitle() { await supabase.from('documents').update({ title: title || 'Untitled', cover_emoji: emoji }).eq('id', params.id) }
-
-  async function publishDocument() {
-    await supabase.from('documents').update({ status: 'active' }).eq('id', params.id)
-    setDoc(prev => prev ? { ...prev, status: 'active' } : prev); setShowShare(true)
-  }
-
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      const tag = (e.target as HTMLElement).tagName
-      if (tag === 'INPUT' || tag === 'TEXTAREA') return
-      if ((e.metaKey || e.ctrlKey) && e.key === 's') { e.preventDefault(); saveCanvas() }
-      if ((e.key === 'Delete' || e.key === 'Backspace') && fabricRef.current?.getActiveObject()) deleteSelected()
-    }
-    window.addEventListener('keydown', handler)
-    return () => window.removeEventListener('keydown', handler)
-  }, [saveCanvas])
-
-  const isActive = doc?.status === 'active'
-
-  return (
-    <div style={{ display:'flex', flexDirection:'column', height:'100%', background:'#f1f5f9', fontFamily:"'Inter',system-ui,sans-serif", color:'#0f172a' }}>
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@400;600&display=swap');
-        *{box-sizing:border-box;}
-        ::-webkit-scrollbar{width:5px;height:5px;}
-        ::-webkit-scrollbar-track{background:transparent;}
-        ::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:10px;}
-        input[type="color"]{-webkit-appearance:none;border:2px solid #e2e8f0;cursor:pointer;padding:0;border-radius:6px;width:28px;height:28px;}
-        input[type="color"]::-webkit-color-swatch-wrapper{padding:2px;}
-        input[type="color"]::-webkit-color-swatch{border:none;border-radius:4px;}
-        .tbtn{width:34px;height:34px;border:none;cursor:pointer;border-radius:8px;background:transparent;color:#64748b;display:flex;align-items:center;justify-content:center;transition:all .12s;}
-        .tbtn:hover{background:#f1f5f9;color:#0f172a;}
-        .tbtn.on{background:#fff7ed;color:#f97316;}
-        .page-thumb{cursor:pointer;border-radius:10px;border:2px solid #e2e8f0;overflow:hidden;transition:all .15s;background:white;}
-        .page-thumb:hover{border-color:#94a3b8;}
-        .page-thumb.on{border-color:#f97316;box-shadow:0 0 0 3px rgba(249,115,22,.15);}
-        .tcard{border:2px solid #e2e8f0;border-radius:16px;cursor:pointer;text-align:left;font-family:inherit;transition:all .18s;}
-        .tcard:hover{transform:translateY(-3px);box-shadow:0 12px 28px rgba(0,0,0,.1);}
-        select{-webkit-appearance:none;appearance:none;background:white url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%2394a3b8'/%3E%3C/svg%3E") no-repeat right 8px center;border:1.5px solid #e2e8f0;border-radius:8px;padding:5px 26px 5px 10px;font-size:12px;font-family:inherit;color:#374151;cursor:pointer;outline:none;}
-        select:focus{border-color:#f97316;}
-      `}</style>
-
-      {/* TOP BAR */}
-      <div style={{ borderBottom:'1px solid #e2e8f0', background:'white', padding:'0 16px', height:56, display:'flex', alignItems:'center', gap:10, flexShrink:0, boxShadow:'0 1px 3px rgba(0,0,0,.04)' }}>
-        <button onClick={() => router.push('/dashboard')} style={{ background:'none', border:'none', cursor:'pointer', color:'#64748b', display:'flex', alignItems:'center', gap:5, fontSize:13, fontFamily:'inherit', padding:'5px 8px', borderRadius:8, fontWeight:500 }}>
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M9 2L4 7l5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>Docs
-        </button>
-        <svg width="5" height="10" viewBox="0 0 5 10" fill="none"><path d="M1 1l3 4-3 4" stroke="#cbd5e1" strokeWidth="1.3" strokeLinecap="round"/></svg>
-
-        <div style={{ position:'relative' }}>
-          <button onClick={() => setShowEmojiPicker(!showEmojiPicker)} style={{ fontSize:20, background:'none', border:'none', cursor:'pointer', padding:'2px 5px', borderRadius:7 }}>{emoji}</button>
-          {showEmojiPicker && <div style={{ position:'absolute', top:'110%', left:0, background:'white', border:'1px solid #e2e8f0', borderRadius:14, padding:10, display:'flex', flexWrap:'wrap', gap:4, width:246, zIndex:50, boxShadow:'0 8px 32px rgba(0,0,0,.12)' }}>
-            {EMOJIS.map(e => <button key={e} onClick={() => { setEmoji(e); setShowEmojiPicker(false); setTimeout(saveTitle, 100) }} style={{ fontSize:20, background:'none', border:'none', cursor:'pointer', padding:4, borderRadius:7 }}>{e}</button>)}
-          </div>}
-        </div>
-
-        <input value={title} onChange={e => setTitle(e.target.value)} onBlur={saveTitle} placeholder="Untitled"
-          style={{ border:'none', outline:'none', fontSize:14, fontWeight:600, color:'#0f172a', background:'transparent', fontFamily:'inherit', flex:1, maxWidth:260 }}/>
-
-        <div style={{ display:'flex', alignItems:'center', gap:8, marginLeft:'auto', flexShrink:0 }}>
-          <span style={{ fontSize:11, color:saving?'#f97316':'#94a3b8', fontFamily:'Roboto Mono', minWidth:80 }}>
-            {saving ? '● Saving…' : lastSaved ? `✓ ${lastSaved.toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' })}` : ''}
-          </span>
-          <span style={{ padding:'4px 10px', borderRadius:20, fontSize:11, fontWeight:700, letterSpacing:'.04em', background:isActive?'#dcfce7':'#f1f5f9', color:isActive?'#15803d':'#64748b' }}>{isActive ? 'LIVE' : 'DRAFT'}</span>
-          <button onClick={() => setShowTemplates(true)} style={{ padding:'6px 13px', borderRadius:8, fontSize:13, fontWeight:500, border:'1.5px solid #e2e8f0', background:'white', cursor:'pointer', color:'#374151', fontFamily:'inherit' }}>Templates</button>
-          <button onClick={() => setShowDrafter(true)} style={{ padding:'6px 13px', borderRadius:8, fontSize:13, fontWeight:500, border:'1.5px solid #e2e8f0', background:'white', cursor:'pointer', color:'#374151', fontFamily:'inherit', display:'flex', alignItems:'center', gap:5 }}>
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 1L7.2 4.5H11L8.1 6.8L9.3 10.5L6 8.2L2.7 10.5L3.9 6.8L1 4.5H4.8L6 1Z" fill="#f97316"/></svg>AI Draft
-          </button>
-          <button onClick={() => router.push(`/documents/${params.id}/present`)} style={{ padding:'6px 13px', borderRadius:8, fontSize:13, fontWeight:500, border:'1.5px solid #e2e8f0', background:'white', cursor:'pointer', color:'#374151', fontFamily:'inherit', display:'flex', alignItems:'center', gap:5 }}>
-            <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><rect x="1" y="2" width="11" height="8" rx="1.5" stroke="currentColor" strokeWidth="1.3"/><path d="M5 11h3M6.5 10v1" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>Present
-          </button>
-          {isActive
-            ? <button onClick={() => setShowShare(true)} style={{ padding:'7px 18px', borderRadius:9, fontSize:13, fontWeight:600, border:'none', background:'#f97316', color:'white', cursor:'pointer', fontFamily:'inherit', boxShadow:'0 2px 8px rgba(249,115,22,.3)' }}>Share</button>
-            : <button onClick={publishDocument} style={{ padding:'7px 18px', borderRadius:9, fontSize:13, fontWeight:600, border:'none', background:'#f97316', color:'white', cursor:'pointer', fontFamily:'inherit', boxShadow:'0 2px 8px rgba(249,115,22,.3)' }}>Publish &amp; Share</button>
-          }
-        </div>
+function buildTplGrid() {
+  const grid = document.getElementById('tplGrid');
+  grid.innerHTML = TEMPLATES.map(t => `
+    <button class="tpl-card" onclick="applyTemplate('${t.id}')" style="--tpl-bg:${t.bg}">
+      <div class="tpl-card-inner">
+        <span class="tpl-emoji">${t.emoji}</span>
+        <div class="tpl-name">${t.name}</div>
+        <div class="tpl-desc">${t.desc}</div>
+        <span class="tpl-pages" style="color:${t.accent}">${t.pages} page${t.pages>1?'s':''}</span>
       </div>
-
-      {/* TOOLBAR */}
-      <div style={{ borderBottom:'1px solid #e2e8f0', padding:'0 12px', background:'white', display:'flex', alignItems:'center', gap:2, flexShrink:0, height:48 }}>
-        {[
-          { id:'select', tip:'Select (V)', icon:<svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M3 2l9 5-4.5 1.4-2.2 4.6L3 2z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/></svg> },
-          { id:'text',   tip:'Text (T)',  icon:<svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M2 4h11M7.5 4v8M4.5 12h6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg> },
-          { id:'rect',   tip:'Rectangle',icon:<svg width="15" height="15" viewBox="0 0 15 15" fill="none"><rect x="2" y="3" width="11" height="9" rx="2" stroke="currentColor" strokeWidth="1.4"/></svg> },
-          { id:'circle', tip:'Ellipse',  icon:<svg width="15" height="15" viewBox="0 0 15 15" fill="none"><ellipse cx="7.5" cy="7.5" rx="5.5" ry="5.5" stroke="currentColor" strokeWidth="1.4"/></svg> },
-          { id:'draw',   tip:'Draw',     icon:<svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M2.5 12.5l2-1 6.5-6.5-1-1L3.5 10.5l-1 2zM10 4l1 1" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg> },
-        ].map(tool => (
-          <button key={tool.id} title={tool.tip} className={`tbtn${activeTool === tool.id ? ' on' : ''}`}
-            onClick={() => {
-              if (tool.id === 'text') { addText(); setActiveTool('select'); return }
-              if (tool.id === 'rect') { addShape('rect'); return }
-              if (tool.id === 'circle') { addShape('circle'); return }
-              setActiveTool(tool.id)
-              if (fabricRef.current) { fabricRef.current.isDrawingMode = tool.id === 'draw'; if (tool.id === 'draw') fabricRef.current.freeDrawingBrush.color = fontColor }
-            }}>{tool.icon}
-          </button>
-        ))}
-
-        <div style={{ width:1, height:24, background:'#e2e8f0', margin:'0 6px' }}/>
-
-        <label title="Upload image" className="tbtn" style={{ cursor:'pointer' }}>
-          <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><rect x="1" y="3" width="13" height="9" rx="2" stroke="currentColor" strokeWidth="1.4"/><circle cx="5" cy="6.5" r="1.2" fill="currentColor"/><path d="M1 11l3.5-3L8 11l2.5-2.5L14 12" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/></svg>
-          <input type="file" accept="image/*" style={{ display:'none' }} onChange={e => { const f = e.target.files?.[0]; if (f) uploadImage(f) }}/>
-        </label>
-
-        <div style={{ width:1, height:24, background:'#e2e8f0', margin:'0 6px' }}/>
-
-        <select value={fontFamily} onChange={e => { setFontFamily(e.target.value); updateSelectedProp('fontFamily', e.target.value) }} style={{ minWidth:140 }}>
-          {FONTS.map(f => <option key={f} value={f}>{f}</option>)}
-        </select>
-
-        <input type="number" value={fontSize} min={6} max={200}
-          onChange={e => { const v = parseInt(e.target.value); setFontSize(v); updateSelectedProp('fontSize', v) }}
-          style={{ width:54, border:'1.5px solid #e2e8f0', borderRadius:8, padding:'5px 8px', fontSize:12, fontFamily:'inherit', color:'#374151', outline:'none', textAlign:'center' }}/>
-
-        <button title="Bold" onClick={() => { const o = fabricRef.current?.getActiveObject(); if(o){ o.set('fontWeight', o.fontWeight==='bold'?'normal':'bold'); fabricRef.current.renderAll() } }} style={{ ...btnStyle, fontWeight:700, fontSize:15 }}>B</button>
-        <button title="Italic" onClick={() => { const o = fabricRef.current?.getActiveObject(); if(o){ o.set('fontStyle', o.fontStyle==='italic'?'normal':'italic'); fabricRef.current.renderAll() } }} style={{ ...btnStyle, fontStyle:'italic', fontSize:15 }}>I</button>
-        <button title="Underline" onClick={() => { const o = fabricRef.current?.getActiveObject(); if(o){ o.set('underline', !o.underline); fabricRef.current.renderAll() } }} style={{ ...btnStyle, textDecoration:'underline', fontSize:14 }}>U</button>
-
-        <div style={{ width:1, height:24, background:'#e2e8f0', margin:'0 6px' }}/>
-
-        <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-          <div style={{ textAlign:'center' }}>
-            <input type="color" value={fontColor} title="Text color" onChange={e => { setFontColor(e.target.value); updateSelectedProp('fill', e.target.value) }}/>
-            <div style={{ fontSize:9, color:'#94a3b8', marginTop:1, fontFamily:'Roboto Mono' }}>TEXT</div>
-          </div>
-          <div style={{ textAlign:'center' }}>
-            <input type="color" value={fillColor} title="Fill color" onChange={e => { setFillColor(e.target.value); updateSelectedProp('fill', e.target.value) }}/>
-            <div style={{ fontSize:9, color:'#94a3b8', marginTop:1, fontFamily:'Roboto Mono' }}>FILL</div>
-          </div>
-          <div style={{ textAlign:'center' }}>
-            <input type="color" value={bgColor} title="Page background" onChange={e => { setBgColor(e.target.value); if (fabricRef.current) { fabricRef.current.backgroundColor = e.target.value; fabricRef.current.renderAll() } }}/>
-            <div style={{ fontSize:9, color:'#94a3b8', marginTop:1, fontFamily:'Roboto Mono' }}>PAGE</div>
-          </div>
-        </div>
-
-        <div style={{ width:1, height:24, background:'#e2e8f0', margin:'0 6px' }}/>
-
-        {[
-          { tip:'Duplicate', fn: duplicateSelected, icon:<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="1" y="4" width="9" height="9" rx="1.5" stroke="currentColor" strokeWidth="1.3"/><path d="M4 4V2.5A1.5 1.5 0 015.5 1H11.5A1.5 1.5 0 0113 2.5V8.5A1.5 1.5 0 0111.5 10H10" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg> },
-          { tip:'Delete',    fn: deleteSelected,    icon:<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 4h10M5 4V2.5h4V4M5.5 10.5v-5M8.5 10.5v-5M3 4l.8 7.5h6.4L11 4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg> },
-          { tip:'Bring forward', fn:()=>{const o=fabricRef.current?.getActiveObject();if(o){fabricRef.current.bringToFront(o);fabricRef.current.renderAll()}}, icon:<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 2v10M3 5l4-4 4 4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg> },
-          { tip:'Send backward',fn:()=>{const o=fabricRef.current?.getActiveObject();if(o){fabricRef.current.sendToBack(o);fabricRef.current.renderAll()}},  icon:<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 2v10M3 9l4 4 4-4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg> },
-        ].map(b => <button key={b.tip} title={b.tip} className="tbtn" onClick={b.fn}>{b.icon}</button>)}
-
-        <div style={{ marginLeft:'auto', display:'flex', alignItems:'center', gap:3, background:'#f8fafc', borderRadius:9, padding:'3px 10px', border:'1.5px solid #e2e8f0' }}>
-          <button onClick={() => setZoom(z => Math.max(.25, z - .1))} style={{ background:'none', border:'none', cursor:'pointer', color:'#64748b', fontSize:18, lineHeight:1, padding:'0 3px', fontWeight:300 }}>−</button>
-          <span style={{ fontSize:11, color:'#64748b', minWidth:40, textAlign:'center', fontFamily:'Roboto Mono' }}>{Math.round(zoom * 100)}%</span>
-          <button onClick={() => setZoom(z => Math.min(2, z + .1))} style={{ background:'none', border:'none', cursor:'pointer', color:'#64748b', fontSize:18, lineHeight:1, padding:'0 3px', fontWeight:300 }}>+</button>
-        </div>
-      </div>
-
-      {/* BODY */}
-      <div style={{ flex:1, display:'flex', overflow:'hidden' }}>
-
-        {/* Pages strip */}
-        <div style={{ width:150, flexShrink:0, background:'white', borderRight:'1px solid #e2e8f0', display:'flex', flexDirection:'column' }}>
-          <div style={{ padding:'10px 12px', borderBottom:'1px solid #e2e8f0', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-            <span style={{ fontSize:11, fontWeight:600, color:'#94a3b8', textTransform:'uppercase', letterSpacing:'.06em' }}>Pages</span>
-            <button onClick={addPage} title="Add page" style={{ background:'#f97316', border:'none', borderRadius:6, width:22, height:22, color:'white', cursor:'pointer', fontSize:17, display:'flex', alignItems:'center', justifyContent:'center', lineHeight:1, boxShadow:'0 1px 4px rgba(249,115,22,.3)' }}>+</button>
-          </div>
-          <div style={{ flex:1, overflow:'auto', padding:'10px 8px', display:'flex', flexDirection:'column', gap:8 }}>
-            {pages.map((page, idx) => (
-              <div key={idx} onClick={() => switchPage(idx)} className={`page-thumb${currentPage === idx ? ' on' : ''}`}>
-                <div style={{ width:'100%', aspectRatio:`${CANVAS_W}/${CANVAS_H}`, background:page?.background ?? '#ffffff', position:'relative' }}>
-                  <div style={{ position:'absolute', bottom:0, left:0, right:0, padding:'2px 6px', background:'rgba(255,255,255,.8)', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-                    <span style={{ fontSize:9, color:'#94a3b8', fontFamily:'Roboto Mono', fontWeight:600 }}>{idx + 1}</span>
-                    {pages.length > 1 && <button onClick={e => { e.stopPropagation(); removePage(idx) }} style={{ width:13, height:13, borderRadius:3, background:'#ef4444', border:'none', color:'white', fontSize:8, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', lineHeight:1 }}>×</button>}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-          <div style={{ padding:'7px 12px', borderTop:'1px solid #e2e8f0', fontSize:10, color:'#94a3b8', fontFamily:'Roboto Mono' }}>{pages.length} page{pages.length !== 1 ? 's' : ''}</div>
-        </div>
-
-        {/* Canvas */}
-        <div style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', background:'#f1f5f9', overflow:'auto', position:'relative' }}
-          onDragOver={e => { e.preventDefault(); setIsDragging(true) }}
-          onDragLeave={() => setIsDragging(false)}
-          onDrop={e => { e.preventDefault(); setIsDragging(false); const f = e.dataTransfer.files?.[0]; if (f?.type.startsWith('image/')) uploadImage(f) }}>
-          {isDragging && <div style={{ position:'absolute', inset:0, zIndex:50, background:'rgba(249,115,22,.05)', border:'2px dashed #f97316', borderRadius:8, display:'flex', alignItems:'center', justifyContent:'center', pointerEvents:'none' }}><span style={{ color:'#f97316', fontWeight:600, fontSize:16, background:'white', padding:'10px 20px', borderRadius:10, boxShadow:'0 4px 12px rgba(0,0,0,.1)' }}>Drop image here</span></div>}
-          <div style={{ transform:`scale(${zoom})`, transformOrigin:'center center', boxShadow:'0 8px 48px rgba(0,0,0,.14)', borderRadius:4, outline:'1px solid #e2e8f0' }}>
-            <canvas ref={canvasEl}/>
-          </div>
-          {pages.length > 1 && (
-            <div style={{ position:'absolute', bottom:20, left:'50%', transform:'translateX(-50%)', display:'flex', gap:6, alignItems:'center', background:'white', borderRadius:22, padding:'6px 16px', boxShadow:'0 2px 16px rgba(0,0,0,.1)', border:'1px solid #e2e8f0' }}>
-              <button onClick={() => currentPage > 0 && switchPage(currentPage - 1)} style={{ background:'none', border:'none', cursor:'pointer', color:'#64748b', fontSize:22, opacity:currentPage === 0 ? .3 : 1, lineHeight:1, padding:'0 2px' }}>‹</button>
-              <span style={{ fontSize:12, color:'#64748b', fontFamily:'Roboto Mono', minWidth:52, textAlign:'center' }}>{currentPage + 1} / {pages.length}</span>
-              <button onClick={() => currentPage < pages.length - 1 && switchPage(currentPage + 1)} style={{ background:'none', border:'none', cursor:'pointer', color:'#64748b', fontSize:22, opacity:currentPage === pages.length - 1 ? .3 : 1, lineHeight:1, padding:'0 2px' }}>›</button>
-            </div>
-          )}
-        </div>
-
-        {/* Properties panel */}
-        {selectedObj && (
-          <div style={{ width:192, flexShrink:0, background:'white', borderLeft:'1px solid #e2e8f0', display:'flex', flexDirection:'column' }}>
-            <div style={{ padding:'10px 14px', borderBottom:'1px solid #e2e8f0', fontSize:11, fontWeight:700, color:'#94a3b8', textTransform:'uppercase', letterSpacing:'.06em' }}>Properties</div>
-            <div style={{ padding:14, display:'flex', flexDirection:'column', gap:14, overflow:'auto' }}>
-              <Prop label="X"><NumIn value={Math.round(selectedObj.left ?? 0)} onChange={v => updateSelectedProp('left', v)}/></Prop>
-              <Prop label="Y"><NumIn value={Math.round(selectedObj.top ?? 0)} onChange={v => updateSelectedProp('top', v)}/></Prop>
-              {selectedObj.width && <Prop label="Width"><NumIn value={Math.round(selectedObj.width ?? 0)} onChange={v => updateSelectedProp('width', v)}/></Prop>}
-              <Prop label="Opacity">
-                <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                  <input type="range" min={0} max={1} step={.01} value={selectedObj.opacity ?? 1} onChange={e => updateSelectedProp('opacity', parseFloat(e.target.value))} style={{ flex:1, accentColor:'#f97316' }}/>
-                  <span style={{ fontSize:11, color:'#94a3b8', minWidth:28, fontFamily:'Roboto Mono' }}>{Math.round((selectedObj.opacity ?? 1) * 100)}</span>
-                </div>
-              </Prop>
-              {(selectedObj.type === 'textbox' || selectedObj.type === 'text') && <Prop label="Font size"><NumIn value={selectedObj.fontSize ?? 18} onChange={v => updateSelectedProp('fontSize', v)}/></Prop>}
-              {selectedObj.type === 'rect' && <Prop label="Corner radius"><NumIn value={selectedObj.rx ?? 0} onChange={v => { updateSelectedProp('rx', v); updateSelectedProp('ry', v) }}/></Prop>}
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* TEMPLATE PICKER */}
-      {showTemplates && (
-        <div style={{ position:'fixed', inset:0, zIndex:100, background:'rgba(15,23,42,.55)', display:'flex', alignItems:'center', justifyContent:'center', backdropFilter:'blur(6px)' }}>
-          <div style={{ background:'white', borderRadius:24, padding:'44px 48px', width:'min(880px,95vw)', maxHeight:'90vh', overflow:'auto', boxShadow:'0 32px 80px rgba(0,0,0,.2)' }}>
-            <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:12 }}>
-              <div style={{ width:32, height:32, background:'#fff7ed', borderRadius:8, display:'flex', alignItems:'center', justifyContent:'center', fontSize:18 }}>✦</div>
-              <span style={{ fontSize:11, color:'#f97316', fontWeight:700, letterSpacing:'.1em', fontFamily:'Roboto Mono' }}>BACKREAD EDITOR</span>
-            </div>
-            <h2 style={{ fontSize:32, fontWeight:700, marginBottom:8, letterSpacing:'-.03em', color:'#0f172a' }}>Start with a template</h2>
-            <p style={{ fontSize:15, color:'#64748b', marginBottom:36 }}>Professionally designed starting points. Pick one and make it yours.</p>
-            <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:16, marginBottom:32 }}>
-              {TEMPLATES.map(t => (
-                <button key={t.id} className="tcard" onClick={() => applyTemplate(t.id)} style={{ background:t.bg, padding:'26px 24px', color:'#0f172a' }}>
-                  <div style={{ fontSize:34, marginBottom:14 }}>{t.emoji}</div>
-                  <div style={{ fontWeight:700, fontSize:17, marginBottom:5 }}>{t.name}</div>
-                  <div style={{ fontSize:13, color:'#64748b', marginBottom:14 }}>{t.description}</div>
-                  <div style={{ fontSize:11, color:t.accent, background:'white', borderRadius:6, padding:'3px 10px', display:'inline-block', fontWeight:700, fontFamily:'Roboto Mono', boxShadow:'0 1px 4px rgba(0,0,0,.06)' }}>{t.pages} page{t.pages !== 1 ? 's' : ''}</div>
-                </button>
-              ))}
-            </div>
-            <div style={{ display:'flex', justifyContent:'center', gap:12 }}>
-              <button onClick={startBlank} style={{ padding:'11px 32px', borderRadius:10, fontSize:14, fontWeight:600, fontFamily:'inherit', border:'2px solid #e2e8f0', background:'white', color:'#64748b', cursor:'pointer' }}>
-                Start blank
-              </button>
-              {pages.length > 0 && <button onClick={() => setShowTemplates(false)} style={{ padding:'11px 32px', borderRadius:10, fontSize:14, fontWeight:600, fontFamily:'inherit', border:'2px solid #e2e8f0', background:'white', color:'#64748b', cursor:'pointer' }}>Cancel</button>}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showShare && <ShareModal documentId={params.id} links={shareLinks} onClose={() => setShowShare(false)} onRefresh={loadShareLinks}/>}
-
-      {showDrafter && (
-        <AIDrafter documentType={doc?.type ?? 'document'}
-          onDraftComplete={(html: string) => {
-            const stripped = html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
-            const page = makePage('#ffffff', [txt(stripped, { left:60, top:60, width:CANVAS_W-120, fontSize:16, fill:'#0f172a' })])
-            const updated = [...pagesRef.current, page]; setPages(updated)
-            const newIdx = updated.length - 1; setCurrentPage(newIdx)
-            fabricRef.current?.loadFromJSON(page, () => fabricRef.current.renderAll()); saveCanvas()
-          }}
-          onClose={() => setShowDrafter(false)}/>
-      )}
-    </div>
-  )
+    </button>
+  `).join('');
 }
 
-const btnStyle: React.CSSProperties = { width:28, height:28, border:'none', cursor:'pointer', borderRadius:6, background:'transparent', color:'#64748b', fontFamily:'inherit' }
-
-function Prop({ label, children }: { label: string; children: React.ReactNode }) {
-  return <div><div style={{ fontSize:10, fontWeight:700, color:'#94a3b8', textTransform:'uppercase', letterSpacing:'.06em', marginBottom:5 }}>{label}</div>{children}</div>
+function applyTemplate(id) {
+  const built = buildTemplate(id);
+  pages = built;
+  currentPage = 0;
+  document.getElementById('templateModal').style.display = 'none';
+  document.getElementById('cancelTplBtn').style.display = 'inline-block';
+  loadPage(0);
+  renderPageStrip();
+  applyZoom();
 }
 
-function NumIn({ value, onChange }: { value: number; onChange: (v: number) => void }) {
-  return <input type="number" value={value} onChange={e => onChange(parseFloat(e.target.value))} style={{ width:'100%', background:'#f8fafc', border:'1.5px solid #e2e8f0', color:'#0f172a', borderRadius:8, padding:'5px 10px', fontSize:12, fontFamily:'Roboto Mono', outline:'none' }}/>
+function startBlank() {
+  pages = [makePage('#fff',[])];
+  currentPage = 0;
+  document.getElementById('templateModal').style.display = 'none';
+  document.getElementById('cancelTplBtn').style.display = 'inline-block';
+  loadPage(0);
+  renderPageStrip();
+  applyZoom();
 }
 
-function ShareModal({ documentId, links, onClose, onRefresh }: { documentId: string; links: ShareLink[]; onClose: () => void; onRefresh: () => void }) {
-  const [creating, setCreating] = useState(false)
-  const [label, setLabel] = useState('')
-  const [requireEmail, setRequireEmail] = useState(false)
-  const [allowDownload, setAllowDownload] = useState(false)
-  const [password, setPassword] = useState('')
-  const [copied, setCopied] = useState<string | null>(null)
-  const [showNew, setShowNew] = useState(links.length === 0)
+// ============================================================
+// PAGE MANAGEMENT
+// ============================================================
+function loadPage(idx) {
+  if (!fc) return;
+  fc.loadFromJSON(pages[idx], () => {
+    fc.renderAll();
+    updatePageNav();
+    document.getElementById('bgColor').value = rgbToHex(fc.backgroundColor || '#f0f1f5');
+  });
+}
 
-  async function createLink() {
-    setCreating(true)
-    const token = generateToken(14)
-    await supabase.from('share_links').insert({ document_id:documentId, token, label:label||'Share link', require_email:requireEmail, allow_download:allowDownload, password:password||null, is_active:true })
-    await onRefresh(); setCreating(false); setShowNew(false); setLabel(''); setPassword(''); setRequireEmail(false); setAllowDownload(false)
-  }
+function saveCurrent() {
+  if (!fc) return;
+  pages[currentPage] = fc.toJSON();
+}
 
-  function copyLink(token: string) { navigator.clipboard.writeText(buildShareUrl(token)); setCopied(token); setTimeout(() => setCopied(null), 2000) }
-  async function toggleLink(id: string, active: boolean) { await supabase.from('share_links').update({ is_active:active }).eq('id', id); onRefresh() }
+function switchPage(idx) {
+  if (idx < 0 || idx >= pages.length) return;
+  saveCurrent();
+  currentPage = idx;
+  loadPage(idx);
+  renderPageStrip();
+}
 
-  return (
-    <div style={{ position:'fixed', inset:0, background:'rgba(15,23,42,.4)', zIndex:100, display:'flex', alignItems:'flex-end', justifyContent:'flex-end' }} onClick={e => { if (e.target === e.currentTarget) onClose() }}>
-      <div style={{ width:420, height:'100vh', background:'white', borderLeft:'1px solid #e2e8f0', display:'flex', flexDirection:'column', boxShadow:'-8px 0 40px rgba(0,0,0,.1)' }}>
-        <div style={{ padding:'22px 24px', borderBottom:'1px solid #e2e8f0', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-          <div>
-            <h2 style={{ margin:'0 0 3px', fontSize:17, fontWeight:700, color:'#0f172a' }}>Share document</h2>
-            <p style={{ margin:0, fontSize:13, color:'#94a3b8' }}>{links.length} link{links.length !== 1 ? 's' : ''} created</p>
-          </div>
-          <button onClick={onClose} style={{ background:'#f8fafc', border:'none', cursor:'pointer', color:'#64748b', padding:8, borderRadius:8 }}>
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 3l10 10M13 3L3 13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
-          </button>
-        </div>
-        <div style={{ flex:1, overflow:'auto', padding:'20px 24px' }}>
-          {links.length > 0 && (
-            <div style={{ marginBottom:20 }}>
-              <p style={{ fontSize:11, fontWeight:700, color:'#94a3b8', textTransform:'uppercase', letterSpacing:'.06em', marginBottom:10 }}>Active links</p>
-              <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
-                {links.map(link => (
-                  <div key={link.id} style={{ border:'1.5px solid #e2e8f0', borderRadius:14, padding:'14px 16px' }}>
-                    <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:10 }}>
-                      <span style={{ flex:1, fontSize:13, fontWeight:600, color:'#0f172a' }}>{link.label ?? 'Share link'}</span>
-                      <span style={{ padding:'3px 9px', borderRadius:20, fontSize:11, fontWeight:700, background:link.is_active?'#dcfce7':'#f1f5f9', color:link.is_active?'#15803d':'#64748b' }}>{link.is_active ? 'Active' : 'Off'}</span>
-                    </div>
-                    <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:10 }}>
-                      <code style={{ flex:1, fontSize:11, color:'#64748b', background:'#f8fafc', padding:'5px 9px', borderRadius:7, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', display:'block' }}>{buildShareUrl(link.token)}</code>
-                      <button onClick={() => copyLink(link.token)} style={{ padding:'5px 11px', background:copied === link.token?'#f0fdf4':'#f8fafc', border:'1.5px solid', borderColor:copied === link.token?'#86efac':'#e2e8f0', borderRadius:8, fontSize:12, cursor:'pointer', color:copied === link.token?'#15803d':'#64748b', fontFamily:'inherit', fontWeight:600, whiteSpace:'nowrap' }}>
-                        {copied === link.token ? '✓ Copied' : 'Copy'}
-                      </button>
-                    </div>
-                    <div style={{ display:'flex', gap:12, fontSize:11, color:'#94a3b8', flexWrap:'wrap' }}>
-                      <span>👁 {link.view_count} views</span>
-                      {link.require_email && <span>📧 Email req.</span>}
-                      {link.password && <span>🔒 Password</span>}
-                      {link.allow_download && <span>⬇ Downloads</span>}
-                    </div>
-                    <div style={{ marginTop:10, display:'flex', justifyContent:'flex-end' }}>
-                      <button onClick={() => toggleLink(link.id, !link.is_active)} style={{ fontSize:12, color:link.is_active?'#ef4444':'#16a34a', background:'none', border:'none', cursor:'pointer', fontFamily:'inherit', fontWeight:500 }}>
-                        {link.is_active ? 'Disable link' : 'Enable link'}
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-          {!showNew
-            ? <button onClick={() => setShowNew(true)} style={{ width:'100%', padding:'12px', background:'none', border:'2px dashed #e2e8f0', borderRadius:14, cursor:'pointer', fontSize:14, color:'#94a3b8', fontFamily:'inherit', display:'flex', alignItems:'center', justifyContent:'center', gap:6 }}>
-                <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1v12M1 7h12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>Create new link
-              </button>
-            : <div style={{ border:'1.5px solid #e2e8f0', borderRadius:14, padding:'18px' }}>
-                <p style={{ margin:'0 0 16px', fontSize:14, fontWeight:700, color:'#0f172a' }}>New share link</p>
-                <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
-                  <Input label="Link label" placeholder="e.g. Sequoia meeting" value={label} onChange={(e: any) => setLabel(e.target.value)}/>
-                  <Input label="Password (optional)" type="password" placeholder="Leave empty for no password" value={password} onChange={(e: any) => setPassword(e.target.value)}/>
-                  <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-                    <Toggle checked={requireEmail} onChange={setRequireEmail} label="Require email to view"/>
-                    <Toggle checked={allowDownload} onChange={setAllowDownload} label="Allow download"/>
-                  </div>
-                  <div style={{ display:'flex', gap:8 }}>
-                    <Button variant="primary" loading={creating} onClick={createLink} size="sm">Create link</Button>
-                    <Button variant="ghost" onClick={() => setShowNew(false)} size="sm">Cancel</Button>
-                  </div>
-                </div>
-              </div>
-          }
-        </div>
+function addPage() {
+  saveCurrent();
+  const blank = makePage('#fff', []);
+  const newIdx = currentPage + 1;
+  pages.splice(newIdx, 0, blank);
+  currentPage = newIdx;
+  fc.clear();
+  fc.backgroundColor = '#fff';
+  fc.renderAll();
+  renderPageStrip();
+  updatePageNav();
+  scheduleAutoSave();
+}
+
+function removePage(idx) {
+  if (pages.length <= 1) return;
+  pages.splice(idx, 1);
+  const newIdx = Math.min(currentPage, pages.length - 1);
+  currentPage = newIdx;
+  loadPage(newIdx);
+  renderPageStrip();
+  scheduleAutoSave();
+}
+
+function renderPageStrip() {
+  const list = document.getElementById('pageList');
+  list.innerHTML = pages.map((p, i) => `
+    <div class="ps-page${i === currentPage ? ' active' : ''}" onclick="switchPage(${i})">
+      <div class="ps-page-thumb" style="background:${p.background||'#fff'}"></div>
+      <div class="ps-page-footer">
+        <span class="ps-page-num">${i+1}</span>
+        ${pages.length > 1 ? `<button class="ps-page-del" onclick="event.stopPropagation();removePage(${i})">×</button>` : ''}
       </div>
     </div>
-  )
+  `).join('');
+  const count = pages.length;
+  document.getElementById('pageCount').textContent = `${count} page${count>1?'s':''}`;
+  updatePageNav();
 }
+
+function updatePageNav() {
+  const nav = document.getElementById('page-nav');
+  nav.style.display = pages.length > 1 ? 'flex' : 'none';
+  document.getElementById('pageNavText').textContent = `${currentPage+1} / ${pages.length}`;
+  document.getElementById('prevBtn').disabled = currentPage === 0;
+  document.getElementById('nextBtn').disabled = currentPage === pages.length - 1;
+}
+
+// ============================================================
+// TOOLS & DRAWING
+// ============================================================
+function setTool(tool) {
+  activeTool = tool;
+  ['select','text','rect','circle','triangle','draw'].forEach(id => {
+    const el = document.getElementById('tool-'+id);
+    if (el) el.classList.toggle('active', id === tool);
+  });
+  if (fc) {
+    fc.isDrawingMode = (tool === 'draw');
+    if (fc.freeDrawingBrush) {
+      fc.freeDrawingBrush.width = 3;
+      fc.freeDrawingBrush.color = document.getElementById('textColor').value;
+    }
+  }
+}
+
+function addText() {
+  if (!fc) return;
+  const tb = new fabric.Textbox('Click to edit', {
+    left:120, top:120, width:300, fontSize:24,
+    fontFamily: document.getElementById('fontFamily').value,
+    fill: document.getElementById('textColor').value,
+    editable:true
+  });
+  fc.add(tb);
+  fc.setActiveObject(tb);
+  fc.renderAll();
+  setTool('select');
+}
+
+function addShape(type) {
+  if (!fc) return;
+  const fill = document.getElementById('fillColor').value;
+  let shape;
+  if (type === 'rect') shape = new fabric.Rect({left:120,top:120,width:200,height:120,fill,rx:8,ry:8});
+  else if (type === 'circle') shape = new fabric.Circle({left:120,top:120,radius:70,fill});
+  else if (type === 'triangle') shape = new fabric.Triangle({left:120,top:120,width:140,height:140,fill});
+  fc.add(shape);
+  fc.setActiveObject(shape);
+  fc.renderAll();
+  setTool('select');
+}
+
+function deleteSelected() {
+  if (!fc) return;
+  fc.getActiveObjects().forEach(o => fc.remove(o));
+  fc.discardActiveObject();
+  fc.renderAll();
+  scheduleAutoSave();
+}
+
+function duplicate() {
+  if (!fc) return;
+  const obj = fc.getActiveObject();
+  if (!obj) return;
+  obj.clone(c => { c.set({left:c.left+20,top:c.top+20}); fc.add(c); fc.setActiveObject(c); fc.renderAll(); });
+}
+
+function layerUp() {
+  if (!fc) return;
+  const o = fc.getActiveObject();
+  if (o) { fc.bringToFront(o); fc.renderAll(); }
+}
+
+function layerDown() {
+  if (!fc) return;
+  const o = fc.getActiveObject();
+  if (o) { fc.sendToBack(o); fc.renderAll(); }
+}
+
+function alignObj(dir) {
+  if (!fc) return;
+  const o = fc.getActiveObject();
+  if (!o) return;
+  if (dir === 'left') o.set('left', 0);
+  else if (dir === 'center') o.set('left', (CANVAS_W - o.getScaledWidth()) / 2);
+  fc.renderAll();
+}
+
+function uploadImage(e) {
+  const file = e.target.files[0];
+  if (!file || !fc) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    fabric.Image.fromURL(ev.target.result, img => {
+      const scale = Math.min(400/img.width, 300/img.height, 1);
+      img.set({left:120,top:120,scaleX:scale,scaleY:scale});
+      fc.add(img); fc.setActiveObject(img); fc.renderAll();
+    });
+  };
+  reader.readAsDataURL(file);
+}
+
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('drop-overlay').style.display = 'none';
+  const file = e.dataTransfer.files[0];
+  if (file && file.type.startsWith('image/')) uploadImage({target:{files:[file]}});
+}
+
+// ============================================================
+// FORMATTING
+// ============================================================
+function updateFont() {
+  const obj = fc?.getActiveObject();
+  if (obj) { obj.set('fontFamily', document.getElementById('fontFamily').value); fc.renderAll(); }
+}
+
+function updateFontSize() {
+  const v = parseInt(document.getElementById('fontSize').value);
+  const obj = fc?.getActiveObject();
+  if (obj) { obj.set('fontSize', v); fc.renderAll(); }
+}
+
+function toggleFormat(prop, onVal, offVal) {
+  const obj = fc?.getActiveObject();
+  if (!obj) return;
+  const cur = obj[prop];
+  obj.set(prop, cur === onVal ? offVal : onVal);
+  fc.renderAll();
+  updateFormatBtns(obj);
+}
+
+function toggleUnderline() {
+  const obj = fc?.getActiveObject();
+  if (!obj) return;
+  obj.set('underline', !obj.underline);
+  fc.renderAll();
+}
+
+function applyColor(type) {
+  const obj = fc?.getActiveObject();
+  if (!obj) return;
+  if (type === 'text') obj.set('fill', document.getElementById('textColor').value);
+  else if (type === 'fill') obj.set('fill', document.getElementById('fillColor').value);
+  fc.renderAll();
+}
+
+function applyBg() {
+  if (!fc) return;
+  fc.backgroundColor = document.getElementById('bgColor').value;
+  fc.renderAll();
+}
+
+function onSelect(e) {
+  const obj = e.selected?.[0];
+  if (!obj) return;
+  // Update toolbar
+  if (obj.fontSize) document.getElementById('fontSize').value = obj.fontSize;
+  if (obj.fontFamily) document.getElementById('fontFamily').value = obj.fontFamily;
+  updateFormatBtns(obj);
+  // Show props panel
+  renderPropsPanel(obj);
+  document.getElementById('right-panel').classList.add('open');
+}
+
+function updateFormatBtns(obj) {
+  document.getElementById('fmt-bold').classList.toggle('on', obj.fontWeight === 'bold');
+  document.getElementById('fmt-italic').classList.toggle('on', obj.fontStyle === 'italic');
+  document.getElementById('fmt-under').classList.toggle('on', !!obj.underline);
+}
+
+function renderPropsPanel(obj) {
+  const panel = document.getElementById('propPanel');
+  const op = Math.round((obj.opacity ?? 1) * 100);
+  const rx = obj.rx ?? 0;
+  panel.innerHTML = `
+    <div class="rp-prop"><label>X</label><input class="rp-num" type="number" value="${Math.round(obj.left??0)}" onchange="setProp('left',this.value)" /></div>
+    <div class="rp-prop"><label>Y</label><input class="rp-num" type="number" value="${Math.round(obj.top??0)}" onchange="setProp('top',this.value)" /></div>
+    ${obj.width?`<div class="rp-prop"><label>Width</label><input class="rp-num" type="number" value="${Math.round(obj.width??0)}" onchange="setProp('width',this.value)" /></div>`:''}
+    <div class="rp-prop">
+      <label>Opacity <span style="float:right;color:var(--text)">${op}%</span></label>
+      <input class="rp-range" type="range" min="0" max="100" value="${op}" oninput="setProp('opacity',this.value/100);this.previousElementSibling.querySelector('span').textContent=this.value+'%'" />
+    </div>
+    ${obj.type==='rect'?`<div class="rp-prop"><label>Radius</label><input class="rp-num" type="number" value="${rx}" onchange="setRoundness(this.value)" /></div>`:''}
+    ${obj.fontSize?`<div class="rp-prop"><label>Font size</label><input class="rp-num" type="number" value="${obj.fontSize}" onchange="setProp('fontSize',this.value)" /></div>`:''}
+  `;
+}
+
+function setProp(prop, val) {
+  const obj = fc?.getActiveObject();
+  if (obj) { obj.set(prop, parseFloat(val)); fc.renderAll(); scheduleAutoSave(); }
+}
+
+function setRoundness(val) {
+  const obj = fc?.getActiveObject();
+  if (obj) { obj.set('rx', parseFloat(val)); obj.set('ry', parseFloat(val)); fc.renderAll(); }
+}
+
+// ============================================================
+// ZOOM
+// ============================================================
+function applyZoom() {
+  const wrap = document.getElementById('canvas-wrap');
+  wrap.style.transform = `scale(${zoom})`;
+  wrap.style.transformOrigin = 'center center';
+  document.getElementById('zoomVal').textContent = Math.round(zoom*100)+'%';
+}
+
+function changeZoom(delta) {
+  zoom = Math.max(0.2, Math.min(2, zoom + delta));
+  applyZoom();
+}
+
+// ============================================================
+// AUTO-SAVE
+// ============================================================
+function scheduleAutoSave() {
+  if (autoSaveTimer) clearTimeout(autoSaveTimer);
+  autoSaveTimer = setTimeout(doSave, 1500);
+}
+
+async function doSave() {
+  saveCurrent();
+  const el = document.getElementById('saveStatus');
+  el.textContent = '● Saving…'; el.className = 'tb-save saving';
+  await new Promise(r => setTimeout(r, 600));
+  el.textContent = `✓ Saved ${new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}`;
+  el.className = 'tb-save';
+}
+
+// ============================================================
+// KEYBOARD
+// ============================================================
+function onKey(e) {
+  const tag = e.target.tagName;
+  if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+  if ((e.metaKey||e.ctrlKey) && e.key === 's') { e.preventDefault(); doSave(); }
+  if ((e.key === 'Delete' || e.key === 'Backspace') && fc?.getActiveObject()) deleteSelected();
+  if (e.key === 'v' || e.key === 'V') setTool('select');
+  if (e.key === 't' || e.key === 'T') addText();
+}
+
+// ============================================================
+// EMOJI
+// ============================================================
+function toggleEmoji() {
+  const p = document.getElementById('emojiPicker');
+  p.style.display = p.style.display === 'none' ? 'flex' : 'none';
+}
+
+function setEmoji(btn) {
+  document.getElementById('emojiBtn').textContent = btn.textContent;
+  document.getElementById('emojiPicker').style.display = 'none';
+}
+
+// ============================================================
+// SIDE PANEL
+// ============================================================
+function setSidePanel(id) {
+  document.querySelectorAll('.side-btn').forEach(b => b.classList.remove('active'));
+  event.currentTarget.classList.add('active');
+}
+
+// ============================================================
+// TEMPLATE MODAL
+// ============================================================
+function toggleTemplates() {
+  const m = document.getElementById('templateModal');
+  m.style.display = m.style.display === 'none' ? 'flex' : 'none';
+  if (pages.length > 0) document.getElementById('cancelTplBtn').style.display = 'inline-block';
+}
+
+// ============================================================
+// PUBLISH
+// ============================================================
+function publishDoc() {
+  const el = document.getElementById('docStatus');
+  el.textContent = 'LIVE'; el.className = 'tb-status live';
+  const btn = document.querySelector('.tb-btn.primary');
+  btn.textContent = 'Published ✓';
+  setTimeout(() => { btn.textContent = 'Publish'; }, 2000);
+}
+
+// ============================================================
+// PRESENT
+// ============================================================
+function presentMode() {
+  const modal = document.getElementById('presentModal');
+  modal.classList.add('open');
+  const wrap = document.getElementById('present-canvas-wrap');
+  wrap.innerHTML = '';
+  const canvas = document.createElement('canvas');
+  const scale = Math.min(window.innerWidth*0.9/CANVAS_W, window.innerHeight*0.85/CANVAS_H);
+  canvas.width = CANVAS_W * scale;
+  canvas.height = CANVAS_H * scale;
+  wrap.appendChild(canvas);
+  const ctx = canvas.getContext('2d');
+  ctx.scale(scale, scale);
+  // Render current page
+  const pCanvas = document.getElementById('main-canvas');
+  ctx.drawImage(pCanvas, 0, 0);
+}
+
+function closePresentMode() {
+  document.getElementById('presentModal').classList.remove('open');
+}
+
+// ============================================================
+// SHARE DRAWER
+// ============================================================
+function toggleShare() {
+  const drawer = document.getElementById('share-drawer');
+  shareOpen = !shareOpen;
+  drawer.classList.toggle('open', shareOpen);
+}
+
+function buildShareUI() {
+  renderShareLinks();
+}
+
+function renderShareLinks() {
+  const body = document.getElementById('shareBody');
+  const linksLabel = document.getElementById('linksLabel');
+  const linksList = document.getElementById('linksList');
+  const newLinkArea = document.getElementById('newLinkArea');
+  document.getElementById('shareSubtitle').textContent = `${shareLinks.length} link${shareLinks.length!==1?'s':''} created`;
+
+  if (shareLinks.length > 0) {
+    linksLabel.style.display = 'block';
+    linksList.innerHTML = shareLinks.map((link, i) => `
+      <div class="share-link-card">
+        <div class="slc-top">
+          <span class="slc-name">${link.label}</span>
+          <span class="slc-status ${link.active?'on':'off'}">${link.active?'Active':'Off'}</span>
+        </div>
+        <div class="slc-url-row">
+          <div class="slc-url">${link.url}</div>
+          <button class="slc-copy" id="copy-${i}" onclick="copyLink(${i})">Copy</button>
+        </div>
+        <div class="slc-meta">
+          <span>👁 ${link.views} views</span>
+          ${link.email?'<span>📧 Email req.</span>':''}
+          ${link.password?'<span>🔒 Password</span>':''}
+        </div>
+        <div class="slc-actions">
+          <button class="slc-toggle ${link.active?'disable':'enable'}" onclick="toggleLink(${i})">${link.active?'Disable link':'Enable link'}</button>
+        </div>
+      </div>
+    `).join('');
+  } else {
+    linksLabel.style.display = 'none';
+    linksList.innerHTML = '';
+  }
+
+  if (showNewLinkForm) {
+    newLinkArea.innerHTML = `
+      <div class="new-link-form solid">
+        <div class="nlf-title">New share link</div>
+        <div class="nlf-field"><label>Link label</label><input type="text" id="nlf-label" placeholder="e.g. Sequoia meeting" /></div>
+        <div class="nlf-field"><label>Password (optional)</label><input type="password" id="nlf-pw" placeholder="Leave empty for no password" /></div>
+        <div class="nlf-toggle-row">
+          <span class="nlf-toggle-label">Require email to view</span>
+          <label class="toggle-sw"><input type="checkbox" id="nlf-email"><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
+        </div>
+        <div class="nlf-toggle-row">
+          <span class="nlf-toggle-label">Allow download</span>
+          <label class="toggle-sw"><input type="checkbox" id="nlf-dl"><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
+        </div>
+        <div class="nlf-actions">
+          <button class="nlf-btn primary" onclick="createLink()">Create link</button>
+          <button class="nlf-btn ghost" onclick="showNewLinkForm=false;renderShareLinks()">Cancel</button>
+        </div>
+      </div>
+    `;
+  } else {
+    newLinkArea.innerHTML = `<button class="add-link-btn" onclick="showNewLinkForm=true;renderShareLinks()"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1v12M1 7h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg> Create new link</button>`;
+  }
+}
+
+function createLink() {
+  const label = document.getElementById('nlf-label').value || 'Share link';
+  const pw = document.getElementById('nlf-pw').value;
+  const email = document.getElementById('nlf-email').checked;
+  const token = Math.random().toString(36).slice(2,16);
+  shareLinks.push({ label, url:`https://app.backread.com/s/${token}`, active:true, views:0, email, password:pw, download: document.getElementById('nlf-dl').checked });
+  showNewLinkForm = false;
+  renderShareLinks();
+}
+
+function copyLink(i) {
+  const url = shareLinks[i].url;
+  navigator.clipboard.writeText(url).catch(()=>{});
+  const btn = document.getElementById(`copy-${i}`);
+  btn.textContent = '✓ Copied'; btn.classList.add('copied');
+  setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 2000);
+}
+
+function toggleLink(i) {
+  shareLinks[i].active = !shareLinks[i].active;
+  renderShareLinks();
+}
+
+// ============================================================
+// UTILS
+// ============================================================
+function rgbToHex(color) {
+  if (!color) return '#f0f1f5';
+  if (color.startsWith('#')) return color;
+  const m = color.match(/\d+/g);
+  if (!m) return '#f0f1f5';
+  return '#' + m.slice(0,3).map(x => (+x).toString(16).padStart(2,'0')).join('');
+}
+</script>
+</body>
+</html>
