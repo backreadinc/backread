@@ -326,7 +326,7 @@ export default function ViewerPage({ params }: { params: { token: string } }) {
     <div style={{ textAlign:'center' }}>
       <div style={{ fontSize:56, marginBottom:16 }}>✅</div>
       <h2 style={{ fontSize:22, fontWeight:800, color:C.text, marginBottom:8, fontFamily:Fui }}>Document signed</h2>
-      <p style={{ color:C.textMd, fontSize:14, fontFamily:Fui }}>Your signature has been recorded with Folio's digital stamp.</p>
+      <p style={{ color:C.textMd, fontSize:14, fontFamily:Fui }}>Your signature has been recorded with Backread's digital stamp.</p>
     </div>
   </GateScreen>
 
@@ -336,7 +336,7 @@ export default function ViewerPage({ params }: { params: { token: string } }) {
       <div style={{ background:'#fff', borderRadius:18, width:'min(500px,96vw)', maxHeight:'90vh', overflow:'auto', boxShadow:'0 24px 80px rgba(0,0,0,.2)' }}>
         <div style={{ padding:'24px 28px 0' }}>
           <h2 style={{ fontSize:20, fontWeight:800, color:C.text, marginBottom:4 }}>Sign document</h2>
-          <p style={{ fontSize:13, color:C.textMd, marginBottom:20 }}>Your signature will be permanently recorded with a Folio digital stamp of authenticity.</p>
+          <p style={{ fontSize:13, color:C.textMd, marginBottom:20 }}>Your signature will be permanently recorded with a Backread digital stamp of authenticity.</p>
         </div>
         <div style={{ padding:'0 28px 24px', display:'flex', flexDirection:'column', gap:14 }}>
           <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
@@ -373,9 +373,9 @@ export default function ViewerPage({ params }: { params: { token: string } }) {
             <input type="checkbox" checked={agreed} onChange={e=>setAgreed(e.target.checked)} style={{ marginTop:2, accentColor:C.accent, width:15, height:15 }}/>
             <span style={{ fontSize:12, color:C.textMd, lineHeight:1.6 }}>I agree to sign this document electronically. This signature has the same legal effect as a handwritten signature.</span>
           </label>
-          {/* Folio stamp preview */}
+          {/* Backread stamp preview */}
           <div style={{ background:'#F0FDF4', border:'1px solid #BBF7D0', borderRadius:10, padding:'12px 14px' }}>
-            <p style={{ fontSize:11, fontWeight:700, color:C.green, marginBottom:4 }}>⬡ Verified by Folio</p>
+            <p style={{ fontSize:11, fontWeight:700, color:C.green, marginBottom:4 }}>⬡ Verified by Backread</p>
             <p style={{ fontSize:11, color:'#166534', lineHeight:1.5 }}>A digital stamp will be attached recording: your identity, signing time, IP address, and a SHA-256 hash of this document. The stamp is publicly verifiable.</p>
           </div>
           <div style={{ display:'flex', gap:8 }}>
@@ -504,7 +504,7 @@ function GateScreen({ children }: { children: React.ReactNode }) {
           <svg width="32" height="32" viewBox="0 0 32 32" fill="none"><rect width="32" height="32" rx="8" fill="#4F46E5"/><path d="M8 16h4l3-8 4 16 3-8h4" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
         </div>
         {children}
-        <p style={{ marginTop:24, fontSize:11, color:'#9CA3AF', textAlign:'center', fontFamily:Fui }}>Powered by Folio · Document intelligence platform</p>
+        <p style={{ marginTop:24, fontSize:11, color:'#9CA3AF', textAlign:'center', fontFamily:Fui }}>Powered by Backread · Document intelligence platform</p>
       </div>
     </div>
   )
