@@ -12,7 +12,25 @@ import type { Database } from '@/lib/supabase/client'
 type Document = Database['public']['Tables']['documents']['Row']
 type ShareLink = Database['public']['Tables']['share_links']['Row']
 
-// ─── Constants ─────────────────────────────────────────────────────────────────
+// ─── Design tokens ────────────────────────────────────────────────────────────
+const T = {
+  bgApp:    '#EEECE9',
+  bgPanel:  '#FFFFFF',
+  bgCanvas: '#E2DFDC',
+  border:   '#E0DDD9',
+  borderMd: '#D3D0CB',
+  accent:   '#4F46E5',
+  accentLt: '#EEF2FF',
+  accentMd: '#C7D2FE',
+  text:     '#1A1917',
+  textMd:   '#6B6965',
+  textSm:   '#A09D99',
+  green:    '#10B981',
+  red:      '#EF4444',
+  amber:    '#F59E0B',
+}
+
+// ─── Canvas sizes ─────────────────────────────────────────────────────────────
 const CANVAS_SIZES = [
   { id:'pres-169', label:'Presentation 16:9', w:1280, h:720,  cat:'Presentation', dims:'1280×720' },
   { id:'pres-43',  label:'Presentation 4:3',  w:1024, h:768,  cat:'Presentation', dims:'1024×768' },
@@ -25,17 +43,24 @@ const CANVAS_SIZES = [
 ]
 
 const FONTS = [
-  'Jost','Space Grotesk','DM Sans','Outfit','Plus Jakarta Sans','Syne','Archivo',
-  'Nunito Sans','IBM Plex Sans','Rubik','Work Sans','Barlow','Mulish','Lato',
+  'Jost','Plus Jakarta Sans','DM Sans','Outfit','Syne','Archivo','Manrope',
+  'Nunito Sans','IBM Plex Sans','Rubik','Work Sans','Barlow','Lato',
   'Open Sans','Raleway','Montserrat','Oswald','Bebas Neue','Anton','Teko',
   'Playfair Display','Cormorant Garamond','Libre Baskerville','Merriweather','EB Garamond',
   'Lora','Crimson Text','Bodoni Moda','Arvo','Zilla Slab',
   'DM Mono','Roboto Mono','IBM Plex Mono','Space Mono','JetBrains Mono','Fira Code',
-  'Source Code Pro','Courier Prime',
-  'Pacifico','Righteous','Fredoka One','Comfortaa','Caveat','Dancing Script',
-  'Great Vibes','Sacramento','Satisfy','Abril Fatface','Lobster',
-  'Poppins','Quicksand','Varela Round','Nunito','Josefin Sans','Karla','Manrope',
-  'Geist','Ubuntu','Cabin','Maven Pro','Titillium Web',
+  'Pacifico','Righteous','Fredoka One','Caveat','Dancing Script','Great Vibes','Satisfy',
+  'Poppins','Quicksand','Varela Round','Nunito','Josefin Sans','Karla',
+  'Geist','Ubuntu','Cabin','Maven Pro','Space Grotesk',
+]
+
+const FONT_PAIRINGS = [
+  { label:'Editorial',   heading:'Cormorant Garamond', body:'DM Sans' },
+  { label:'Modern',      heading:'Syne',               body:'Manrope' },
+  { label:'Tech',        heading:'IBM Plex Mono',      body:'IBM Plex Sans' },
+  { label:'Bold',        heading:'Bebas Neue',         body:'Work Sans' },
+  { label:'Classic',     heading:'Playfair Display',   body:'Lato' },
+  { label:'Startup',     heading:'Plus Jakarta Sans',  body:'Plus Jakarta Sans' },
 ]
 
 const BLEND_MODES = [
@@ -49,17 +74,27 @@ const UNSPLASH_CURATED = [
   'photo-1553484771-047a44eee27b','photo-1522202176988-66273c2fd55f',
   'photo-1504384308090-c894fdcc538d','photo-1551434678-e076c223a692',
   'photo-1573496359142-b8d87734a5a2','photo-1600880292203-757bb62b4baf',
+  'photo-1531297484001-80022131f5a1','photo-1519389950473-47ba0277781c',
+  'photo-1460925895917-afdab827c52f','photo-1521737604893-d14cc237f11d',
 ]
 
-function pg(bg='#ffffff', objects:any[]=[]) {
-  return { version:'5.3.0', objects, background:bg }
-}
+const GRADIENT_PRESETS = [
+  { label:'Indigo', stops:[{offset:0,color:'#4f46e5'},{offset:1,color:'#7c3aed'}] },
+  { label:'Ocean',  stops:[{offset:0,color:'#06b6d4'},{offset:1,color:'#3b82f6'}] },
+  { label:'Sunset', stops:[{offset:0,color:'#f59e0b'},{offset:1,color:'#ef4444'}] },
+  { label:'Forest', stops:[{offset:0,color:'#10b981'},{offset:1,color:'#059669'}] },
+  { label:'Rose',   stops:[{offset:0,color:'#ec4899'},{offset:1,color:'#f43f5e'}] },
+  { label:'Night',  stops:[{offset:0,color:'#0f172a'},{offset:1,color:'#1e1b4b'}] },
+]
+
+// ─── Fabric JSON helpers ───────────────────────────────────────────────────────
+function pg(bg='#ffffff', objects:any[]=[]) { return { version:'5.3.0', objects, background:bg } }
 function tx(text:string, o:any={}):any {
   return {
     type:'textbox', left:o.l??60, top:o.t??60, width:o.w??400, text,
     fontSize:o.fs??16, fontFamily:o.ff??'Jost', fill:o.fill??'#0f172a',
     fontWeight:o.fw??'400', lineHeight:o.lh??1.4, textAlign:o.ta??'left',
-    opacity:1, selectable:true, editable:true,
+    opacity:1, selectable:true, editable:true, __zoneId:o.zid??null,
   }
 }
 function bx(o:any={}):any {
@@ -72,19 +107,142 @@ function fs(W:number, base:number):number {
   return Math.max(Math.round(base*(W/1280)), Math.round(base*0.55))
 }
 
+// ─── Zone-based layout engine ─────────────────────────────────────────────────
+type Zone = {
+  id: string
+  type: 'text'|'image'|'accent'
+  bounds: { x:number; y:number; w:number; h:number }
+  priority: number
+  style?: { fontSize?:number; fontWeight?:string; textAlign?:string; fill?:string; ff?:string; lh?:number }
+  constraints?: { maxLines?:number; minFontSize?:number; maxFontSize?:number }
+}
+
+function toAbs(bounds:{x:number;y:number;w:number;h:number}, W:number, H:number) {
+  return { left:bounds.x*W, top:bounds.y*H, width:bounds.w*W, height:bounds.h*H }
+}
+
+function fitFontSize(text:string, width:number, constraints:{maxFontSize?:number;minFontSize?:number;maxLines?:number}={}) {
+  let size = constraints.maxFontSize ?? 48
+  const min = constraints.minFontSize ?? 10
+  const maxLines = constraints.maxLines ?? 4
+  while (size > min) {
+    const charsPerLine = Math.floor(width / (size * 0.58))
+    if (charsPerLine < 1) { size--; continue }
+    const lines = Math.ceil(text.length / charsPerLine)
+    if (lines <= maxLines) break
+    size--
+  }
+  return size
+}
+
+type ContentBlock = { id:string; type:'text'|'image'; content:any; meta:{ length?:number; importance?:number; isSrc?:string } }
+
+function extractContent(objects:any[]): ContentBlock[] {
+  return objects
+    .filter((o:any) => o.type === 'textbox' || o.type === 'i-text' || o.type === 'text' || o.type === 'image')
+    .map((obj:any, i:number) => {
+      if (obj.type === 'image') {
+        return { id: obj.__uid ?? `img-${i}`, type:'image' as const, content: obj.src, meta:{ isSrc: obj.src } }
+      }
+      const importance = (obj.fontSize ?? 16) > 40 ? 3 : (obj.fontSize ?? 16) > 24 ? 2 : 1
+      return { id: obj.__uid ?? `txt-${i}`, type:'text' as const, content: obj.text ?? '', meta:{ length: (obj.text??'').length, importance } }
+    })
+}
+
+function mapContentToZones(blocks:ContentBlock[], zones:Zone[]) {
+  const remaining = [...blocks]
+  const mapping:{ zone:Zone; block:ContentBlock }[] = []
+  const sorted = [...zones].sort((a,b) => a.priority - b.priority)
+  for (const zone of sorted) {
+    const idx = remaining.findIndex(b => b.type === zone.type || (zone.type === 'text' && b.type === 'text'))
+    if (idx !== -1) {
+      mapping.push({ zone, block: remaining[idx] })
+      remaining.splice(idx, 1)
+    }
+  }
+  return mapping
+}
+
+function relayout(objects:any[], newLayout:{ zones:Zone[]; bg?:string }, W:number, H:number) {
+  const blocks = extractContent(objects)
+  const textBlocks = blocks.filter(b => b.type === 'text').sort((a,b) => (b.meta.importance??1)-(a.meta.importance??1))
+  const imageBlocks = blocks.filter(b => b.type === 'image')
+
+  const allBlocks = [...textBlocks, ...imageBlocks]
+  const mapping = mapContentToZones(allBlocks, newLayout.zones)
+
+  const newObjects:any[] = []
+  for (const { zone, block } of mapping) {
+    const pos = toAbs(zone.bounds, W, H)
+    if (zone.type === 'text' && block.type === 'text') {
+      const fontSize = fitFontSize(block.content, pos.width, zone.constraints)
+      newObjects.push(tx(block.content, {
+        l: pos.left, t: pos.top, w: pos.width,
+        fs: zone.style?.fontSize ?? fontSize,
+        fw: zone.style?.fontWeight ?? '400',
+        fill: zone.style?.fill ?? '#0f172a',
+        ta: zone.style?.textAlign ?? 'left',
+        ff: zone.style?.ff ?? 'Jost',
+        lh: zone.style?.lh ?? 1.4,
+        zid: zone.id,
+      }))
+    }
+  }
+  return pg(newLayout.bg ?? '#ffffff', newObjects)
+}
+
+// ─── Layout definitions ───────────────────────────────────────────────────────
 const LAYOUTS = [
+  // ── HERO ──
   {
     id:'full-bleed-dark', label:'Full Bleed Dark', category:'Hero',
+    zones:[
+      { id:'headline', type:'text', bounds:{x:.07,y:.33,w:.6,h:.22}, priority:1, style:{fontSize:52,fontWeight:'800',fill:'#ffffff',ff:'Jost'}, constraints:{maxLines:2} },
+      { id:'body',     type:'text', bounds:{x:.07,y:.62,w:.55,h:.18}, priority:2, style:{fontSize:17,fill:'rgba(255,255,255,.65)'}, constraints:{maxLines:3} },
+    ],
     build:(W:number,H:number)=>pg('#070a1a',[
       bx({l:0,t:0,w:W,h:H,fill:'#070a1a'}),
       bx({l:0,t:H-4,w:W,h:4,fill:'#4f46e5'}),
       bx({l:Math.round(W*.07),t:Math.round(H*.34),w:4,h:Math.round(H*.3),fill:'#4f46e5'}),
-      tx('Your Headline Goes Here',{l:Math.round(W*.07)+20,t:Math.round(H*.35),w:Math.round(W*.6),fs:fs(W,52),fw:'800',fill:'#ffffff',ff:'Jost'}),
-      tx('Supporting subtext that adds context and draws the reader in.',{l:Math.round(W*.07)+20,t:Math.round(H*.35)+fs(W,52)+18,w:Math.round(W*.55),fs:fs(W,18),fill:'rgba(255,255,255,.65)'}),
+      tx('Your Headline\nGoes Here',{l:Math.round(W*.07)+20,t:Math.round(H*.35),w:Math.round(W*.6),fs:fs(W,52),fw:'800',fill:'#ffffff',ff:'Jost',lh:1.0}),
+      tx('Supporting subtext that adds context and draws the reader in.',{l:Math.round(W*.07)+20,t:Math.round(H*.35)+fs(W,52)*2+18,w:Math.round(W*.55),fs:fs(W,17),fill:'rgba(255,255,255,.6)',lh:1.6}),
     ]),
   },
   {
+    id:'centered-light', label:'Centered Light', category:'Hero',
+    zones:[
+      { id:'label',    type:'text', bounds:{x:.1,y:.2,w:.8,h:.06}, priority:0, style:{fontSize:10,fontWeight:'700',fill:'#4f46e5',ff:'JetBrains Mono',textAlign:'center'}, constraints:{maxLines:1} },
+      { id:'headline', type:'text', bounds:{x:.1,y:.27,w:.8,h:.28}, priority:1, style:{fontSize:48,fontWeight:'800',fill:'#0f172a',textAlign:'center',ff:'Jost',lh:1.05}, constraints:{maxLines:3} },
+      { id:'body',     type:'text', bounds:{x:.15,y:.6,w:.7,h:.2},  priority:2, style:{fontSize:16,fill:'#64748b',textAlign:'center',lh:1.65}, constraints:{maxLines:3} },
+    ],
+    build:(W:number,H:number)=>pg('#f8fafc',[
+      bx({l:Math.round(W*.5)-32,t:Math.round(H*.2),w:64,h:4,fill:'#4f46e5',rx:2}),
+      tx('SUBTITLE · LABEL',{l:Math.round(W*.1),t:Math.round(H*.2)+16,w:Math.round(W*.8),fs:fs(W,10),fw:'700',fill:'#4f46e5',ta:'center',ff:'JetBrains Mono'}),
+      tx('Centered Headline\nfor Impact',{l:Math.round(W*.1),t:Math.round(H*.2)+38,w:Math.round(W*.8),fs:fs(W,48),fw:'800',fill:'#0f172a',ta:'center',ff:'Jost',lh:1.05}),
+      tx('A supporting line that expands on the headline and gives the reader context.',{l:Math.round(W*.15),t:Math.round(H*.2)+38+fs(W,48)*2+18,w:Math.round(W*.7),fs:fs(W,16),fill:'#64748b',ta:'center',lh:1.65}),
+    ]),
+  },
+  {
+    id:'gradient-hero', label:'Gradient Hero', category:'Hero',
+    zones:[
+      { id:'headline', type:'text', bounds:{x:.06,y:.22,w:.65,h:.3}, priority:1, style:{fontSize:52,fontWeight:'800',fill:'#ffffff',ff:'Jost',lh:1.0}, constraints:{maxLines:3} },
+      { id:'body',     type:'text', bounds:{x:.06,y:.58,w:.55,h:.2}, priority:2, style:{fontSize:15,fill:'rgba(255,255,255,.7)',lh:1.65}, constraints:{maxLines:3} },
+    ],
+    build:(W:number,H:number)=>pg('#4f46e5',[
+      bx({l:0,t:0,w:W,h:H,fill:'#4f46e5'}),
+      bx({l:Math.round(W*.06),t:Math.round(H*.12),w:60,h:4,fill:'rgba(255,255,255,.5)',rx:2}),
+      tx('Bold Gradient\nHero Slide',{l:Math.round(W*.06),t:Math.round(H*.22),w:Math.round(W*.65),fs:fs(W,52),fw:'800',fill:'#ffffff',ff:'Jost',lh:1.0}),
+      tx('A bright, energetic layout for product launches, announcements, or key moments.',{l:Math.round(W*.06),t:Math.round(H*.22)+fs(W,52)*2+22,w:Math.round(W*.55),fs:fs(W,15),fill:'rgba(255,255,255,.7)',lh:1.65}),
+    ]),
+  },
+
+  // ── SPLIT ──
+  {
     id:'split-image-right', label:'Split Right', category:'Split',
+    zones:[
+      { id:'headline', type:'text', bounds:{x:.04,y:.25,w:.44,h:.3}, priority:1, style:{fontSize:44,fontWeight:'800',fill:'#0f172a',ff:'Jost',lh:1.05}, constraints:{maxLines:3} },
+      { id:'body',     type:'text', bounds:{x:.04,y:.62,w:.44,h:.25}, priority:2, style:{fontSize:15,fill:'#475569',lh:1.7}, constraints:{maxLines:4} },
+    ],
     build:(W:number,H:number)=>pg('#ffffff',[
       bx({l:0,t:0,w:4,h:H,fill:'#4f46e5'}),
       bx({l:Math.round(W*.54),t:0,w:Math.round(W*.46),h:H,fill:'#e0e7ff'}),
@@ -93,33 +251,26 @@ const LAYOUTS = [
     ]),
   },
   {
-    id:'centered-light', label:'Centered Light', category:'Hero',
+    id:'split-image-left', label:'Split Left', category:'Split',
+    zones:[
+      { id:'headline', type:'text', bounds:{x:.54,y:.25,w:.42,h:.3}, priority:1, style:{fontSize:40,fontWeight:'800',fill:'#0f172a',ff:'Jost',lh:1.05}, constraints:{maxLines:3} },
+      { id:'body',     type:'text', bounds:{x:.54,y:.62,w:.42,h:.25}, priority:2, style:{fontSize:15,fill:'#475569',lh:1.7}, constraints:{maxLines:4} },
+    ],
     build:(W:number,H:number)=>pg('#f8fafc',[
-      bx({l:Math.round(W*.5)-32,t:Math.round(H*.2),w:64,h:4,fill:'#4f46e5',rx:2}),
-      tx('SUBTITLE · LABEL',{l:Math.round(W*.1),t:Math.round(H*.2)+16,w:Math.round(W*.8),fs:fs(W,10),fw:'700',fill:'#4f46e5',ta:'center',ff:'JetBrains Mono'}),
-      tx('Centered Headline for Impact',{l:Math.round(W*.1),t:Math.round(H*.2)+38,w:Math.round(W*.8),fs:fs(W,48),fw:'800',fill:'#0f172a',ta:'center',ff:'Jost',lh:1.05}),
-      tx('A supporting line that expands on the headline and gives the reader context.',{l:Math.round(W*.15),t:Math.round(H*.2)+38+fs(W,48)+18,w:Math.round(W*.7),fs:fs(W,16),fill:'#64748b',ta:'center',lh:1.65}),
+      bx({l:0,t:0,w:Math.round(W*.48),h:H,fill:'#0f172a'}),
+      bx({l:W-4,t:0,w:4,h:H,fill:'#10b981'}),
+      tx('Right Side\nHeadline',{l:Math.round(W*.55),t:Math.round(H*.25),w:Math.round(W*.4),fs:fs(W,40),fw:'800',fill:'#0f172a',ff:'Jost',lh:1.05}),
+      tx('A split layout with image on the left and content on the right.',{l:Math.round(W*.55),t:Math.round(H*.25)+fs(W,40)*2+18,w:Math.round(W*.4),fs:fs(W,15),fill:'#64748b',lh:1.65}),
     ]),
   },
-  {
-    id:'dark-minimal', label:'Dark Minimal', category:'Minimal',
-    build:(W:number,H:number)=>pg('#0a0a0f',[
-      bx({l:Math.round(W*.07),t:Math.round(H*.42),w:Math.round(W*.86),h:1,fill:'rgba(255,255,255,.12)'}),
-      tx('Minimal.',{l:Math.round(W*.07),t:Math.round(H*.2),w:W-100,fs:fs(W,72),fw:'800',fill:'#ffffff',ff:'Jost'}),
-      tx('Sometimes less is everything.',{l:Math.round(W*.07),t:Math.round(H*.2)+fs(W,72)+16,w:Math.round(W*.6),fs:fs(W,18),fill:'rgba(255,255,255,.4)'}),
-    ]),
-  },
-  {
-    id:'gradient-hero', label:'Gradient Hero', category:'Hero',
-    build:(W:number,H:number)=>pg('#4f46e5',[
-      bx({l:0,t:0,w:W,h:H,fill:'#4f46e5'}),
-      bx({l:Math.round(W*.06),t:Math.round(H*.12),w:60,h:4,fill:'rgba(255,255,255,.5)',rx:2}),
-      tx('Bold Gradient\nHero Slide',{l:Math.round(W*.06),t:Math.round(H*.22),w:Math.round(W*.65),fs:fs(W,52),fw:'800',fill:'#ffffff',ff:'Jost',lh:1.0}),
-      tx('A bright, energetic layout for product launches, announcements, or key moments.',{l:Math.round(W*.06),t:Math.round(H*.22)+fs(W,52)*2+22,w:Math.round(W*.55),fs:fs(W,15),fill:'rgba(255,255,255,.7)',lh:1.65}),
-    ]),
-  },
+
+  // ── EDITORIAL ──
   {
     id:'quote-dark', label:'Pull Quote', category:'Editorial',
+    zones:[
+      { id:'quote', type:'text', bounds:{x:.07,y:.32,w:.78,h:.38}, priority:1, style:{fontSize:32,fontWeight:'600',fill:'#ffffff',ff:'Jost',lh:1.25}, constraints:{maxLines:4} },
+      { id:'attr',  type:'text', bounds:{x:.07,y:.76,w:.6,h:.1},   priority:2, style:{fontSize:13,fill:'rgba(255,255,255,.4)'}, constraints:{maxLines:1} },
+    ],
     build:(W:number,H:number)=>pg('#0f172a',[
       tx('"',{l:Math.round(W*.07),t:Math.round(H*.05),w:100,fs:fs(W,140),fw:'800',fill:'#4f46e5',ff:'Jost',lh:1}),
       tx('The best designs solve real problems elegantly, not just look good.',{l:Math.round(W*.07),t:Math.round(H*.32),w:Math.round(W*.78),fs:fs(W,32),fw:'600',fill:'#ffffff',ff:'Jost',lh:1.25}),
@@ -128,12 +279,58 @@ const LAYOUTS = [
     ]),
   },
   {
-    id:'three-cols', label:'3 Columns', category:'Content',
+    id:'cover-editorial', label:'Editorial Cover', category:'Editorial',
+    zones:[
+      { id:'issue',    type:'text', bounds:{x:.07,y:.08,w:.4,h:.07},  priority:0, style:{fontSize:10,fontWeight:'700',fill:'#4f46e5',ff:'JetBrains Mono'}, constraints:{maxLines:1} },
+      { id:'headline', type:'text', bounds:{x:.07,y:.16,w:.55,h:.42}, priority:1, style:{fontSize:68,fontWeight:'900',fill:'#0f172a',ff:'Cormorant Garamond',lh:.95}, constraints:{maxLines:4} },
+      { id:'body',     type:'text', bounds:{x:.07,y:.65,w:.5,h:.2},   priority:2, style:{fontSize:14,fill:'#64748b',lh:1.7}, constraints:{maxLines:4} },
+    ],
+    build:(W:number,H:number)=>pg('#FAFAF8',[
+      bx({l:0,t:0,w:W,h:6,fill:'#0f172a'}),
+      tx('VOL. 01 · ISSUE 04 · 2025',{l:Math.round(W*.07),t:26,w:Math.round(W*.5),fs:fs(W,10),fw:'600',fill:'#4f46e5',ff:'JetBrains Mono'}),
+      tx('The Future\nof Design',{l:Math.round(W*.07),t:Math.round(H*.16),w:Math.round(W*.55),fs:fs(W,68),fw:'900',fill:'#0f172a',ff:'Cormorant Garamond',lh:.95}),
+      bx({l:Math.round(W*.07),t:Math.round(H*.65)-10,w:Math.round(W*.25),h:2,fill:'#0f172a'}),
+      tx('A deep dive into visual systems that shape how the world works, thinks, and creates.',{l:Math.round(W*.07),t:Math.round(H*.65)+6,w:Math.round(W*.5),fs:fs(W,14),fill:'#475569',lh:1.7}),
+    ]),
+  },
+
+  // ── MINIMAL ──
+  {
+    id:'dark-minimal', label:'Dark Minimal', category:'Minimal',
+    zones:[
+      { id:'headline', type:'text', bounds:{x:.07,y:.2,w:.86,h:.3}, priority:1, style:{fontSize:72,fontWeight:'800',fill:'#ffffff',ff:'Jost'}, constraints:{maxLines:2} },
+      { id:'body',     type:'text', bounds:{x:.07,y:.56,w:.6,h:.2}, priority:2, style:{fontSize:18,fill:'rgba(255,255,255,.4)'}, constraints:{maxLines:3} },
+    ],
+    build:(W:number,H:number)=>pg('#0a0a0f',[
+      bx({l:Math.round(W*.07),t:Math.round(H*.42),w:Math.round(W*.86),h:1,fill:'rgba(255,255,255,.12)'}),
+      tx('Minimal.',{l:Math.round(W*.07),t:Math.round(H*.2),w:W-100,fs:fs(W,72),fw:'800',fill:'#ffffff',ff:'Jost'}),
+      tx('Sometimes less is everything.',{l:Math.round(W*.07),t:Math.round(H*.2)+fs(W,72)+16,w:Math.round(W*.6),fs:fs(W,18),fill:'rgba(255,255,255,.4)'}),
+    ]),
+  },
+  {
+    id:'light-minimal', label:'Light Minimal', category:'Minimal',
+    zones:[
+      { id:'headline', type:'text', bounds:{x:.1,y:.3,w:.8,h:.3}, priority:1, style:{fontSize:60,fontWeight:'300',fill:'#0f172a',ff:'Cormorant Garamond',textAlign:'center',lh:1.0}, constraints:{maxLines:2} },
+      { id:'body',     type:'text', bounds:{x:.2,y:.66,w:.6,h:.2}, priority:2, style:{fontSize:14,fill:'#94a3b8',textAlign:'center',lh:1.7}, constraints:{maxLines:3} },
+    ],
+    build:(W:number,H:number)=>pg('#FAFAF8',[
+      tx('Elegant\n& Simple',{l:Math.round(W*.1),t:Math.round(H*.3),w:Math.round(W*.8),fs:fs(W,60),fw:'300',fill:'#0f172a',ff:'Cormorant Garamond',ta:'center',lh:1.0}),
+      bx({l:Math.round(W*.5)-24,t:Math.round(H*.65)-8,w:48,h:2,fill:'#cbd5e1',rx:1}),
+      tx('Restraint is a design decision, not a limitation.',{l:Math.round(W*.2),t:Math.round(H*.65)+6,w:Math.round(W*.6),fs:fs(W,14),fill:'#94a3b8',ta:'center',lh:1.7}),
+    ]),
+  },
+
+  // ── CONTENT ──
+  {
+    id:'three-cols', label:'3 Columns', category:'Feature',
+    zones:[
+      { id:'title', type:'text', bounds:{x:.04,y:.06,w:.8,h:.12}, priority:1, style:{fontSize:28,fontWeight:'700',fill:'#0f172a'}, constraints:{maxLines:1} },
+    ],
     build:(W:number,H:number)=>pg('#ffffff',[
       bx({l:0,t:0,w:W,h:4,fill:'#4f46e5'}),
       tx('Three Column Layout',{l:50,t:44,w:W-100,fs:fs(W,28),fw:'700',fill:'#0f172a'}),
       bx({l:50,t:44+fs(W,28)+12,w:W-100,h:1,fill:'#e2e8f0'}),
-      ...[['Feature One','#4f46e5'],['Feature Two','#10b981'],['Feature Three','#f59e0b']].flatMap(([title,col]:string[],i:number)=>{
+      ...([['Feature One','#4f46e5'],['Feature Two','#10b981'],['Feature Three','#f59e0b']] as [string,string][]).flatMap(([title,col],i:number)=>{
         const cw=Math.round((W-140)/3), cx=50+i*(cw+20)
         return [
           bx({l:cx,t:Math.round(H*.34),w:cw,h:Math.round(H*.5),fill:'#f8fafc',rx:12}),
@@ -145,35 +342,172 @@ const LAYOUTS = [
     ]),
   },
   {
+    id:'two-cols', label:'Two Columns', category:'Content',
+    zones:[
+      { id:'headline', type:'text', bounds:{x:.05,y:.1,w:.9,h:.15}, priority:1, style:{fontSize:32,fontWeight:'700',fill:'#0f172a'}, constraints:{maxLines:1} },
+      { id:'col1',     type:'text', bounds:{x:.05,y:.3,w:.43,h:.55}, priority:2, style:{fontSize:14,fill:'#374151',lh:1.75}, constraints:{maxLines:12} },
+      { id:'col2',     type:'text', bounds:{x:.52,y:.3,w:.43,h:.55}, priority:3, style:{fontSize:14,fill:'#374151',lh:1.75}, constraints:{maxLines:12} },
+    ],
+    build:(W:number,H:number)=>pg('#ffffff',[
+      bx({l:0,t:0,w:W,h:4,fill:'#0f172a'}),
+      tx('Two Column Article',{l:50,t:44,w:W-100,fs:fs(W,32),fw:'700',fill:'#0f172a'}),
+      bx({l:50,t:44+fs(W,32)+12,w:W-100,h:1,fill:'#e2e8f0'}),
+      bx({l:Math.round(W*.5)-1,t:Math.round(H*.28),w:1,h:Math.round(H*.62),fill:'#e2e8f0'}),
+      tx('Start writing your content here. This column layout works well for long-form articles and detailed explanations that benefit from a magazine-style format.',{l:50,t:Math.round(H*.28)+14,w:Math.round(W*.43),fs:fs(W,14),fill:'#374151',lh:1.75}),
+      tx('The second column continues the narrative. You can use this space to elaborate on points, add supporting evidence, or contrast ideas effectively.',{l:Math.round(W*.52),t:Math.round(H*.28)+14,w:Math.round(W*.43),fs:fs(W,14),fill:'#374151',lh:1.75}),
+    ]),
+  },
+  {
+    id:'agenda', label:'Agenda / List', category:'Content',
+    zones:[
+      { id:'title', type:'text', bounds:{x:.06,y:.08,w:.7,h:.14}, priority:1, style:{fontSize:36,fontWeight:'800',fill:'#0f172a'}, constraints:{maxLines:1} },
+    ],
+    build:(W:number,H:number)=>pg('#ffffff',[
+      bx({l:0,t:0,w:W,h:4,fill:'#6366f1'}),
+      tx('Today\'s Agenda',{l:Math.round(W*.06),t:40,w:Math.round(W*.7),fs:fs(W,36),fw:'800',fill:'#0f172a',ff:'Jost'}),
+      ...[['01','Opening & Welcome','10 min'],['02','Product Deep Dive','25 min'],['03','Live Demo','15 min'],['04','Q&A Session','15 min'],['05','Next Steps','5 min']].flatMap(([num,item,time],i)=>{
+        const y = Math.round(H*.22)+i*Math.round(H*.13)
+        return [
+          bx({l:Math.round(W*.06),t:y,w:Math.round(W*.88),h:Math.round(H*.11),fill:i%2===0?'#f8fafc':'#ffffff',rx:10}),
+          tx(num,{l:Math.round(W*.06)+18,t:y+Math.round(H*.03),w:30,fs:fs(W,13),fw:'700',fill:'#6366f1',ff:'JetBrains Mono'}),
+          tx(item,{l:Math.round(W*.06)+64,t:y+Math.round(H*.03),w:Math.round(W*.6),fs:fs(W,15),fw:'600',fill:'#0f172a'}),
+          tx(time,{l:Math.round(W*.06)+Math.round(W*.7),t:y+Math.round(H*.03),w:120,fs:fs(W,12),fill:'#94a3b8',ff:'JetBrains Mono',ta:'right'}),
+        ]
+      }),
+    ]),
+  },
+
+  // ── METRICS ──
+  {
     id:'metrics', label:'Data Metrics', category:'Metrics',
+    zones:[
+      { id:'title', type:'text', bounds:{x:.04,y:.06,w:.8,h:.12}, priority:1, style:{fontSize:30,fontWeight:'700',fill:'#0f172a'}, constraints:{maxLines:1} },
+    ],
     build:(W:number,H:number)=>pg('#ffffff',[
       bx({l:0,t:0,w:W,h:4,fill:'#10b981'}),
       tx('Key Metrics',{l:50,t:48,w:W-100,fs:fs(W,30),fw:'700',fill:'#0f172a'}),
-      ...[['$0M','ARR','#ecfdf5','#10b981'],['0K','Users','#eff6ff','#4f46e5'],['0%','Growth','#fff7ed','#f59e0b'],['0','NPS','#fdf4ff','#8b5cf6']].flatMap(([val,lbl,bg,col]:any,i:number)=>{
+      ...(['$0M','ARR','#ecfdf5','#10b981'] as any[]).slice(0,0),
+      ...([['$0M','ARR','#ecfdf5','#10b981'],['0K','Users','#eff6ff','#4f46e5'],['0%','Growth','#fff7ed','#f59e0b'],['0','NPS','#fdf4ff','#8b5cf6']] as [string,string,string,string][]).flatMap(([val,lbl,bg,col],i:number)=>{
         const cw=Math.round((W-160)/4), cx=50+i*(cw+13)
         return [
-          bx({l:cx,t:Math.round(H*.38),w:cw,h:150,fill:bg,rx:14}),
+          bx({l:cx,t:Math.round(H*.38),w:cw,h:Math.round(H*.38),fill:bg,rx:14}),
           tx(val,{l:cx+16,t:Math.round(H*.38)+18,w:cw-32,fs:fs(W,38),fw:'700',fill:col,ff:'Jost'}),
           tx(lbl,{l:cx+16,t:Math.round(H*.38)+18+fs(W,38)+8,w:cw-32,fs:10,fill:'#94a3b8',ff:'JetBrains Mono'}),
         ]
       }),
     ]),
   },
+  {
+    id:'kpi-dark', label:'KPI Dark', category:'Metrics',
+    zones:[
+      { id:'title', type:'text', bounds:{x:.05,y:.06,w:.8,h:.12}, priority:1, style:{fontSize:26,fontWeight:'700',fill:'#ffffff',ff:'Jost'}, constraints:{maxLines:1} },
+    ],
+    build:(W:number,H:number)=>pg('#090c14',[
+      bx({l:0,t:0,w:W,h:H,fill:'#090c14'}),
+      tx('Performance Overview',{l:Math.round(W*.05),t:40,w:Math.round(W*.7),fs:fs(W,26),fw:'700',fill:'#ffffff',ff:'Jost'}),
+      tx(new Date().toLocaleDateString('en-US',{month:'long',year:'numeric'}),{l:Math.round(W*.78),t:44,w:Math.round(W*.17),fs:fs(W,11),fill:'rgba(255,255,255,.35)',ff:'JetBrains Mono',ta:'right'}),
+      ...([['↑ 47%','Revenue','+$2.4M','#10b981'],['↑ 23K','Users','Active','#6366f1'],['94%','Retention','Score','#f59e0b'],['4.8★','Rating','App Store','#ec4899']] as [string,string,string,string][]).flatMap(([val,lbl,sub,col],i)=>{
+        const cw=Math.round((W-120)/4), cx=50+i*(cw+13)
+        return [
+          bx({l:cx,t:Math.round(H*.28),w:cw,h:Math.round(H*.55),fill:'rgba(255,255,255,.04)',rx:12}),
+          bx({l:cx,t:Math.round(H*.28),w:cw,h:3,fill:col,rx:2}),
+          tx(val,{l:cx+16,t:Math.round(H*.28)+24,w:cw-32,fs:fs(W,34),fw:'800',fill:col,ff:'Jost'}),
+          tx(lbl,{l:cx+16,t:Math.round(H*.28)+24+fs(W,34)+8,w:cw-32,fs:fs(W,14),fw:'600',fill:'rgba(255,255,255,.75)'}),
+          tx(sub,{l:cx+16,t:Math.round(H*.28)+24+fs(W,34)+8+fs(W,14)+4,w:cw-32,fs:9,fill:'rgba(255,255,255,.3)',ff:'JetBrains Mono'}),
+        ]
+      }),
+    ]),
+  },
+
+  // ── SOCIAL PROOF ──
+  {
+    id:'testimonial', label:'Testimonial', category:'Social Proof',
+    zones:[
+      { id:'quote', type:'text', bounds:{x:.08,y:.28,w:.84,h:.38}, priority:1, style:{fontSize:26,fontWeight:'500',fill:'#0f172a',ff:'Cormorant Garamond',lh:1.35,textAlign:'center'}, constraints:{maxLines:4} },
+      { id:'attr',  type:'text', bounds:{x:.08,y:.72,w:.84,h:.1},  priority:2, style:{fontSize:13,fill:'#64748b',textAlign:'center'}, constraints:{maxLines:1} },
+    ],
+    build:(W:number,H:number)=>pg('#fafafa',[
+      bx({l:Math.round(W*.5)-40,t:Math.round(H*.2),w:80,h:2,fill:'#4f46e5',rx:1}),
+      tx('"Working with this team transformed our business in ways we never imagined possible."',{l:Math.round(W*.08),t:Math.round(H*.28),w:Math.round(W*.84),fs:fs(W,26),fw:'500',fill:'#0f172a',ff:'Cormorant Garamond',ta:'center',lh:1.35}),
+      bx({l:Math.round(W*.5)-20,t:Math.round(H*.7),w:40,h:40,fill:'#e2e8f0',rx:20}),
+      tx('Sarah Chen · Head of Product, Acme Corp',{l:Math.round(W*.08),t:Math.round(H*.7)+52,w:Math.round(W*.84),fs:fs(W,13),fill:'#64748b',ta:'center'}),
+    ]),
+  },
+
+  // ── ANNOUNCEMENTS ──
+  {
+    id:'announcement', label:'Announcement', category:'Announce',
+    zones:[
+      { id:'badge',    type:'text', bounds:{x:.5-.15,y:.18,w:.3,h:.07}, priority:0, style:{fontSize:10,fontWeight:'700',fill:'#4f46e5',textAlign:'center',ff:'JetBrains Mono'}, constraints:{maxLines:1} },
+      { id:'headline', type:'text', bounds:{x:.08,y:.28,w:.84,h:.3},    priority:1, style:{fontSize:52,fontWeight:'900',fill:'#0f172a',textAlign:'center',ff:'Jost',lh:1.0}, constraints:{maxLines:2} },
+      { id:'body',     type:'text', bounds:{x:.15,y:.65,w:.7,h:.2},     priority:2, style:{fontSize:16,fill:'#64748b',textAlign:'center',lh:1.65}, constraints:{maxLines:3} },
+    ],
+    build:(W:number,H:number)=>pg('#ffffff',[
+      bx({l:Math.round(W*.37),t:Math.round(H*.18),w:Math.round(W*.26),h:Math.round(H*.08),fill:'#eef2ff',rx:99}),
+      tx('🚀  NEW RELEASE',{l:Math.round(W*.37),t:Math.round(H*.18)+4,w:Math.round(W*.26),fs:fs(W,10),fw:'700',fill:'#4f46e5',ta:'center',ff:'JetBrains Mono'}),
+      tx('Introducing\nVersion 3.0',{l:Math.round(W*.08),t:Math.round(H*.3),w:Math.round(W*.84),fs:fs(W,54),fw:'900',fill:'#0f172a',ta:'center',ff:'Jost',lh:1.0}),
+      tx('Everything you love, rebuilt from the ground up. Faster, smarter, and more powerful than ever.',{l:Math.round(W*.15),t:Math.round(H*.67),w:Math.round(W*.7),fs:fs(W,16),fill:'#64748b',ta:'center',lh:1.65}),
+    ]),
+  },
+
+  // ── TIMELINE ──
+  {
+    id:'timeline', label:'Timeline', category:'Timeline',
+    zones:[
+      { id:'title', type:'text', bounds:{x:.05,y:.06,w:.8,h:.12}, priority:1, style:{fontSize:30,fontWeight:'800',fill:'#0f172a'}, constraints:{maxLines:1} },
+    ],
+    build:(W:number,H:number)=>pg('#fafafa',[
+      tx('Our Journey',{l:Math.round(W*.05),t:44,w:Math.round(W*.7),fs:fs(W,32),fw:'800',fill:'#0f172a',ff:'Jost'}),
+      bx({l:Math.round(W*.5),t:Math.round(H*.24),w:2,h:Math.round(H*.65),fill:'#e2e8f0'}),
+      ...(['2021','2022','2023','2024','2025'] as string[]).flatMap((year,i)=>{
+        const y = Math.round(H*.24)+i*Math.round(H*.135)
+        const isLeft = i%2===0
+        const cx = Math.round(W*.5)
+        return [
+          bx({l:cx-6,t:y+2,w:12,h:12,fill:'#4f46e5',rx:6}),
+          bx({l:isLeft?cx-Math.round(W*.42):cx+16,t:y-6,w:Math.round(W*.38),h:Math.round(H*.1),fill:'#ffffff',rx:10}),
+          tx(year,{l:isLeft?cx-Math.round(W*.42)+14:cx+30,t:y+2,w:50,fs:fs(W,11),fw:'700',fill:'#4f46e5',ff:'JetBrains Mono'}),
+          tx('Key milestone description for this year goes here.',{l:isLeft?cx-Math.round(W*.42)+14:cx+30,t:y+2+fs(W,11)+4,w:Math.round(W*.32),fs:fs(W,12),fill:'#475569',lh:1.5}),
+        ]
+      }),
+    ]),
+  },
+
+  // ── CLOSING ──
+  {
+    id:'thank-you', label:'Thank You', category:'Closing',
+    zones:[
+      { id:'main',    type:'text', bounds:{x:.1,y:.28,w:.8,h:.28}, priority:1, style:{fontSize:72,fontWeight:'900',fill:'#0f172a',textAlign:'center',ff:'Jost',lh:1.0}, constraints:{maxLines:2} },
+      { id:'contact', type:'text', bounds:{x:.15,y:.64,w:.7,h:.15}, priority:2, style:{fontSize:15,fill:'#64748b',textAlign:'center',lh:1.65}, constraints:{maxLines:2} },
+    ],
+    build:(W:number,H:number)=>pg('#ffffff',[
+      bx({l:0,t:H-5,w:W,h:5,fill:'#4f46e5'}),
+      tx('Thank\nYou.',{l:Math.round(W*.1),t:Math.round(H*.28),w:Math.round(W*.8),fs:fs(W,72),fw:'900',fill:'#0f172a',ta:'center',ff:'Jost',lh:1.0}),
+      bx({l:Math.round(W*.5)-30,t:Math.round(H*.63),w:60,h:3,fill:'#4f46e5',rx:2}),
+      tx('hello@yourcompany.com · yourwebsite.com',{l:Math.round(W*.15),t:Math.round(H*.63)+18,w:Math.round(W*.7),fs:fs(W,15),fill:'#64748b',ta:'center'}),
+    ]),
+  },
+  {
+    id:'chapter-break', label:'Section Break', category:'Closing',
+    zones:[
+      { id:'label',    type:'text', bounds:{x:.07,y:.36,w:.5,h:.1},  priority:0, style:{fontSize:11,fontWeight:'700',fill:'rgba(255,255,255,.35)',ff:'JetBrains Mono'}, constraints:{maxLines:1} },
+      { id:'headline', type:'text', bounds:{x:.07,y:.48,w:.7,h:.3},  priority:1, style:{fontSize:60,fontWeight:'800',fill:'#ffffff',ff:'Jost',lh:1.0}, constraints:{maxLines:2} },
+    ],
+    build:(W:number,H:number)=>pg('#1e1b4b',[
+      bx({l:0,t:0,w:W,h:H,fill:'#1e1b4b'}),
+      bx({l:Math.round(W*.07),t:Math.round(H*.36)-2,w:Math.round(W*.15),h:2,fill:'rgba(255,255,255,.25)'}),
+      tx('SECTION 02',{l:Math.round(W*.07)+Math.round(W*.17),t:Math.round(H*.36)-2,w:200,fs:fs(W,11),fw:'700',fill:'rgba(255,255,255,.3)',ff:'JetBrains Mono'}),
+      tx('Deep\nDive',{l:Math.round(W*.07),t:Math.round(H*.48),w:Math.round(W*.7),fs:fs(W,60),fw:'800',fill:'#ffffff',ff:'Jost',lh:1.0}),
+    ]),
+  },
 ]
 
-const LAYOUT_CATS = ['All','Hero','Split','Editorial','Metrics','Content','Minimal','Process']
-
-const GRADIENT_PRESETS = [
-  { label:'Indigo', stops:[{offset:0,color:'#4f46e5'},{offset:1,color:'#7c3aed'}] },
-  { label:'Ocean',  stops:[{offset:0,color:'#06b6d4'},{offset:1,color:'#3b82f6'}] },
-  { label:'Sunset', stops:[{offset:0,color:'#f59e0b'},{offset:1,color:'#ef4444'}] },
-  { label:'Forest', stops:[{offset:0,color:'#10b981'},{offset:1,color:'#059669'}] },
-  { label:'Rose',   stops:[{offset:0,color:'#ec4899'},{offset:1,color:'#f43f5e'}] },
-  { label:'Night',  stops:[{offset:0,color:'#0f172a'},{offset:1,color:'#1e1b4b'}] },
-]
+const LAYOUT_CATS = ['All','Hero','Split','Editorial','Minimal','Feature','Content','Metrics','Social Proof','Timeline','Announce','Closing']
 
 // ─── Share Modal ──────────────────────────────────────────────────────────────
-function ShareModal({documentId,links,onClose,onRefresh,isActive,onPublish}:{documentId:string;links:ShareLink[];onClose:()=>void;onRefresh:()=>void;isActive:boolean;onPublish:()=>void}){
+function ShareModal({ documentId, links, onClose, onRefresh, isActive, onPublish }:{
+  documentId:string; links:ShareLink[]; onClose:()=>void; onRefresh:()=>void; isActive:boolean; onPublish:()=>void
+}){
   const [creating,setCreating]=useState(false)
   const [label,setLabel]=useState('')
   const [requireEmail,setRequireEmail]=useState(false)
@@ -186,268 +520,140 @@ function ShareModal({documentId,links,onClose,onRefresh,isActive,onPublish}:{doc
     if(!isActive){onPublish();return}
     setCreating(true)
     const token=generateToken(14)
-    const {error}=await supabase.from('share_links').insert({
-      document_id:documentId,token,label:label||'Share link',
-      require_email:requireEmail,allow_download:allowDownload,
-      password:password||null,is_active:true,
-    })
+    const{error}=await supabase.from('share_links').insert({document_id:documentId,token,label:label||'Share link',require_email:requireEmail,allow_download:allowDownload,password:password||null,is_active:true})
     if(!error){await onRefresh();setShowNew(false);setLabel('');setPassword('');setRequireEmail(false);setAllowDownload(false)}
     setCreating(false)
   }
-
-  function copyLink(token:string){
-    navigator.clipboard.writeText(buildShareUrl(token))
-    setCopied(token);setTimeout(()=>setCopied(null),2500)
-  }
+  function copyLink(token:string){navigator.clipboard.writeText(buildShareUrl(token));setCopied(token);setTimeout(()=>setCopied(null),2500)}
   async function toggleLink(id:string,active:boolean){await supabase.from('share_links').update({is_active:active}).eq('id',id);onRefresh()}
   async function deleteLink(id:string){await supabase.from('share_links').delete().eq('id',id);onRefresh()}
 
+  const ps:React.CSSProperties={fontFamily:"'Plus Jakarta Sans',sans-serif"}
   return(
-    <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.6)',zIndex:100,display:'flex',alignItems:'flex-end',justifyContent:'flex-end',backdropFilter:'blur(4px)'}} onClick={e=>{if(e.target===e.currentTarget)onClose()}}>
-      <div style={{width:460,height:'100vh',background:'#0f1117',borderLeft:'1px solid rgba(255,255,255,.08)',display:'flex',flexDirection:'column',boxShadow:'-20px 0 60px rgba(0,0,0,.4)'}}>
-        <div style={{padding:'24px 28px',borderBottom:'1px solid rgba(255,255,255,.08)',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+    <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.4)',zIndex:100,display:'flex',alignItems:'flex-end',justifyContent:'flex-end',backdropFilter:'blur(4px)'}} onClick={e=>{if(e.target===e.currentTarget)onClose()}}>
+      <div style={{width:440,height:'100vh',background:'#fff',borderLeft:`1px solid ${T.border}`,display:'flex',flexDirection:'column',boxShadow:'-20px 0 60px rgba(0,0,0,.12)'}}>
+        <div style={{padding:'22px 24px',borderBottom:`1px solid ${T.border}`,display:'flex',alignItems:'center',justifyContent:'space-between',flexShrink:0}}>
           <div>
-            <h2 style={{margin:'0 0 4px',fontSize:18,fontWeight:800,color:'#ffffff',fontFamily:'Jost,sans-serif',letterSpacing:'-.02em'}}>Share & Track</h2>
-            <p style={{margin:0,fontSize:12,color:'rgba(255,255,255,.4)',fontFamily:'Jost,sans-serif'}}>{links.length} link{links.length!==1?'s':''} · {links.reduce((a,l)=>a+(l.view_count||0),0)} total views</p>
+            <h2 style={{...ps,margin:'0 0 3px',fontSize:17,fontWeight:700,color:T.text,letterSpacing:'-.01em'}}>Share & Track</h2>
+            <p style={{...ps,margin:0,fontSize:12,color:T.textSm}}>{links.length} link{links.length!==1?'s':''} · {links.reduce((a,l)=>a+(l.view_count||0),0)} total views</p>
           </div>
-          <button onClick={onClose} style={{background:'rgba(255,255,255,.08)',border:'none',cursor:'pointer',color:'rgba(255,255,255,.6)',padding:8,borderRadius:10,display:'flex',alignItems:'center',justifyContent:'center',transition:'all .15s'}}
-            onMouseOver={e=>(e.currentTarget.style.background='rgba(255,255,255,.14)')}
-            onMouseOut={e=>(e.currentTarget.style.background='rgba(255,255,255,.08)')}>
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M3 3l8 8M11 3l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+          <button onClick={onClose} style={{background:T.bgApp,border:'none',cursor:'pointer',color:T.textMd,padding:8,borderRadius:8,display:'flex',alignItems:'center'}}>
+            <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M3 3l7 7M10 3L3 10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
           </button>
         </div>
         {!isActive&&(
-          <div style={{margin:'16px 24px',padding:'14px 18px',background:'rgba(251,191,36,.08)',border:'1px solid rgba(251,191,36,.25)',borderRadius:12}}>
-            <div style={{fontSize:12,fontWeight:700,color:'#fbbf24',marginBottom:4,fontFamily:'Jost,sans-serif'}}>Document not published</div>
-            <div style={{fontSize:11,color:'rgba(251,191,36,.7)',marginBottom:12,fontFamily:'Jost,sans-serif'}}>Publish first to enable link sharing and tracking.</div>
-            <button onClick={onPublish} style={{padding:'6px 14px',borderRadius:8,background:'#fbbf24',color:'#000',border:'none',cursor:'pointer',fontSize:12,fontWeight:700,fontFamily:'Jost,sans-serif'}}>Publish now</button>
+          <div style={{margin:'16px 20px',padding:'14px 16px',background:'#fffbeb',border:`1px solid #fde68a`,borderRadius:10}}>
+            <div style={{...ps,fontSize:12,fontWeight:700,color:'#92400e',marginBottom:4}}>Document not published</div>
+            <div style={{...ps,fontSize:11,color:'#a16207',marginBottom:10}}>Publish first to enable link sharing.</div>
+            <button onClick={onPublish} style={{...ps,padding:'5px 12px',borderRadius:7,background:'#f59e0b',color:'#fff',border:'none',cursor:'pointer',fontSize:12,fontWeight:600}}>Publish now</button>
           </div>
         )}
-        <div style={{flex:1,overflow:'auto',padding:'16px 24px'}}>
+        <div style={{flex:1,overflow:'auto',padding:'16px 20px'}}>
           {links.length>0&&(
             <div style={{marginBottom:20}}>
-              <div style={{fontSize:10,fontWeight:700,color:'rgba(255,255,255,.3)',textTransform:'uppercase',letterSpacing:'.08em',marginBottom:12}}>Active links</div>
+              <div style={{...ps,fontSize:9,fontWeight:700,color:T.textSm,textTransform:'uppercase',letterSpacing:'.1em',marginBottom:10}}>Active links</div>
               {links.map(link=>(
-                <div key={link.id} style={{border:'1px solid rgba(255,255,255,.08)',borderRadius:14,padding:'16px 18px',marginBottom:10,background:'rgba(255,255,255,.03)'}}>
-                  <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:12}}>
-                    <span style={{flex:1,fontSize:13,fontWeight:700,color:'#fff',fontFamily:'Jost,sans-serif'}}>{link.label??'Share link'}</span>
-                    <span style={{padding:'3px 10px',borderRadius:20,fontSize:9,fontWeight:800,letterSpacing:'.06em',background:link.is_active?'rgba(16,185,129,.15)':'rgba(255,255,255,.06)',color:link.is_active?'#10b981':'rgba(255,255,255,.4)',border:`1px solid ${link.is_active?'rgba(16,185,129,.3)':'rgba(255,255,255,.1)'}`}}>{link.is_active?'LIVE':'OFF'}</span>
+                <div key={link.id} style={{border:`1px solid ${T.border}`,borderRadius:12,padding:'14px 16px',marginBottom:8,background:T.bgApp}}>
+                  <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:10}}>
+                    <span style={{...ps,flex:1,fontSize:13,fontWeight:600,color:T.text}}>{link.label??'Share link'}</span>
+                    <span style={{padding:'2px 8px',borderRadius:20,fontSize:9,fontWeight:700,background:link.is_active?'#ecfdf5':'#f1f5f9',color:link.is_active?T.green:T.textSm,border:`1px solid ${link.is_active?'#a7f3d0':'#e2e8f0'}`}}>{link.is_active?'LIVE':'OFF'}</span>
                   </div>
-                  <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:12}}>
-                    <code style={{flex:1,fontSize:10,color:'rgba(255,255,255,.4)',background:'rgba(255,255,255,.04)',padding:'6px 10px',borderRadius:8,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',display:'block',border:'1px solid rgba(255,255,255,.07)',fontFamily:'JetBrains Mono,monospace'}}>{buildShareUrl(link.token)}</code>
-                    <button onClick={()=>copyLink(link.token)} style={{padding:'6px 12px',background:copied===link.token?'rgba(16,185,129,.15)':'rgba(255,255,255,.06)',border:`1px solid ${copied===link.token?'rgba(16,185,129,.4)':'rgba(255,255,255,.1)'}`,borderRadius:8,fontSize:11,cursor:'pointer',color:copied===link.token?'#10b981':'rgba(255,255,255,.6)',fontFamily:'Jost,sans-serif',fontWeight:700,whiteSpace:'nowrap',transition:'all .15s'}}>
+                  <div style={{display:'flex',gap:6,marginBottom:10}}>
+                    <code style={{...ps,flex:1,fontSize:10,color:T.textMd,background:'#fff',padding:'5px 9px',borderRadius:7,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',display:'block',border:`1px solid ${T.border}`,fontFamily:"'JetBrains Mono',monospace"}}>{buildShareUrl(link.token)}</code>
+                    <button onClick={()=>copyLink(link.token)} style={{...ps,padding:'5px 11px',background:copied===link.token?'#ecfdf5':'#f8fafc',border:`1px solid ${copied===link.token?'#a7f3d0':T.border}`,borderRadius:7,fontSize:11,cursor:'pointer',color:copied===link.token?T.green:T.textMd,fontWeight:600,whiteSpace:'nowrap'}}>
                       {copied===link.token?'Copied ✓':'Copy'}
                     </button>
                   </div>
-                  <div style={{display:'flex',gap:14,fontSize:11,color:'rgba(255,255,255,.3)',flexWrap:'wrap',marginBottom:10,fontFamily:'Jost,sans-serif'}}>
-                    <span>{link.view_count||0} views</span>
-                    {link.require_email&&<span>• Email gate</span>}
-                    {link.password&&<span>• Password</span>}
-                  </div>
-                  <div style={{display:'flex',justifyContent:'flex-end',gap:16}}>
-                    <button onClick={()=>toggleLink(link.id,!link.is_active)} style={{fontSize:11,color:link.is_active?'#f59e0b':'#10b981',background:'none',border:'none',cursor:'pointer',fontFamily:'Jost,sans-serif',fontWeight:700}}>{link.is_active?'Disable':'Enable'}</button>
-                    <button onClick={()=>deleteLink(link.id)} style={{fontSize:11,color:'#ef4444',background:'none',border:'none',cursor:'pointer',fontFamily:'Jost,sans-serif',fontWeight:700}}>Delete</button>
+                  <div style={{display:'flex',gap:8,alignItems:'center'}}>
+                    <span style={{...ps,fontSize:11,color:T.textSm}}>{link.view_count??0} views</span>
+                    <button onClick={()=>toggleLink(link.id,!link.is_active)} style={{...ps,fontSize:11,color:T.accent,background:'none',border:'none',cursor:'pointer',fontWeight:600}}>{link.is_active?'Disable':'Enable'}</button>
+                    <button onClick={()=>deleteLink(link.id)} style={{...ps,fontSize:11,color:T.red,background:'none',border:'none',cursor:'pointer',fontWeight:600}}>Delete</button>
                   </div>
                 </div>
               ))}
             </div>
           )}
-          {!showNew
-            ?<button onClick={()=>setShowNew(true)} style={{width:'100%',padding:'13px',background:'none',border:'1px dashed rgba(255,255,255,.15)',borderRadius:12,cursor:'pointer',fontSize:13,color:'rgba(255,255,255,.35)',fontFamily:'Jost,sans-serif',fontWeight:500,display:'flex',alignItems:'center',justifyContent:'center',gap:7,transition:'all .15s'}}
-              onMouseOver={e=>{(e.currentTarget as HTMLElement).style.borderColor='rgba(79,70,229,.5)';(e.currentTarget as HTMLElement).style.color='rgba(255,255,255,.6)'}}
-              onMouseOut={e=>{(e.currentTarget as HTMLElement).style.borderColor='rgba(255,255,255,.15)';(e.currentTarget as HTMLElement).style.color='rgba(255,255,255,.35)'}}>
-              <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M6.5 1v11M1 6.5h11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>Create new link
-            </button>
-            :<div style={{border:'1px solid rgba(255,255,255,.1)',borderRadius:14,padding:'20px',background:'rgba(255,255,255,.03)'}}>
-              <p style={{margin:'0 0 16px',fontSize:14,fontWeight:700,color:'#fff',fontFamily:'Jost,sans-serif'}}>New share link</p>
-              <div style={{display:'flex',flexDirection:'column',gap:12}}>
-                <Input label="Link label" placeholder="e.g. Sequoia meeting" value={label} onChange={(e:any)=>setLabel(e.target.value)}/>
-                <Input label="Password (optional)" type="password" placeholder="Leave empty for no password" value={password} onChange={(e:any)=>setPassword(e.target.value)}/>
-                <Toggle checked={requireEmail} onChange={setRequireEmail} label="Require email address to view"/>
-                <Toggle checked={allowDownload} onChange={setAllowDownload} label="Allow document download"/>
-                <div style={{display:'flex',gap:8}}>
-                  <Button variant="primary" loading={creating} onClick={createLink} size="sm">{isActive?'Create link':'Publish & create link'}</Button>
-                  <Button variant="ghost" onClick={()=>setShowNew(false)} size="sm">Cancel</Button>
-                </div>
+          {showNew?(
+            <div style={{border:`1px solid ${T.border}`,borderRadius:12,padding:'16px',background:T.bgApp}}>
+              <div style={{...ps,fontSize:11,fontWeight:700,color:T.text,marginBottom:12}}>New share link</div>
+              <div style={{marginBottom:10}}>
+                <div style={{...ps,fontSize:10,color:T.textMd,marginBottom:5}}>Label</div>
+                <input value={label} onChange={e=>setLabel(e.target.value)} placeholder="e.g. Client Review"
+                  style={{...ps,width:'100%',padding:'7px 10px',border:`1px solid ${T.border}`,borderRadius:8,fontSize:12,color:T.text,background:'#fff',outline:'none'}}/>
+              </div>
+              <div style={{marginBottom:10}}>
+                <div style={{...ps,fontSize:10,color:T.textMd,marginBottom:5}}>Password (optional)</div>
+                <input value={password} onChange={e=>setPassword(e.target.value)} placeholder="Leave blank for no password"
+                  style={{...ps,width:'100%',padding:'7px 10px',border:`1px solid ${T.border}`,borderRadius:8,fontSize:12,color:T.text,background:'#fff',outline:'none'}}/>
+              </div>
+              <div style={{display:'flex',gap:16,marginBottom:14}}>
+                <label style={{...ps,display:'flex',alignItems:'center',gap:6,fontSize:12,color:T.textMd,cursor:'pointer'}}>
+                  <input type="checkbox" checked={requireEmail} onChange={e=>setRequireEmail(e.target.checked)} style={{accentColor:T.accent}}/> Require email
+                </label>
+                <label style={{...ps,display:'flex',alignItems:'center',gap:6,fontSize:12,color:T.textMd,cursor:'pointer'}}>
+                  <input type="checkbox" checked={allowDownload} onChange={e=>setAllowDownload(e.target.checked)} style={{accentColor:T.accent}}/> Allow download
+                </label>
+              </div>
+              <div style={{display:'flex',gap:8}}>
+                <button onClick={()=>setShowNew(false)} style={{...ps,flex:1,padding:'8px',border:`1px solid ${T.border}`,borderRadius:8,background:'#fff',fontSize:12,cursor:'pointer',fontWeight:500,color:T.textMd}}>Cancel</button>
+                <button onClick={createLink} disabled={creating} style={{...ps,flex:1,padding:'8px',border:'none',borderRadius:8,background:T.accent,color:'#fff',fontSize:12,cursor:'pointer',fontWeight:700,opacity:creating?.6:1}}>
+                  {creating?'Creating…':'Create link'}
+                </button>
               </div>
             </div>
-          }
+          ):(
+            <button onClick={()=>setShowNew(true)} style={{...ps,width:'100%',padding:'10px',border:`1px dashed ${T.borderMd}`,borderRadius:10,background:'transparent',cursor:'pointer',fontSize:12,color:T.textMd,fontWeight:600,display:'flex',alignItems:'center',justifyContent:'center',gap:6}}>
+              <svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M5.5 1v9M1.5 5.5h8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+              New share link
+            </button>
+          )}
         </div>
       </div>
     </div>
   )
 }
 
-// ─── Properties Panel ─────────────────────────────────────────────────────────
-function PropsPanel({obj, fabric, onUpdate}:{obj:any,fabric:any,onUpdate:()=>void}){
-  if(!obj) return(
-    <div style={{padding:'32px 20px',color:'rgba(255,255,255,.25)',fontSize:12,textAlign:'center',fontFamily:'Jost,sans-serif',display:'flex',flexDirection:'column',alignItems:'center',gap:12}}>
-      <div style={{width:48,height:48,borderRadius:12,background:'rgba(255,255,255,.05)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:20}}>↖</div>
-      <span>Select an element to edit its properties</span>
-    </div>
-  )
-
-  const isText=obj.type==='textbox'||obj.type==='i-text'||obj.type==='text'
-  const isShape=obj.type==='rect'||obj.type==='circle'||obj.type==='triangle'||obj.type==='ellipse'
-
-  function set(prop:string,val:any){
-    obj.set(prop,val)
-    fabric.renderAll()
-    onUpdate()
-  }
-
-  function applyGradient(stops:{offset:number,color:string}[]){
-    const grad=new fabric.fabric.Gradient({
-      type:'linear',
-      gradientUnits:'percentage',
-      coords:{x1:0,y1:0,x2:1,y2:0},
-      colorStops:stops,
-    })
-    obj.set('fill',grad)
-    fabric.renderAll()
-    onUpdate()
-  }
-
-  const opacity=Math.round((obj.opacity??1)*100)
-
+// ─── Right Panel Components ───────────────────────────────────────────────────
+function LSection({label,children}:{label:string;children:React.ReactNode}){
+  const [open,setOpen]=useState(true)
   return(
-    <div style={{padding:'4px 0',display:'flex',flexDirection:'column',gap:2,overflow:'auto',flex:1}}>
-      <DarkSection label="Position & Size">
-        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:6}}>
-          {[['X','left'],['Y','top'],['W','width'],['H','height']].map(([l,p])=>(
-            <DarkNumField key={p} label={l} value={Math.round(obj[p]??0)} onChange={v=>set(p,v)}/>
-          ))}
-        </div>
-        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:6,marginTop:6}}>
-          <DarkNumField label="Rotate°" value={Math.round(obj.angle??0)} onChange={v=>set('angle',v)}/>
-          <DarkNumField label="Opacity%" value={opacity} onChange={v=>set('opacity',v/100)}/>
-        </div>
-        <div style={{display:'flex',gap:5,marginTop:6}}>
-          <button onClick={()=>set('flipX',!obj.flipX)} style={darkPropBtn(obj.flipX)}>Flip H</button>
-          <button onClick={()=>set('flipY',!obj.flipY)} style={darkPropBtn(obj.flipY)}>Flip V</button>
-          <button onClick={()=>set('lockMovementX',!obj.lockMovementX)} style={darkPropBtn(obj.lockMovementX)}>Lock</button>
-        </div>
-      </DarkSection>
-
-      <DarkSection label="Fill & Stroke">
-        <div style={{display:'flex',flexDirection:'column',gap:10}}>
-          <div style={{display:'flex',gap:8,alignItems:'center'}}>
-            <label style={darkPropLabel}>Fill</label>
-            <input type="color" value={typeof obj.fill==='string'?obj.fill:'#4f46e5'} onChange={e=>set('fill',e.target.value)} style={{width:32,height:28,borderRadius:7,border:'1.5px solid rgba(255,255,255,.12)',cursor:'pointer',padding:0,background:'transparent'}}/>
-            <span style={{fontSize:10,color:'rgba(255,255,255,.35)',fontFamily:'JetBrains Mono,monospace'}}>{typeof obj.fill==='string'?obj.fill:'gradient'}</span>
-          </div>
-          <div>
-            <div style={{fontSize:9,fontWeight:700,color:'rgba(255,255,255,.3)',textTransform:'uppercase',letterSpacing:'.06em',marginBottom:6}}>Gradient Presets</div>
-            <div style={{display:'flex',gap:5,flexWrap:'wrap'}}>
-              {GRADIENT_PRESETS.map(g=>(
-                <button key={g.label} onClick={()=>applyGradient(g.stops)} title={g.label}
-                  style={{width:28,height:28,borderRadius:6,border:'1.5px solid transparent',cursor:'pointer',
-                    background:`linear-gradient(135deg,${g.stops[0].color},${g.stops[1].color})`,
-                    outline:'none',transition:'transform .1s'}} onMouseOver={e=>(e.currentTarget.style.transform='scale(1.18)')} onMouseOut={e=>(e.currentTarget.style.transform='scale(1)')}/>
-              ))}
-              <button onClick={()=>set('fill',typeof obj.fill==='string'?obj.fill:'#4f46e5')} title="Remove gradient"
-                style={{width:28,height:28,borderRadius:6,border:'1.5px solid rgba(255,255,255,.1)',cursor:'pointer',background:'rgba(255,255,255,.05)',fontSize:11,color:'rgba(255,255,255,.4)'}}>✕</button>
-            </div>
-          </div>
-          <div style={{display:'flex',gap:8,alignItems:'center'}}>
-            <label style={darkPropLabel}>Stroke</label>
-            <input type="color" value={obj.stroke||'#000000'} onChange={e=>set('stroke',e.target.value)} style={{width:32,height:28,borderRadius:7,border:'1.5px solid rgba(255,255,255,.12)',cursor:'pointer',padding:0}}/>
-            <DarkNumField label="px" value={obj.strokeWidth??0} onChange={v=>set('strokeWidth',v)}/>
-          </div>
-          {isShape&&(
-            <DarkNumField label="Corner radius" value={obj.rx??0} onChange={v=>{set('rx',v);set('ry',v)}}/>
-          )}
-        </div>
-      </DarkSection>
-
-      <DarkSection label="Shadow">
-        <ShadowControls obj={obj} fabric={fabric} onUpdate={onUpdate}/>
-      </DarkSection>
-
-      <DarkSection label="Blend Mode">
-        <select value={obj.globalCompositeOperation??'normal'} onChange={e=>set('globalCompositeOperation',e.target.value)}
-          style={{width:'100%',padding:'7px 10px',border:'1px solid rgba(255,255,255,.1)',borderRadius:8,fontSize:12,fontFamily:'Jost,sans-serif',background:'rgba(255,255,255,.05)',color:'rgba(255,255,255,.8)',cursor:'pointer',outline:'none'}}>
-          {BLEND_MODES.map(m=><option key={m} value={m} style={{background:'#1a1d26'}}>{m}</option>)}
-        </select>
-      </DarkSection>
-
-      {isText&&(
-        <DarkSection label="Typography">
-          <div style={{display:'flex',flexDirection:'column',gap:8}}>
-            <div>
-              <div style={darkPropLabel}>Text Color</div>
-              <input type="color" value={typeof obj.fill==='string'?obj.fill:'#0f172a'} onChange={e=>set('fill',e.target.value)} style={{width:32,height:28,borderRadius:7,border:'1.5px solid rgba(255,255,255,.12)',cursor:'pointer',padding:0,marginTop:5}}/>
-            </div>
-            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:6}}>
-              <DarkNumField label="Size" value={obj.fontSize??16} onChange={v=>set('fontSize',v)}/>
-              <DarkNumField label="Line H" value={obj.lineHeight??1.4} onChange={v=>set('lineHeight',v)} step={0.05}/>
-            </div>
-            <DarkNumField label="Letter Spacing" value={obj.charSpacing??0} onChange={v=>set('charSpacing',v)}/>
-            <div style={{display:'flex',gap:4,flexWrap:'wrap'}}>
-              {(['left','center','right','justify'] as const).map(a=>(
-                <button key={a} onClick={()=>set('textAlign',a)} style={darkPropBtn(obj.textAlign===a)}>{a==='left'?'⫷':a==='center'?'⫶':a==='right'?'⫸':'⟺'}</button>
-              ))}
-            </div>
-            <div style={{display:'flex',gap:4}}>
-              <button onClick={()=>set('fontWeight',obj.fontWeight==='bold'?'normal':'bold')} style={{...darkPropBtn(obj.fontWeight==='bold'),fontWeight:700,fontFamily:'serif'}}>B</button>
-              <button onClick={()=>set('fontStyle',obj.fontStyle==='italic'?'normal':'italic')} style={{...darkPropBtn(obj.fontStyle==='italic'),fontStyle:'italic'}}>I</button>
-              <button onClick={()=>set('underline',!obj.underline)} style={{...darkPropBtn(obj.underline),textDecoration:'underline'}}>U</button>
-              <button onClick={()=>set('linethrough',!obj.linethrough)} style={{...darkPropBtn(obj.linethrough),textDecoration:'line-through'}}>S</button>
-            </div>
-          </div>
-        </DarkSection>
-      )}
-
-      {obj.type==='image'&&(
-        <DarkSection label="Image Filters">
-          <ImageFilters obj={obj} fabric={fabric} onUpdate={onUpdate}/>
-        </DarkSection>
-      )}
+    <div style={{borderBottom:`1px solid ${T.border}`,padding:'10px 14px 12px'}}>
+      <button onClick={()=>setOpen(!open)} style={{width:'100%',display:'flex',alignItems:'center',justifyContent:'space-between',border:'none',background:'none',cursor:'pointer',padding:'0 0 7px'}}>
+        <span style={{fontSize:9,fontWeight:800,color:T.textSm,textTransform:'uppercase',letterSpacing:'.1em',fontFamily:"'Plus Jakarta Sans',sans-serif"}}>{label}</span>
+        <svg width="10" height="6" viewBox="0 0 10 6" fill="none" style={{transform:open?'rotate(0)':'rotate(-90deg)',transition:'transform .15s'}}><path d="M1 1l4 4 4-4" stroke={T.textSm} strokeWidth="1.4" strokeLinecap="round"/></svg>
+      </button>
+      {open&&children}
     </div>
   )
 }
-
-function ShadowControls({obj,fabric,onUpdate}:{obj:any,fabric:any,onUpdate:()=>void}){
-  const shadow=obj.shadow
-  const [enabled,setEnabled]=useState(!!shadow)
-  const [color,setColor]=useState(shadow?.color||'rgba(0,0,0,0.3)')
-  const [blur,setBlur]=useState(shadow?.blur||10)
-  const [ox,setOx]=useState(shadow?.offsetX||4)
-  const [oy,setOy]=useState(shadow?.offsetY||4)
-
-  function apply(en:boolean,c=color,b=blur,x=ox,y=oy){
-    if(!en){obj.set('shadow',null)}
-    else{
-      obj.set('shadow',new fabric.fabric.Shadow({color:c,blur:b,offsetX:x,offsetY:y}))
-    }
-    fabric.renderAll();onUpdate()
-  }
-
+function LNum({label,value,onChange,step=1}:{label:string;value:number;onChange:(v:number)=>void;step?:number}){
   return(
-    <div style={{display:'flex',flexDirection:'column',gap:7}}>
-      <label style={{display:'flex',alignItems:'center',gap:8,cursor:'pointer'}}>
-        <input type="checkbox" checked={enabled} onChange={e=>{setEnabled(e.target.checked);apply(e.target.checked)}} style={{accentColor:'#4f46e5'}}/>
-        <span style={{fontSize:12,color:'rgba(255,255,255,.65)',fontFamily:'Jost,sans-serif'}}>Enable shadow</span>
-      </label>
-      {enabled&&(
-        <>
-          <div style={{display:'flex',gap:6,alignItems:'center'}}>
-            <label style={darkPropLabel}>Color</label>
-            <input type="color" value={color.startsWith('rgba')?'#000000':color} onChange={e=>{setColor(e.target.value);apply(true,e.target.value,blur,ox,oy)}} style={{width:30,height:24,borderRadius:6,border:'1px solid rgba(255,255,255,.1)',cursor:'pointer',padding:0}}/>
-          </div>
-          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:5}}>
-            <DarkNumField label="Blur" value={blur} onChange={v=>{setBlur(v);apply(true,color,v,ox,oy)}}/>
-            <DarkNumField label="X" value={ox} onChange={v=>{setOx(v);apply(true,color,blur,v,oy)}}/>
-            <DarkNumField label="Y" value={oy} onChange={v=>{setOy(v);apply(true,color,blur,ox,v)}}/>
-          </div>
-        </>
-      )}
+    <div>
+      <div style={{fontSize:9,fontWeight:600,color:T.textSm,textTransform:'uppercase',letterSpacing:'.05em',marginBottom:4,fontFamily:"'Plus Jakarta Sans',sans-serif"}}>{label}</div>
+      <input type="number" value={value} step={step} onChange={e=>onChange(parseFloat(e.target.value)||0)}
+        style={{width:'100%',padding:'6px 9px',border:`1px solid ${T.border}`,borderRadius:7,fontSize:12,fontFamily:"'JetBrains Mono',monospace",color:T.text,background:'#fff',outline:'none',transition:'border-color .15s'}}
+        onFocus={e=>{e.target.style.borderColor=T.accent}}
+        onBlur={e=>{e.target.style.borderColor=T.border}}/>
     </div>
   )
 }
+function LSlider({label,value,min,max,onChange}:{label:string;value:number;min:number;max:number;onChange:(v:number)=>void}){
+  return(
+    <div>
+      <div style={{display:'flex',justifyContent:'space-between',marginBottom:4}}>
+        <span style={{fontSize:9,fontWeight:600,color:T.textSm,textTransform:'uppercase',letterSpacing:'.05em',fontFamily:"'Plus Jakarta Sans',sans-serif"}}>{label}</span>
+        <span style={{fontSize:10,color:T.textMd,fontFamily:"'JetBrains Mono',monospace"}}>{value}</span>
+      </div>
+      <input type="range" min={min} max={max} value={value} onChange={e=>onChange(parseFloat(e.target.value))}
+        style={{width:'100%',accentColor:T.accent,height:4,cursor:'pointer'}}/>
+    </div>
+  )
+}
+function LBtn(active:boolean):React.CSSProperties{
+  return{padding:'5px 10px',fontSize:11,fontWeight:600,fontFamily:"'Plus Jakarta Sans',sans-serif",border:`1px solid ${active?T.accent:T.border}`,borderRadius:7,background:active?T.accentLt:'#fff',color:active?T.accent:T.textMd,cursor:'pointer',transition:'all .12s'}
+}
 
-function ImageFilters({obj,fabric,onUpdate}:{obj:any,fabric:any,onUpdate:()=>void}){
-  const fab=(fabric as any).fabric
+function ImageFiltersPanel({obj,onChange}:{obj:any;onChange:(p:string,v:any)=>void}){
   const [brightness,setBrightness]=useState(0)
   const [contrast,setContrast]=useState(0)
   const [saturation,setSaturation]=useState(0)
@@ -455,174 +661,84 @@ function ImageFilters({obj,fabric,onUpdate}:{obj:any,fabric:any,onUpdate:()=>voi
   const [grayscale,setGrayscale]=useState(false)
   const [sepia,setSepia]=useState(false)
 
-  function applyFilters(b=brightness,c=contrast,s=saturation,bl=blur,gs=grayscale,se=sepia){
+  function applyFilters(b=brightness,c=contrast,s=saturation,bl=blur,g=grayscale,se=sepia){
+    if(!obj?.filters)return
+    const fab=(window as any).fabric
+    if(!fab)return
     const filters=[]
-    if(gs) filters.push(new fab.Image.filters.Grayscale())
-    if(se) filters.push(new fab.Image.filters.Sepia())
-    if(b!==0) filters.push(new fab.Image.filters.Brightness({brightness:b/100}))
-    if(c!==0) filters.push(new fab.Image.filters.Contrast({contrast:c/100}))
-    if(s!==0) filters.push(new fab.Image.filters.Saturation({saturation:s/100}))
-    if(bl>0)  filters.push(new fab.Image.filters.Blur({blur:bl/100}))
-    obj.filters=filters
-    obj.applyFilters()
-    fabric.renderAll();onUpdate()
+    if(b!==0)filters.push(new fab.Image.filters.Brightness({brightness:b/100}))
+    if(c!==0)filters.push(new fab.Image.filters.Contrast({contrast:c/100}))
+    if(s!==0)filters.push(new fab.Image.filters.Saturation({saturation:s/100}))
+    if(bl>0)filters.push(new fab.Image.filters.Blur({blur:bl/100}))
+    if(g)filters.push(new fab.Image.filters.Grayscale())
+    if(se)filters.push(new fab.Image.filters.Sepia())
+    obj.filters=filters;obj.applyFilters()
+    const fc=(window as any).__fabricCanvas;if(fc)fc.renderAll()
   }
 
   return(
     <div style={{display:'flex',flexDirection:'column',gap:8}}>
-      <DarkSliderField label="Brightness" value={brightness} min={-100} max={100} onChange={v=>{setBrightness(v);applyFilters(v)}}/>
-      <DarkSliderField label="Contrast" value={contrast} min={-100} max={100} onChange={v=>{setContrast(v);applyFilters(brightness,v)}}/>
-      <DarkSliderField label="Saturation" value={saturation} min={-100} max={100} onChange={v=>{setSaturation(v);applyFilters(brightness,contrast,v)}}/>
-      <DarkSliderField label="Blur" value={blur} min={0} max={100} onChange={v=>{setBlur(v);applyFilters(brightness,contrast,saturation,v)}}/>
+      <LSlider label="Brightness" value={brightness} min={-100} max={100} onChange={v=>{setBrightness(v);applyFilters(v)}}/>
+      <LSlider label="Contrast" value={contrast} min={-100} max={100} onChange={v=>{setContrast(v);applyFilters(brightness,v)}}/>
+      <LSlider label="Saturation" value={saturation} min={-100} max={100} onChange={v=>{setSaturation(v);applyFilters(brightness,contrast,v)}}/>
+      <LSlider label="Blur" value={blur} min={0} max={100} onChange={v=>{setBlur(v);applyFilters(brightness,contrast,saturation,v)}}/>
       <div style={{display:'flex',gap:5}}>
-        <button onClick={()=>{setGrayscale(!grayscale);applyFilters(brightness,contrast,saturation,blur,!grayscale,sepia)}} style={darkPropBtn(grayscale)}>Grayscale</button>
-        <button onClick={()=>{setSepia(!sepia);applyFilters(brightness,contrast,saturation,blur,grayscale,!sepia)}} style={darkPropBtn(sepia)}>Sepia</button>
+        <button onClick={()=>{setGrayscale(!grayscale);applyFilters(brightness,contrast,saturation,blur,!grayscale,sepia)}} style={LBtn(grayscale)}>Grayscale</button>
+        <button onClick={()=>{setSepia(!sepia);applyFilters(brightness,contrast,saturation,blur,grayscale,!sepia)}} style={LBtn(sepia)}>Sepia</button>
       </div>
       <button onClick={()=>{setBrightness(0);setContrast(0);setSaturation(0);setBlur(0);setGrayscale(false);setSepia(false);applyFilters(0,0,0,0,false,false)}}
-        style={{fontSize:11,color:'#ef4444',background:'none',border:'none',cursor:'pointer',fontFamily:'Jost,sans-serif',fontWeight:600,textAlign:'left',padding:0}}>Reset filters</button>
+        style={{fontSize:11,color:T.red,background:'none',border:'none',cursor:'pointer',fontFamily:"'Plus Jakarta Sans',sans-serif",fontWeight:600,textAlign:'left',padding:0}}>Reset filters</button>
     </div>
   )
-}
-
-function DarkSection({label,children}:{label:string,children:React.ReactNode}){
-  const [open,setOpen]=useState(true)
-  return(
-    <div style={{borderBottom:'1px solid rgba(255,255,255,.05)',padding:'10px 16px 12px'}}>
-      <button onClick={()=>setOpen(!open)} style={{width:'100%',display:'flex',alignItems:'center',justifyContent:'space-between',border:'none',background:'none',cursor:'pointer',padding:'0 0 8px',marginBottom:open?0:-8}}>
-        <span style={{fontSize:9,fontWeight:800,color:'rgba(255,255,255,.3)',textTransform:'uppercase',letterSpacing:'.1em',fontFamily:'Jost,sans-serif'}}>{label}</span>
-        <svg width="10" height="6" viewBox="0 0 10 6" fill="none" style={{transform:open?'rotate(0)':'rotate(-90deg)',transition:'transform .15s'}}><path d="M1 1l4 4 4-4" stroke="rgba(255,255,255,0.3)" strokeWidth="1.5" strokeLinecap="round"/></svg>
-      </button>
-      {open&&children}
-    </div>
-  )
-}
-
-function DarkNumField({label,value,onChange,step=1}:{label:string,value:number,onChange:(v:number)=>void,step?:number}){
-  return(
-    <div>
-      <div style={{fontSize:9,fontWeight:600,color:'rgba(255,255,255,.3)',textTransform:'uppercase',letterSpacing:'.05em',marginBottom:4,fontFamily:'Jost,sans-serif'}}>{label}</div>
-      <input type="number" value={value} step={step} onChange={e=>onChange(parseFloat(e.target.value)||0)}
-        style={{width:'100%',padding:'6px 9px',border:'1px solid rgba(255,255,255,.08)',borderRadius:7,fontSize:12,fontFamily:'JetBrains Mono,monospace',color:'rgba(255,255,255,.8)',background:'rgba(255,255,255,.04)',outline:'none',transition:'border-color .15s'}}
-        onFocus={e=>e.target.style.borderColor='rgba(79,70,229,.6)'}
-        onBlur={e=>e.target.style.borderColor='rgba(255,255,255,.08)'}/>
-    </div>
-  )
-}
-
-function DarkSliderField({label,value,min,max,onChange}:{label:string,value:number,min:number,max:number,onChange:(v:number)=>void}){
-  return(
-    <div>
-      <div style={{display:'flex',justifyContent:'space-between',marginBottom:4}}>
-        <span style={{fontSize:9,fontWeight:600,color:'rgba(255,255,255,.3)',textTransform:'uppercase',letterSpacing:'.05em',fontFamily:'Jost,sans-serif'}}>{label}</span>
-        <span style={{fontSize:10,color:'rgba(255,255,255,.5)',fontFamily:'JetBrains Mono,monospace'}}>{value}</span>
-      </div>
-      <input type="range" min={min} max={max} value={value} onChange={e=>onChange(parseFloat(e.target.value))}
-        style={{width:'100%',accentColor:'#4f46e5',height:4,cursor:'pointer'}}/>
-    </div>
-  )
-}
-
-const darkPropLabel:React.CSSProperties={fontSize:9,fontWeight:600,color:'rgba(255,255,255,.3)',textTransform:'uppercase',letterSpacing:'.05em',fontFamily:'Jost,sans-serif',flexShrink:0,minWidth:38}
-function darkPropBtn(active:boolean):React.CSSProperties{
-  return{padding:'5px 11px',fontSize:11,fontWeight:600,fontFamily:'Jost,sans-serif',border:`1px solid ${active?'rgba(79,70,229,.6)':'rgba(255,255,255,.09)'}`,borderRadius:7,background:active?'rgba(79,70,229,.2)':'rgba(255,255,255,.04)',color:active?'#818cf8':'rgba(255,255,255,.5)',cursor:'pointer',transition:'all .12s'}
 }
 
 // ─── Layers Panel ─────────────────────────────────────────────────────────────
-function LayersPanel({fabric,onSelect}:{fabric:any,onSelect:(obj:any)=>void}){
+function LayersPanel({fabric,onSelect}:{fabric:any;onSelect:(obj:any)=>void}){
   const [objs,setObjs]=useState<any[]>([])
-
   useEffect(()=>{
     if(!fabric)return
-    function refresh(){
-      const all=fabric.getObjects().slice().reverse()
-      setObjs(all)
-    }
-    fabric.on('object:added',refresh)
-    fabric.on('object:removed',refresh)
-    fabric.on('object:modified',refresh)
-    fabric.on('selection:created',refresh)
-    fabric.on('selection:cleared',refresh)
-    fabric.on('selection:updated',refresh)
+    const refresh=()=>setObjs(fabric.getObjects().slice().reverse())
+    fabric.on('object:added',refresh);fabric.on('object:removed',refresh);fabric.on('object:modified',refresh)
+    fabric.on('selection:created',refresh);fabric.on('selection:cleared',refresh);fabric.on('selection:updated',refresh)
     refresh()
-    return()=>{
-      fabric.off('object:added',refresh)
-      fabric.off('object:removed',refresh)
-      fabric.off('object:modified',refresh)
-      fabric.off('selection:created',refresh)
-      fabric.off('selection:cleared',refresh)
-      fabric.off('selection:updated',refresh)
-    }
+    return()=>{fabric.off('object:added',refresh);fabric.off('object:removed',refresh);fabric.off('object:modified',refresh);fabric.off('selection:created',refresh);fabric.off('selection:cleared',refresh);fabric.off('selection:updated',refresh)}
   },[fabric])
-
   function getIcon(obj:any){
-    if(obj.type==='textbox'||obj.type==='i-text'||obj.type==='text')return'T'
-    if(obj.type==='image')return'🖼'
-    if(obj.type==='rect')return'▭'
-    if(obj.type==='circle')return'○'
-    if(obj.type==='triangle')return'△'
-    if(obj.type==='path')return'✏'
-    if(obj.type==='group')return'⊞'
-    return'◇'
+    if(obj.type==='textbox'||obj.type==='i-text'||obj.type==='text')return<svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 3h8M6 3v6M3.5 9h5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>
+    if(obj.type==='image')return<svg width="12" height="12" viewBox="0 0 12 12" fill="none"><rect x="1" y="2" width="10" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.1"/><circle cx="3.5" cy="4.5" r=".7" fill="currentColor"/><path d="M1 8l2-2 2 2 2-2 4 3" stroke="currentColor" strokeWidth="1" strokeLinejoin="round"/></svg>
+    if(obj.type==='rect')return<svg width="12" height="12" viewBox="0 0 12 12" fill="none"><rect x="1.5" y="2.5" width="9" height="7" rx="1" stroke="currentColor" strokeWidth="1.1"/></svg>
+    if(obj.type==='circle')return<svg width="12" height="12" viewBox="0 0 12 12" fill="none"><circle cx="6" cy="6" r="4.5" stroke="currentColor" strokeWidth="1.1"/></svg>
+    return<svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 10L6 2l4 8H2z" stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round"/></svg>
   }
-
-  function getLabel(obj:any){
-    if(obj.text)return obj.text.slice(0,22)+(obj.text.length>22?'…':'')
-    return obj.type.charAt(0).toUpperCase()+obj.type.slice(1)
-  }
-
-  function selectObj(obj:any){
-    fabric.setActiveObject(obj)
-    fabric.renderAll()
-    onSelect(obj)
-  }
-
-  function toggleVisible(obj:any,e:React.MouseEvent){
-    e.stopPropagation()
-    obj.set('visible',!obj.visible)
-    fabric.renderAll()
-    setObjs([...objs])
-  }
-
-  function toggleLock(obj:any,e:React.MouseEvent){
-    e.stopPropagation()
-    const locked=!obj.lockMovementX
-    obj.set({lockMovementX:locked,lockMovementY:locked,lockRotation:locked,lockScalingX:locked,lockScalingY:locked,selectable:!locked,evented:!locked})
-    fabric.renderAll()
-    setObjs([...objs])
-  }
-
-  function moveUp(obj:any,e:React.MouseEvent){
-    e.stopPropagation()
-    fabric.bringForward(obj)
-    fabric.renderAll()
-    setObjs(fabric.getObjects().slice().reverse())
-  }
-
-  function moveDown(obj:any,e:React.MouseEvent){
-    e.stopPropagation()
-    fabric.sendBackwards(obj)
-    fabric.renderAll()
-    setObjs(fabric.getObjects().slice().reverse())
-  }
-
-  if(objs.length===0) return(
-    <div style={{padding:'32px 16px',color:'rgba(255,255,255,.25)',fontSize:12,textAlign:'center',fontFamily:'Jost,sans-serif'}}>No elements yet</div>
-  )
-
+  function getLabel(obj:any){if(obj.text)return obj.text.slice(0,22)+(obj.text.length>22?'…':'');return obj.type.charAt(0).toUpperCase()+obj.type.slice(1)}
+  function selectObj(obj:any){fabric.setActiveObject(obj);fabric.renderAll();onSelect(obj)}
+  function toggleVisible(obj:any,e:React.MouseEvent){e.stopPropagation();obj.set('visible',!obj.visible);fabric.renderAll();setObjs([...objs])}
+  function toggleLock(obj:any,e:React.MouseEvent){e.stopPropagation();const locked=!obj.lockMovementX;obj.set({lockMovementX:locked,lockMovementY:locked,lockRotation:locked,lockScalingX:locked,lockScalingY:locked,selectable:!locked,evented:!locked});fabric.renderAll();setObjs([...objs])}
+  function moveUp(obj:any,e:React.MouseEvent){e.stopPropagation();fabric.bringForward(obj);fabric.renderAll();setObjs(fabric.getObjects().slice().reverse())}
+  function moveDown(obj:any,e:React.MouseEvent){e.stopPropagation();fabric.sendBackwards(obj);fabric.renderAll();setObjs(fabric.getObjects().slice().reverse())}
+  if(objs.length===0)return<div style={{padding:'32px 16px',color:T.textSm,fontSize:12,textAlign:'center',fontFamily:"'Plus Jakarta Sans',sans-serif"}}>No elements yet</div>
   return(
-    <div style={{padding:'8px 10px',display:'flex',flexDirection:'column',gap:1}}>
+    <div style={{padding:'6px 8px',display:'flex',flexDirection:'column',gap:1}}>
       {objs.map((obj,i)=>{
         const isActive=fabric.getActiveObject()===obj
         return(
           <div key={i} onClick={()=>selectObj(obj)}
-            style={{display:'flex',alignItems:'center',gap:7,padding:'7px 10px',borderRadius:9,cursor:'pointer',background:isActive?'rgba(79,70,229,.18)':'transparent',border:`1px solid ${isActive?'rgba(79,70,229,.4)':'transparent'}`,transition:'all .1s'}}>
-            <span style={{fontSize:12,width:18,textAlign:'center',flexShrink:0,color:'rgba(255,255,255,.5)'}}>{getIcon(obj)}</span>
-            <span style={{flex:1,fontSize:12,fontFamily:'Jost,sans-serif',color:'rgba(255,255,255,.7)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{getLabel(obj)}</span>
-            <div style={{display:'flex',gap:1,opacity:.5}} onClick={e=>e.stopPropagation()}>
-              <button onClick={e=>toggleVisible(obj,e)} style={{width:22,height:22,border:'none',background:'none',cursor:'pointer',fontSize:11,color:obj.visible===false?'rgba(255,255,255,.3)':'rgba(255,255,255,.6)',borderRadius:4}}>{obj.visible===false?'🙈':'👁'}</button>
-              <button onClick={e=>toggleLock(obj,e)} style={{width:22,height:22,border:'none',background:'none',cursor:'pointer',fontSize:11,color:obj.lockMovementX?'#f59e0b':'rgba(255,255,255,.5)',borderRadius:4}}>{obj.lockMovementX?'🔒':'🔓'}</button>
-              <button onClick={e=>moveUp(obj,e)} style={{width:22,height:22,border:'none',background:'none',cursor:'pointer',fontSize:12,borderRadius:4,color:'rgba(255,255,255,.5)'}}>↑</button>
-              <button onClick={e=>moveDown(obj,e)} style={{width:22,height:22,border:'none',background:'none',cursor:'pointer',fontSize:12,borderRadius:4,color:'rgba(255,255,255,.5)'}}>↓</button>
+            style={{display:'flex',alignItems:'center',gap:6,padding:'6px 8px',borderRadius:8,cursor:'pointer',background:isActive?T.accentLt:'transparent',border:`1px solid ${isActive?T.accentMd:'transparent'}`,transition:'all .1s'}}>
+            <span style={{fontSize:12,width:16,textAlign:'center',flexShrink:0,color:isActive?T.accent:T.textMd}}>{getIcon(obj)}</span>
+            <span style={{flex:1,fontSize:11,fontFamily:"'Plus Jakarta Sans',sans-serif",color:isActive?T.accent:T.textMd,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',fontWeight:isActive?600:400}}>{getLabel(obj)}</span>
+            <div style={{display:'flex',gap:1,opacity:0}} className="layer-actions" onClick={e=>e.stopPropagation()}>
+              <button onClick={e=>toggleVisible(obj,e)} style={{width:20,height:20,border:'none',background:'none',cursor:'pointer',color:obj.visible===false?T.textSm:T.textMd,borderRadius:3,display:'flex',alignItems:'center',justifyContent:'center'}}>
+                {obj.visible===false?<svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M1 1l9 9M3 3A5 5 0 019 9M5 2a5 5 0 015 5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/></svg>:<svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M5.5 2C3 2 1 5.5 1 5.5S3 9 5.5 9 10 5.5 10 5.5 8 2 5.5 2z" stroke="currentColor" strokeWidth="1.2"/><circle cx="5.5" cy="5.5" r="1.5" fill="currentColor"/></svg>}
+              </button>
+              <button onClick={e=>toggleLock(obj,e)} style={{width:20,height:20,border:'none',background:'none',cursor:'pointer',color:obj.lockMovementX?T.amber:T.textMd,borderRadius:3,display:'flex',alignItems:'center',justifyContent:'center'}}>
+                <svg width="10" height="11" viewBox="0 0 10 11" fill="none"><rect x="1.5" y="5" width="7" height="5.5" rx="1" stroke="currentColor" strokeWidth="1.1"/><path d="M3 5V3.5a2 2 0 014 0V5" stroke="currentColor" strokeWidth="1.1"/></svg>
+              </button>
+              <button onClick={e=>moveUp(obj,e)} style={{width:20,height:20,border:'none',background:'none',cursor:'pointer',color:T.textMd,borderRadius:3,display:'flex',alignItems:'center',justifyContent:'center'}}>
+                <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M5 8V2M2 5l3-3 3 3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/></svg>
+              </button>
+              <button onClick={e=>moveDown(obj,e)} style={{width:20,height:20,border:'none',background:'none',cursor:'pointer',color:T.textMd,borderRadius:3,display:'flex',alignItems:'center',justifyContent:'center'}}>
+                <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M5 2v6M2 5l3 3 3-3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/></svg>
+              </button>
             </div>
           </div>
         )
@@ -653,9 +769,10 @@ export default function DocumentEditorPage({ params }: { params: { id: string } 
 
   const [pages, setPages] = useState<any[]>([])
   const [currentPage, setCurrentPage] = useState(0)
-  const [activePanel, setActivePanel] = useState<string|null>('layouts')
+  const [leftTab, setLeftTab] = useState<'layouts'|'elements'|'text'|'media'|'layers'>('layouts')
   const [zoom, setZoom] = useState(0.62)
   const [selectedObj, setSelectedObj] = useState<any>(null)
+  const [activeToolState, setActiveToolState] = useState('select')
   const [fontColor, setFontColor] = useState('#0f172a')
   const [fillColor, setFillColor] = useState('#4f46e5')
   const [bgColor, setBgColor] = useState('#ffffff')
@@ -669,12 +786,13 @@ export default function DocumentEditorPage({ params }: { params: { id: string } 
   const [stockQuery, setStockQuery] = useState('business')
   const [stockImages, setStockImages] = useState<string[]>([])
   const [thumbnails, setThumbnails] = useState<Record<number,string>>({})
+  const [showExport, setShowExport] = useState(false)
+  const [showRelayout, setShowRelayout] = useState(false)
 
   const historyStack = useRef<any[]>([])
   const historyIndex = useRef(-1)
   const isUndoRedo = useRef(false)
   const MAX_HISTORY = 50
-
   const saveTimer = useRef<NodeJS.Timeout|null>(null)
   const pagesRef = useRef<any[]>([])
   const currentPageRef = useRef(0)
@@ -688,25 +806,18 @@ export default function DocumentEditorPage({ params }: { params: { id: string } 
   useEffect(()=>{cHRef.current=canvasH},[canvasH])
 
   useEffect(()=>{
-    const fontsHref='https://fonts.googleapis.com/css2?family=Jost:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap'
-    if(!document.querySelector(`link[href="${fontsHref}"]`)){
-      const l=document.createElement('link');l.rel='stylesheet';l.href=fontsHref;document.head.appendChild(l)
-    }
+    const fontsHref='https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap'
+    if(!document.querySelector(`link[href="${fontsHref}"]`)){const l=document.createElement('link');l.rel='stylesheet';l.href=fontsHref;document.head.appendChild(l)}
     if(!(window as any).fabric){
-      const s=document.createElement('script')
-      s.src='https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.0/fabric.min.js'
-      s.onload=()=>{ initFabric() }
-      document.head.appendChild(s)
-    } else { initFabric() }
-    if(!(window as any).jspdf){
-      const s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';document.head.appendChild(s)
-    }
+      const s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.0/fabric.min.js';s.onload=()=>initFabric();document.head.appendChild(s)
+    } else {initFabric()}
+    if(!(window as any).jspdf){const s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';document.head.appendChild(s)}
   },[]) // eslint-disable-line
 
-  useEffect(()=>{ loadDocument(); loadShareLinks() },[params.id]) // eslint-disable-line
+  useEffect(()=>{loadDocument();loadShareLinks()},[params.id]) // eslint-disable-line
 
   async function loadDocument(){
-    const {data}=await supabase.from('documents').select('*').eq('id',params.id).single()
+    const{data}=await supabase.from('documents').select('*').eq('id',params.id).single()
     if(!data){router.push('/dashboard');return}
     setDoc(data);setTitle(data.title)
     const cd=(data as any).canvas_data
@@ -716,26 +827,20 @@ export default function DocumentEditorPage({ params }: { params: { id: string } 
       if(cd.canvasH){setCanvasH(cd.canvasH);cHRef.current=cd.canvasH}
       setShowTplModal(false)
       waitForFabricThenLoad(cd.pages[0],cd.canvasW||1280,cd.canvasH||720)
-    } else { setShowTplModal(true) }
+    }else{setShowTplModal(true)}
   }
-
-  async function loadShareLinks(){
-    const {data}=await supabase.from('share_links').select('*').eq('document_id',params.id).order('created_at',{ascending:false})
-    setShareLinks(data??[])
-  }
+  async function loadShareLinks(){const{data}=await supabase.from('share_links').select('*').eq('document_id',params.id).order('created_at',{ascending:false});setShareLinks(data??[])}
 
   function initFabric(){
     if(fabricReady.current||!canvasEl.current)return
     if(!(window as any).fabric){setTimeout(initFabric,80);return}
     const fab=(window as any).fabric
     fabricLib.current=fab
-    const fc=new fab.Canvas(canvasEl.current,{
-      width:cWRef.current, height:cHRef.current,
-      backgroundColor:'#ffffff', selection:true, preserveObjectStacking:true,
-    })
-    fabricRef.current=fc
+    const fc=new fab.Canvas(canvasEl.current,{width:cWRef.current,height:cHRef.current,backgroundColor:'#ffffff',selection:true,preserveObjectStacking:true})
+    fabricRef.current=fc;(window as any).__fabricCanvas=fc
     fabricReady.current=true
 
+    // Snapping
     let vLine:any=null,hLine:any=null
     const SNAP_THRESHOLD=8
     fc.on('object:moving',(e:any)=>{
@@ -748,195 +853,118 @@ export default function DocumentEditorPage({ params }: { params: { id: string } 
       for(const obj of objects){
         const oCx=obj.left+(obj.width*(obj.scaleX||1))/2
         const oCy=obj.top+(obj.height*(obj.scaleY||1))/2
-        if(Math.abs(mCx-oCx)<SNAP_THRESHOLD){
-          moving.set('left',oCx-(moving.width*moving.scaleX)/2)
-          vLine=new fab.Line([oCx,0,oCx,cHRef.current],{stroke:'#4f46e5',strokeWidth:1,strokeDashArray:[4,4],selectable:false,evented:false,opacity:.7})
-          fc.add(vLine)
-        }
-        if(Math.abs(mCy-oCy)<SNAP_THRESHOLD){
-          moving.set('top',oCy-(moving.height*moving.scaleY)/2)
-          hLine=new fab.Line([0,oCy,cWRef.current,oCy],{stroke:'#4f46e5',strokeWidth:1,strokeDashArray:[4,4],selectable:false,evented:false,opacity:.7})
-          fc.add(hLine)
-        }
+        if(Math.abs(mCx-oCx)<SNAP_THRESHOLD){moving.set('left',oCx-(moving.width*moving.scaleX)/2);vLine=new fab.Line([oCx,0,oCx,cHRef.current],{stroke:T.accent,strokeWidth:1,strokeDashArray:[4,4],selectable:false,evented:false,opacity:.7});fc.add(vLine)}
+        if(Math.abs(mCy-oCy)<SNAP_THRESHOLD){moving.set('top',oCy-(moving.height*moving.scaleY)/2);hLine=new fab.Line([0,oCy,cWRef.current,oCy],{stroke:T.accent,strokeWidth:1,strokeDashArray:[4,4],selectable:false,evented:false,opacity:.7});fc.add(hLine)}
         const canvasCx=cWRef.current/2
-        if(Math.abs(mCx-canvasCx)<SNAP_THRESHOLD){
-          moving.set('left',canvasCx-(moving.width*moving.scaleX)/2)
-          vLine=new fab.Line([canvasCx,0,canvasCx,cHRef.current],{stroke:'#ef4444',strokeWidth:1,strokeDashArray:[4,4],selectable:false,evented:false,opacity:.7})
-          fc.add(vLine)
-        }
+        if(Math.abs(mCx-canvasCx)<SNAP_THRESHOLD){moving.set('left',canvasCx-(moving.width*moving.scaleX)/2);vLine=new fab.Line([canvasCx,0,canvasCx,cHRef.current],{stroke:'#ef4444',strokeWidth:1,strokeDashArray:[4,4],selectable:false,evented:false,opacity:.7});fc.add(vLine)}
         const canvasCy=cHRef.current/2
-        if(Math.abs(mCy-canvasCy)<SNAP_THRESHOLD){
-          moving.set('top',canvasCy-(moving.height*moving.scaleY)/2)
-          hLine=new fab.Line([0,canvasCy,cWRef.current,canvasCy],{stroke:'#ef4444',strokeWidth:1,strokeDashArray:[4,4],selectable:false,evented:false,opacity:.7})
-          fc.add(hLine)
-        }
+        if(Math.abs(mCy-canvasCy)<SNAP_THRESHOLD){moving.set('top',canvasCy-(moving.height*moving.scaleY)/2);hLine=new fab.Line([0,canvasCy,cWRef.current,canvasCy],{stroke:'#ef4444',strokeWidth:1,strokeDashArray:[4,4],selectable:false,evented:false,opacity:.7});fc.add(hLine)}
       }
-      fc.renderAll()
     })
-    fc.on('object:moved',()=>{
-      if(vLine){fc.remove(vLine);vLine=null}
-      if(hLine){fc.remove(hLine);hLine=null}
-      fc.renderAll()
-    })
-
+    fc.on('object:moved',()=>{if(vLine){fc.remove(vLine);vLine=null}if(hLine){fc.remove(hLine);hLine=null};fc.renderAll();scheduleAutoSave()})
+    fc.on('object:modified',()=>scheduleAutoSave())
     fc.on('selection:created',(e:any)=>syncSel(e.selected?.[0]))
     fc.on('selection:updated',(e:any)=>syncSel(e.selected?.[0]))
     fc.on('selection:cleared',()=>setSelectedObj(null))
-    fc.on('object:modified',()=>{if(!isUndoRedo.current)pushHistory();scheduleAutoSave()})
-    fc.on('object:added',()=>{if(!isUndoRedo.current)pushHistory()})
-    fc.on('object:removed',()=>{if(!isUndoRedo.current)pushHistory()})
-    fc.on('object:added',(e:any)=>{
-      if(!e.target.__uid) e.target.__uid=Math.random().toString(36).slice(2)
-    })
-    fc.on('mouse:down',(opt:any)=>{
-      if(activeTool.current==='text'){
-        const p=fc.getPointer(opt.e)
-        const tb=new fab.Textbox('Click to edit',{left:p.x,top:p.y,width:300,fontSize:24,fontFamily,fill:fontColor,editable:true})
-        fc.add(tb);fc.setActiveObject(tb);fc.renderAll()
-        setActiveTool('select');activeTool.current='select'
-      }
-    })
-
-    if(pagesRef.current.length>0){
-      fc.setWidth(cWRef.current);fc.setHeight(cHRef.current)
-      fc.loadFromJSON(pagesRef.current[0],()=>{fc.renderAll();pushHistory()})
-    }
+    fc.on('path:created',()=>pushHistory())
+    fc.on('text:changed',()=>scheduleAutoSave())
   }
-
-  const activeTool = useRef('select')
-  const [activeToolState, setActiveToolState] = useState('select')
-  function setActiveTool(t:string){activeTool.current=t;setActiveToolState(t)}
 
   function pushHistory(){
-    if(!fabricRef.current)return
-    const json=fabricRef.current.toJSON()
-    const newStack=historyStack.current.slice(0,historyIndex.current+1)
-    newStack.push(json)
-    if(newStack.length>MAX_HISTORY)newStack.shift()
-    historyStack.current=newStack
-    historyIndex.current=newStack.length-1
+    if(isUndoRedo.current||!fabricRef.current)return
+    const state=fabricRef.current.toJSON()
+    historyStack.current=historyStack.current.slice(0,historyIndex.current+1)
+    if(historyStack.current.length>=MAX_HISTORY)historyStack.current.shift()
+    historyStack.current.push(state);historyIndex.current=historyStack.current.length-1
   }
-
   function undo(){
     if(historyIndex.current<=0)return
-    isUndoRedo.current=true
-    historyIndex.current--
+    isUndoRedo.current=true;historyIndex.current--
     const state=historyStack.current[historyIndex.current]
     fabricRef.current?.loadFromJSON(state,()=>{fabricRef.current.renderAll();isUndoRedo.current=false})
   }
-
   function redo(){
     if(historyIndex.current>=historyStack.current.length-1)return
-    isUndoRedo.current=true
-    historyIndex.current++
+    isUndoRedo.current=true;historyIndex.current++
     const state=historyStack.current[historyIndex.current]
     fabricRef.current?.loadFromJSON(state,()=>{fabricRef.current.renderAll();isUndoRedo.current=false})
   }
-
   function waitForFabricThenLoad(pageJson:any,w:number,h:number){
     const attempt=()=>{
-      if(fabricRef.current){
-        fabricRef.current.setWidth(w);fabricRef.current.setHeight(h)
-        fabricRef.current.loadFromJSON(pageJson,()=>{fabricRef.current.renderAll();pushHistory()})
-      } else {setTimeout(attempt,100)}
+      if(fabricRef.current){fabricRef.current.setWidth(w);fabricRef.current.setHeight(h);fabricRef.current.loadFromJSON(pageJson,()=>{fabricRef.current.renderAll();pushHistory()})}
+      else{setTimeout(attempt,100)}
     }
     attempt()
   }
-
   function syncSel(obj:any){
     if(!obj)return
     setSelectedObj(obj)
     if(obj.fontSize)setFontSize(obj.fontSize)
     if(obj.fontFamily)setFontFamily(obj.fontFamily)
     if(typeof obj.fill==='string')setFontColor(obj.fill)
-    setActivePanel('props')
   }
-
   function captureThumbnail(idx:number){
     if(!fabricRef.current)return
-    try{
-      const url=fabricRef.current.toDataURL({format:'jpeg',quality:0.4,multiplier:0.12})
-      setThumbnails(prev=>({...prev,[idx]:url}))
-    }catch(e){}
+    try{const url=fabricRef.current.toDataURL({format:'jpeg',quality:0.4,multiplier:0.12});setThumbnails(prev=>({...prev,[idx]:url}))}catch(e){}
   }
-
   function scheduleAutoSave(){
     if(saveTimer.current)clearTimeout(saveTimer.current)
     saveTimer.current=setTimeout(()=>{saveCanvas();captureThumbnail(currentPageRef.current)},1500)
   }
-
   const saveCanvas=useCallback(async()=>{
     if(!fabricRef.current)return
     setSaving(true)
     const curJson=fabricRef.current.toJSON()
     const all=[...pagesRef.current];all[currentPageRef.current]=curJson
     setPages(all);pagesRef.current=all
-    await supabase.from('documents').update({
-      canvas_data:{pages:all,canvasW:cWRef.current,canvasH:cHRef.current},
-      updated_at:new Date().toISOString(),
-    } as any).eq('id',params.id)
+    await supabase.from('documents').update({canvas_data:{pages:all,canvasW:cWRef.current,canvasH:cHRef.current},updated_at:new Date().toISOString()} as any).eq('id',params.id)
     setSaving(false);setLastSaved(new Date())
   },[params.id])
+  async function saveTitle(){await supabase.from('documents').update({title:title||'Untitled'}).eq('id',params.id)}
+  async function deleteDocument(){setDeleting(true);await supabase.from('share_links').delete().eq('document_id',params.id);await supabase.from('documents').delete().eq('id',params.id);router.push('/dashboard')}
+  async function publishDocument(){await supabase.from('documents').update({status:'active'}).eq('id',params.id);setDoc(prev=>prev?{...prev,status:'active'}:prev);setShowShare(true)}
 
-  async function saveTitle(){
-    await supabase.from('documents').update({title:title||'Untitled'}).eq('id',params.id)
-  }
-
-  async function deleteDocument(){
-    setDeleting(true)
-    await supabase.from('share_links').delete().eq('document_id',params.id)
-    await supabase.from('documents').delete().eq('id',params.id)
-    router.push('/dashboard')
-  }
-
-  async function publishDocument(){
-    await supabase.from('documents').update({status:'active'}).eq('id',params.id)
-    setDoc(prev=>prev?{...prev,status:'active'}:prev)
-    setShowShare(true)
+  function setActiveTool(tool:string){
+    setActiveToolState(tool)
+    const fc=fabricRef.current;if(!fc)return
+    if(tool==='text'){
+      const fab=fabricLib.current||((window as any).fabric);const fc2=fabricRef.current;if(!fc2||!fab)return
+      const tb=new fab.Textbox('Click to edit',{left:100,top:100,width:320,fontSize:24,fontFamily,fill:fontColor,fontWeight:'400',editable:true,lineHeight:1.4})
+      fc2.add(tb);fc2.setActiveObject(tb);fc2.renderAll();pushHistory();setActiveToolState('select')
+      return
+    }
+    fc.isDrawingMode=tool==='draw'
+    if(tool==='draw'&&fc.freeDrawingBrush){fc.freeDrawingBrush.color=fontColor;fc.freeDrawingBrush.width=3}
   }
 
   function searchStock(q:string){
     const imgs=UNSPLASH_CURATED.map(id=>`https://images.unsplash.com/${id}?w=400&q=70&auto=format`)
     setStockImages(imgs)
   }
-
   function switchPage(idx:number){
     if(!fabricRef.current)return
-    const upd=[...pagesRef.current]
-    upd[currentPageRef.current]=fabricRef.current.toJSON()
-    pagesRef.current=upd;setPages([...upd])
-    setCurrentPage(idx);currentPageRef.current=idx
+    const upd=[...pagesRef.current];upd[currentPageRef.current]=fabricRef.current.toJSON()
+    pagesRef.current=upd;setPages([...upd]);setCurrentPage(idx);currentPageRef.current=idx
     fabricRef.current.loadFromJSON(upd[idx],()=>fabricRef.current.renderAll())
     historyStack.current=[];historyIndex.current=-1
   }
-
   function addPage(){
     if(!fabricRef.current)return
-    const upd=[...pagesRef.current]
-    upd[currentPageRef.current]=fabricRef.current.toJSON()
-    const blank=pg(bgColor)
-    const ni=currentPageRef.current+1
-    upd.splice(ni,0,blank);pagesRef.current=upd;setPages([...upd])
-    setCurrentPage(ni);currentPageRef.current=ni
+    const upd=[...pagesRef.current];upd[currentPageRef.current]=fabricRef.current.toJSON()
+    const blank=pg(bgColor);const ni=currentPageRef.current+1
+    upd.splice(ni,0,blank);pagesRef.current=upd;setPages([...upd]);setCurrentPage(ni);currentPageRef.current=ni
     fabricRef.current.clear();fabricRef.current.backgroundColor=bgColor;fabricRef.current.renderAll()
     historyStack.current=[];historyIndex.current=-1
   }
-
   function duplicatePage(idx:number){
     if(!fabricRef.current)return
-    const upd=[...pagesRef.current]
-    upd[currentPageRef.current]=fabricRef.current.toJSON()
-    const copy=JSON.parse(JSON.stringify(upd[idx]))
-    upd.splice(idx+1,0,copy);pagesRef.current=upd;setPages([...upd])
-    switchPage(idx+1)
+    const upd=[...pagesRef.current];upd[currentPageRef.current]=fabricRef.current.toJSON()
+    const copy=JSON.parse(JSON.stringify(upd[idx]));upd.splice(idx+1,0,copy);pagesRef.current=upd;setPages([...upd]);switchPage(idx+1)
   }
-
   function removePage(idx:number){
     if(pagesRef.current.length<=1)return
-    const upd=pagesRef.current.filter((_:any,i:number)=>i!==idx)
-    pagesRef.current=upd;setPages([...upd])
-    const ni=Math.min(currentPageRef.current,upd.length-1)
-    setCurrentPage(ni);currentPageRef.current=ni
+    const upd=pagesRef.current.filter((_:any,i:number)=>i!==idx);pagesRef.current=upd;setPages([...upd])
+    const ni=Math.min(currentPageRef.current,upd.length-1);setCurrentPage(ni);currentPageRef.current=ni
     fabricRef.current?.loadFromJSON(upd[ni],()=>fabricRef.current.renderAll())
     setThumbnails(prev=>{const next={...prev};delete next[idx];return next})
   }
@@ -947,6 +975,14 @@ export default function DocumentEditorPage({ params }: { params: { id: string } 
     fabricRef.current.loadFromJSON(built,()=>{fabricRef.current.renderAll();pushHistory();scheduleAutoSave()})
   }
 
+  function doRelayout(newLayout:any){
+    if(!fabricRef.current)return
+    const objects=fabricRef.current.toJSON().objects||[]
+    const newPage=relayout(objects,newLayout,cWRef.current,cHRef.current)
+    fabricRef.current.loadFromJSON(newPage,()=>{fabricRef.current.renderAll();pushHistory();scheduleAutoSave()})
+    setShowRelayout(false)
+  }
+
   function startBlank(sizeId='pres-169'){
     const size=CANVAS_SIZES.find(s=>s.id===sizeId)||CANVAS_SIZES[0]
     setCanvasW(size.w);setCanvasH(size.h);cWRef.current=size.w;cHRef.current=size.h
@@ -954,18 +990,6 @@ export default function DocumentEditorPage({ params }: { params: { id: string } 
     setCurrentPage(0);currentPageRef.current=0;setShowTplModal(false);setThumbnails({})
     waitForFabricThenLoad(blank,size.w,size.h)
   }
-
-  function addText(opts:any={}){
-    const fab=fabricLib.current||((window as any).fabric);const fc=fabricRef.current;if(!fc||!fab)return
-    const tb=new fab.Textbox(opts.text||'Click to edit',{
-      left:100,top:100,width:opts.w||320,
-      fontSize:opts.fs||24,fontFamily:opts.ff||fontFamily,
-      fill:opts.fill||fontColor,fontWeight:opts.fw||'400',
-      editable:true,lineHeight:1.4,
-    })
-    fc.add(tb);fc.setActiveObject(tb);fc.renderAll();pushHistory()
-  }
-
   function addShape(type:string,opts:any={}){
     const fab=fabricLib.current||((window as any).fabric);const fc=fabricRef.current;if(!fc||!fab)return
     const fill=opts.fill||fillColor
@@ -975,34 +999,24 @@ export default function DocumentEditorPage({ params }: { params: { id: string } 
     else if(type==='triangle')  shape=new fab.Triangle({left:100,top:100,width:140,height:120,fill})
     else if(type==='star'){
       const points=[];const outerR=70;const innerR=30;const cx=170;const cy=170
-      for(let i=0;i<10;i++){
-        const r=i%2===0?outerR:innerR;const angle=(i*Math.PI/5)-Math.PI/2
-        points.push({x:cx+r*Math.cos(angle),y:cy+r*Math.sin(angle)})
-      }
+      for(let i=0;i<10;i++){const r=i%2===0?outerR:innerR;const angle=(i*Math.PI/5)-Math.PI/2;points.push({x:cx+r*Math.cos(angle),y:cy+r*Math.sin(angle)})}
       shape=new fab.Polygon(points,{fill,left:100,top:100})
     }
-    else if(type==='line')      shape=new fab.Line([100,200,420,200],{stroke:fill,strokeWidth:3,selectable:true})
-    else if(type==='arrow'){
-      const path=`M 100 150 L 350 150 M 300 110 L 360 150 L 300 190`
-      shape=new fab.Path(path,{stroke:fill,strokeWidth:3,fill:'transparent',selectable:true})
-    }
+    else if(type==='line') shape=new fab.Line([100,200,420,200],{stroke:fill,strokeWidth:3,selectable:true})
+    else if(type==='arrow'){const path=`M 100 150 L 350 150 M 300 110 L 360 150 L 300 190`;shape=new fab.Path(path,{stroke:fill,strokeWidth:3,fill:'transparent',selectable:true})}
     if(shape){fc.add(shape);fc.setActiveObject(shape);fc.renderAll();pushHistory()}
   }
-
   function addTable(rows=4,cols=3){
     const fab=fabricLib.current||((window as any).fabric);const fc=fabricRef.current;if(!fc||!fab)return
     const cw=160,rh=44,x=100,y=100
     const objs=[]
-    for(let i=0;i<rows;i++){
-      for(let j=0;j<cols;j++){
-        const isH=i===0
-        objs.push(new fab.Rect({left:x+j*cw,top:y+i*rh,width:cw,height:rh,fill:isH?'#0f172a':i%2===0?'#f8fafc':'#ffffff',stroke:'#e2e8f0',strokeWidth:1,selectable:true}))
-        objs.push(new fab.IText(isH?`Column ${j+1}`:`Cell ${i},${j+1}`,{left:x+j*cw+10,top:y+i*rh+13,width:cw-20,fontSize:12,fontFamily:'Jost',fill:isH?'#ffffff':'#374151',fontWeight:isH?'600':'400',editable:true,selectable:true}))
-      }
-    }
+    for(let i=0;i<rows;i++){for(let j=0;j<cols;j++){
+      const isH=i===0
+      objs.push(new fab.Rect({left:x+j*cw,top:y+i*rh,width:cw,height:rh,fill:isH?'#0f172a':i%2===0?'#f8fafc':'#ffffff',stroke:'#e2e8f0',strokeWidth:1,selectable:true}))
+      objs.push(new fab.IText(isH?`Column ${j+1}`:`Cell ${i},${j+1}`,{left:x+j*cw+10,top:y+i*rh+13,width:cw-20,fontSize:12,fontFamily:'Jost',fill:isH?'#ffffff':'#374151',fontWeight:isH?'600':'400',editable:true,selectable:true}))
+    }}
     objs.forEach(o=>fc.add(o));fc.renderAll();pushHistory()
   }
-
   function loadGoogleFont(family:string){
     const safe=family.replace(/ /g,'+')
     if(document.querySelector(`link[data-font="${safe}"]`))return
@@ -1010,74 +1024,27 @@ export default function DocumentEditorPage({ params }: { params: { id: string } 
     l.href=`https://fonts.googleapis.com/css2?family=${safe}:wght@300;400;500;600;700;800&display=swap`
     l.setAttribute('data-font',safe);document.head.appendChild(l)
   }
-
-  function applyFont(f:string){
-    loadGoogleFont(f);setFontFamily(f);setShowFontPicker(false);updateProp('fontFamily',f)
-  }
-
-  function deleteSelected(){
-    const fc=fabricRef.current;if(!fc)return
-    fc.getActiveObjects().forEach((o:any)=>fc.remove(o))
-    fc.discardActiveObject();fc.renderAll();setSelectedObj(null);pushHistory()
-  }
-
-  function duplicateSelected(){
-    const fc=fabricRef.current;if(!fc)return
-    fc.getActiveObject()?.clone((c:any)=>{
-      c.set({left:c.left+24,top:c.top+24})
-      fc.add(c);fc.setActiveObject(c);fc.renderAll();pushHistory()
-    })
-  }
-
-  function groupSelected(){
-    const fc=fabricRef.current;if(!fc)return
-    if(!fc.getActiveObject()||fc.getActiveObject().type!=='activeSelection')return
-    fc.getActiveObject().toGroup();fc.renderAll();pushHistory()
-  }
-
-  function ungroupSelected(){
-    const fc=fabricRef.current;if(!fc)return
-    if(!fc.getActiveObject()||fc.getActiveObject().type!=='group')return
-    fc.getActiveObject().toActiveSelection();fc.renderAll();pushHistory()
-  }
-
-  function updateProp(prop:string,value:any){
-    const fc=fabricRef.current;if(!fc)return
-    const obj=fc.getActiveObject();if(!obj)return
-    obj.set(prop,value);fc.renderAll();scheduleAutoSave()
-  }
-
+  function applyFont(f:string){loadGoogleFont(f);setFontFamily(f);setShowFontPicker(false);updateProp('fontFamily',f)}
+  function deleteSelected(){const fc=fabricRef.current;if(!fc)return;fc.getActiveObjects().forEach((o:any)=>fc.remove(o));fc.discardActiveObject();fc.renderAll();setSelectedObj(null);pushHistory()}
+  function duplicateSelected(){const fc=fabricRef.current;if(!fc)return;fc.getActiveObject()?.clone((c:any)=>{c.set({left:c.left+24,top:c.top+24});fc.add(c);fc.setActiveObject(c);fc.renderAll();pushHistory()})}
+  function groupSelected(){const fc=fabricRef.current;if(!fc)return;if(!fc.getActiveObject()||fc.getActiveObject().type!=='activeSelection')return;fc.getActiveObject().toGroup();fc.renderAll();pushHistory()}
+  function ungroupSelected(){const fc=fabricRef.current;if(!fc)return;if(!fc.getActiveObject()||fc.getActiveObject().type!=='group')return;fc.getActiveObject().toActiveSelection();fc.renderAll();pushHistory()}
+  function updateProp(prop:string,value:any){const fc=fabricRef.current;if(!fc)return;const obj=fc.getActiveObject();if(!obj)return;obj.set(prop,value);fc.renderAll();scheduleAutoSave()}
   function uploadImage(file:File){
     const fab=fabricLib.current||((window as any).fabric);const fc=fabricRef.current;if(!fc||!fab)return
     const r=new FileReader()
-    r.onload=e=>fab.Image.fromURL(e.target?.result as string,(img:any)=>{
-      const s=Math.min(400/img.width,300/img.height,1)
-      img.set({left:120,top:120,scaleX:s,scaleY:s})
-      fc.add(img);fc.setActiveObject(img);fc.renderAll();pushHistory()
-    })
+    r.onload=e=>fab.Image.fromURL(e.target?.result as string,(img:any)=>{const s=Math.min(400/img.width,300/img.height,1);img.set({left:120,top:120,scaleX:s,scaleY:s});fc.add(img);fc.setActiveObject(img);fc.renderAll();pushHistory()})
     r.readAsDataURL(file)
   }
-
   function addStockImage(url:string){
     const fab=fabricLib.current||((window as any).fabric);const fc=fabricRef.current;if(!fc||!fab)return
-    fab.Image.fromURL(url,(img:any)=>{
-      const scale=Math.min(cWRef.current/img.width,cHRef.current/img.height,1)
-      img.set({left:0,top:0,scaleX:scale,scaleY:scale,crossOrigin:'anonymous'})
-      fc.add(img);fc.setActiveObject(img);fc.renderAll();pushHistory()
-    },{crossOrigin:'anonymous'})
+    fab.Image.fromURL(url,(img:any)=>{const scale=Math.min(cWRef.current/img.width,cHRef.current/img.height,1);img.set({left:0,top:0,scaleX:scale,scaleY:scale,crossOrigin:'anonymous'});fc.add(img);fc.setActiveObject(img);fc.renderAll();pushHistory()},{crossOrigin:'anonymous'})
   }
-
   function uploadFont(file:File){
     const r=new FileReader()
-    r.onload=e=>{
-      const name=file.name.replace(/\.[^/.]+$/,'')
-      const style=document.createElement('style')
-      style.textContent=`@font-face{font-family:'${name}';src:url('${e.target?.result}')}`
-      document.head.appendChild(style);setFontFamily(name)
-    }
+    r.onload=e=>{const name=file.name.replace(/\.[^/.]+$/,'');const style=document.createElement('style');style.textContent=`@font-face{font-family:'${name}';src:url('${e.target?.result}')}`;document.head.appendChild(style);setFontFamily(name)}
     r.readAsDataURL(file)
   }
-
   async function exportPDF(){
     const fc=fabricRef.current;if(!fc||(window as any).jspdf===undefined)return
     const{jsPDF}=(window as any).jspdf
@@ -1088,23 +1055,14 @@ export default function DocumentEditorPage({ params }: { params: { id: string } 
       await new Promise<void>(res=>{
         const tmp=document.createElement('canvas');tmp.width=cWRef.current;tmp.height=cHRef.current
         const tfc=new (window as any).fabric.StaticCanvas(tmp,{width:cWRef.current,height:cHRef.current})
-        tfc.loadFromJSON(saved[i],()=>{
-          tfc.renderAll()
-          pdf.addImage(tfc.toDataURL({format:'jpeg',quality:.92}),'JPEG',0,0,cWRef.current,cHRef.current)
-          tfc.dispose();res()
-        })
+        tfc.loadFromJSON(saved[i],()=>{tfc.renderAll();pdf.addImage(tfc.toDataURL({format:'jpeg',quality:.92}),'JPEG',0,0,cWRef.current,cHRef.current);tfc.dispose();res()})
       })
     }
     pdf.save(`${title||'document'}.pdf`)
   }
+  async function exportPNG(){const fc=fabricRef.current;if(!fc)return;const a=document.createElement('a');a.href=fc.toDataURL({format:'png',multiplier:2});a.download=`${title||'page'}.png`;a.click()}
 
-  async function exportPNG(){
-    const fc=fabricRef.current;if(!fc)return
-    const a=document.createElement('a')
-    a.href=fc.toDataURL({format:'png',multiplier:2})
-    a.download=`${title||'page'}.png`;a.click()
-  }
-
+  // Keyboard shortcuts
   useEffect(()=>{
     const h=(e:KeyboardEvent)=>{
       const tag=(e.target as HTMLElement).tagName
@@ -1116,7 +1074,10 @@ export default function DocumentEditorPage({ params }: { params: { id: string } 
       if((e.metaKey||e.ctrlKey)&&e.key==='g'){e.preventDefault();groupSelected()}
       if((e.metaKey||e.ctrlKey)&&e.shiftKey&&e.key==='G'){e.preventDefault();ungroupSelected()}
       if((e.key==='Delete'||e.key==='Backspace')&&fabricRef.current?.getActiveObject())deleteSelected()
-      if(e.key==='Escape'){setActivePanel(null);fabricRef.current?.discardActiveObject();fabricRef.current?.renderAll()}
+      if(e.key==='Escape'){setSelectedObj(null);fabricRef.current?.discardActiveObject();fabricRef.current?.renderAll()}
+      if(e.key==='v')setActiveTool('select')
+      if(e.key==='t')setActiveTool('text')
+      if(e.key==='p')setActiveTool('draw')
       if(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key)){
         const obj=fabricRef.current?.getActiveObject();if(!obj)return
         const delta=e.shiftKey?10:1
@@ -1134,646 +1095,665 @@ export default function DocumentEditorPage({ params }: { params: { id: string } 
   const isActive=doc?.status==='active'
   const filteredFonts=FONTS.filter(f=>f.toLowerCase().includes(fontSearch.toLowerCase()))
   const filteredLayouts=layoutCat==='All'?LAYOUTS:LAYOUTS.filter(l=>l.category===layoutCat)
+  const UI:React.CSSProperties={fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif"}
+
+  // ── Right panel object properties ──────────────────────────────────────────
+  function RightPanel(){
+    if(!selectedObj) return(
+      <div style={{width:240,background:T.bgPanel,borderLeft:`1px solid ${T.border}`,display:'flex',flexDirection:'column',flexShrink:0}}>
+        <div style={{padding:'14px 14px 10px',borderBottom:`1px solid ${T.border}`}}>
+          <div style={{...UI,fontSize:11,fontWeight:700,color:T.textMd}}>Canvas</div>
+        </div>
+        <LSection label="Background">
+          <div style={{display:'flex',alignItems:'center',gap:8}}>
+            <input type="color" value={bgColor} onChange={e=>{setBgColor(e.target.value);if(fabricRef.current){fabricRef.current.backgroundColor=e.target.value;fabricRef.current.renderAll();scheduleAutoSave()}}}
+              style={{width:32,height:32,borderRadius:6,border:`1px solid ${T.border}`,cursor:'pointer'}}/>
+            <span style={{...UI,fontSize:12,color:T.textMd,fontFamily:"'JetBrains Mono',monospace"}}>{bgColor}</span>
+          </div>
+        </LSection>
+        <LSection label="Canvas Size">
+          <div style={{display:'flex',flexDirection:'column',gap:5}}>
+            {CANVAS_SIZES.slice(0,4).map(s=>(
+              <button key={s.id} onClick={()=>{setCanvasW(s.w);setCanvasH(s.h);cWRef.current=s.w;cHRef.current=s.h;if(fabricRef.current){fabricRef.current.setWidth(s.w);fabricRef.current.setHeight(s.h);fabricRef.current.renderAll()}}}
+                style={{...UI,padding:'6px 10px',border:`1px solid ${canvasW===s.w&&canvasH===s.h?T.accent:T.border}`,borderRadius:8,background:canvasW===s.w&&canvasH===s.h?T.accentLt:'#fff',fontSize:11,cursor:'pointer',color:canvasW===s.w&&canvasH===s.h?T.accent:T.textMd,fontWeight:600,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                {s.label}<span style={{fontFamily:"'JetBrains Mono',monospace",fontSize:9,color:T.textSm}}>{s.dims}</span>
+              </button>
+            ))}
+          </div>
+        </LSection>
+      </div>
+    )
+
+    const isText=selectedObj.type==='textbox'||selectedObj.type==='i-text'||selectedObj.type==='text'
+    const isImage=selectedObj.type==='image'
+    const isShape=!isText&&!isImage
+
+    return(
+      <div style={{width:240,background:T.bgPanel,borderLeft:`1px solid ${T.border}`,display:'flex',flexDirection:'column',flexShrink:0,overflow:'hidden'}}>
+        {/* Object type header */}
+        <div style={{padding:'12px 14px',borderBottom:`1px solid ${T.border}`,display:'flex',alignItems:'center',justifyContent:'space-between',flexShrink:0}}>
+          <span style={{...UI,fontSize:11,fontWeight:700,color:T.textMd,textTransform:'capitalize'}}>{selectedObj.type}</span>
+          <div style={{display:'flex',gap:3}}>
+            <button onClick={duplicateSelected} title="Duplicate (⌘D)" style={{width:26,height:26,border:`1px solid ${T.border}`,borderRadius:6,background:'#fff',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',color:T.textMd}}>
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><rect x="4" y="1" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.1"/><rect x="1" y="4" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.1" fill="white"/></svg>
+            </button>
+            <button onClick={deleteSelected} title="Delete" style={{width:26,height:26,border:`1px solid #fee2e2`,borderRadius:6,background:'#fff',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',color:T.red}}>
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 3h8M5 3V2h2v1M4.5 9.5V5M7.5 9.5V5M2.5 3l.7 7h5.6l.7-7" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <div style={{flex:1,overflow:'auto'}}>
+          {/* Position & Size */}
+          <LSection label="Position & Size">
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:6}}>
+              <LNum label="X" value={Math.round(selectedObj.left||0)} onChange={v=>updateProp('left',v)}/>
+              <LNum label="Y" value={Math.round(selectedObj.top||0)} onChange={v=>updateProp('top',v)}/>
+              <LNum label="W" value={Math.round(selectedObj.width||0)} onChange={v=>updateProp('width',v)}/>
+              <LNum label="H" value={Math.round(selectedObj.height||0)} onChange={v=>updateProp('height',v)}/>
+            </div>
+          </LSection>
+
+          {/* Appearance */}
+          <LSection label="Appearance">
+            <div style={{display:'flex',flexDirection:'column',gap:7}}>
+              {!isText&&(
+                <div>
+                  <div style={{...UI,fontSize:9,fontWeight:600,color:T.textSm,textTransform:'uppercase',letterSpacing:'.05em',marginBottom:5}}>Fill</div>
+                  <div style={{display:'flex',gap:6,alignItems:'center'}}>
+                    <input type="color" value={typeof selectedObj.fill==='string'?selectedObj.fill:'#4f46e5'} onChange={e=>{setFillColor(e.target.value);updateProp('fill',e.target.value)}}
+                      style={{width:32,height:32,borderRadius:6,border:`1px solid ${T.border}`,cursor:'pointer'}}/>
+                    <span style={{...UI,fontSize:12,color:T.textMd,fontFamily:"'JetBrains Mono',monospace"}}>{typeof selectedObj.fill==='string'?selectedObj.fill:'—'}</span>
+                  </div>
+                </div>
+              )}
+              {isShape&&(
+                <div>
+                  <div style={{...UI,fontSize:9,fontWeight:600,color:T.textSm,textTransform:'uppercase',letterSpacing:'.05em',marginBottom:5}}>Stroke</div>
+                  <div style={{display:'flex',gap:6,alignItems:'center'}}>
+                    <input type="color" value={selectedObj.stroke||'#000000'} onChange={e=>updateProp('stroke',e.target.value)} style={{width:32,height:32,borderRadius:6,border:`1px solid ${T.border}`,cursor:'pointer'}}/>
+                    <LNum label="Width" value={selectedObj.strokeWidth||0} onChange={v=>updateProp('strokeWidth',v)}/>
+                  </div>
+                </div>
+              )}
+              <LSlider label="Opacity" value={Math.round((selectedObj.opacity??1)*100)} min={0} max={100} onChange={v=>updateProp('opacity',v/100)}/>
+              {isShape&&selectedObj.type==='rect'&&<LNum label="Corner Radius" value={selectedObj.rx||0} onChange={v=>{updateProp('rx',v);updateProp('ry',v)}}/>}
+            </div>
+          </LSection>
+
+          {/* Text properties */}
+          {isText&&(
+            <LSection label="Typography">
+              <div style={{display:'flex',flexDirection:'column',gap:7}}>
+                {/* Font color */}
+                <div>
+                  <div style={{...UI,fontSize:9,fontWeight:600,color:T.textSm,textTransform:'uppercase',letterSpacing:'.05em',marginBottom:5}}>Color</div>
+                  <div style={{display:'flex',gap:6,alignItems:'center'}}>
+                    <input type="color" value={fontColor} onChange={e=>{setFontColor(e.target.value);updateProp('fill',e.target.value)}}
+                      style={{width:32,height:32,borderRadius:6,border:`1px solid ${T.border}`,cursor:'pointer'}}/>
+                    <span style={{...UI,fontSize:12,color:T.textMd,fontFamily:"'JetBrains Mono',monospace"}}>{fontColor}</span>
+                  </div>
+                </div>
+                {/* Font family */}
+                <div style={{position:'relative'}}>
+                  <div style={{...UI,fontSize:9,fontWeight:600,color:T.textSm,textTransform:'uppercase',letterSpacing:'.05em',marginBottom:4}}>Font</div>
+                  <button onClick={()=>setShowFontPicker(!showFontPicker)}
+                    style={{...UI,width:'100%',padding:'6px 9px',border:`1px solid ${T.border}`,borderRadius:7,background:'#fff',cursor:'pointer',fontSize:12,fontFamily:`'${fontFamily}',sans-serif`,fontWeight:500,color:T.text,display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+                    <span style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{fontFamily}</span>
+                    <svg width="9" height="5" viewBox="0 0 9 5" fill="none"><path d="M1 1l3.5 3L8 1" stroke={T.textSm} strokeWidth="1.3" strokeLinecap="round"/></svg>
+                  </button>
+                  {showFontPicker&&(
+                    <div style={{position:'absolute',top:'110%',left:0,right:0,background:'#fff',border:`1px solid ${T.border}`,borderRadius:10,boxShadow:'0 8px 30px rgba(0,0,0,.12)',zIndex:200}}>
+                      <div style={{padding:'8px 8px 4px'}}>
+                        <input value={fontSearch} onChange={e=>setFontSearch(e.target.value)} placeholder="Search fonts…" autoFocus
+                          style={{...UI,width:'100%',padding:'6px 9px',border:`1px solid ${T.border}`,borderRadius:7,fontSize:11,color:T.text,background:T.bgApp,outline:'none'}}/>
+                      </div>
+                      <div style={{maxHeight:200,overflow:'auto',padding:'4px 6px 6px'}}>
+                        {filteredFonts.slice(0,50).map(f=>(
+                          <div key={f} onClick={()=>applyFont(f)} style={{...UI,padding:'6px 8px',cursor:'pointer',fontSize:12,borderRadius:6,fontFamily:`'${f}',sans-serif`,color:fontFamily===f?T.accent:T.textMd,background:fontFamily===f?T.accentLt:'transparent',fontWeight:fontFamily===f?700:400}}>
+                            {f}
+                          </div>
+                        ))}
+                      </div>
+                      <div style={{padding:'6px 8px',borderTop:`1px solid ${T.border}`}}>
+                        <label style={{...UI,display:'flex',alignItems:'center',gap:5,cursor:'pointer',fontSize:11,color:T.textSm}}>
+                          <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M5 1v8M1 5h8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
+                          Upload font
+                          <input type="file" accept=".ttf,.otf,.woff,.woff2" style={{display:'none'}} onChange={e=>{const f=e.target.files?.[0];if(f)uploadFont(f)}}/>
+                        </label>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                {/* Font size */}
+                <LNum label="Size" value={fontSize} onChange={v=>{setFontSize(v);updateProp('fontSize',v)}}/>
+                {/* Style toggles */}
+                <div>
+                  <div style={{...UI,fontSize:9,fontWeight:600,color:T.textSm,textTransform:'uppercase',letterSpacing:'.05em',marginBottom:5}}>Style</div>
+                  <div style={{display:'flex',gap:4}}>
+                    {[
+                      {label:'B',style:{fontWeight:800},prop:'fontWeight',on:'bold',off:'normal',active:selectedObj.fontWeight==='bold'||selectedObj.fontWeight===800},
+                      {label:'I',style:{fontStyle:'italic',fontFamily:'Georgia,serif'},prop:'fontStyle',on:'italic',off:'normal',active:selectedObj.fontStyle==='italic'},
+                      {label:'U',style:{textDecoration:'underline'},prop:'underline',on:true,off:false,active:selectedObj.underline===true},
+                    ].map(f=>(
+                      <button key={f.label} onClick={()=>updateProp(f.prop,f.active?f.off:f.on)}
+                        style={{...LBtn(f.active),...f.style,width:32,height:28,padding:0,display:'flex',alignItems:'center',justifyContent:'center',fontSize:13}}>
+                        {f.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                {/* Align */}
+                <div>
+                  <div style={{...UI,fontSize:9,fontWeight:600,color:T.textSm,textTransform:'uppercase',letterSpacing:'.05em',marginBottom:5}}>Align</div>
+                  <div style={{display:'flex',gap:4}}>
+                    {([['left',<svg key="l" width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 3h8M2 6h5M2 9h7" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>],
+                      ['center',<svg key="c" width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 3h8M3.5 6h5M2 9h8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>],
+                      ['right',<svg key="r" width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 3h8M5 6h5M3 9h7" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>],
+                    ] as [string,React.ReactNode][]).map(([a,icon])=>(
+                      <button key={a} onClick={()=>updateProp('textAlign',a)} style={{...LBtn(selectedObj.textAlign===a),width:30,height:28,padding:0,display:'flex',alignItems:'center',justifyContent:'center',fontSize:12}}>{icon}</button>
+                    ))}
+                  </div>
+                </div>
+                {/* Line height */}
+                <LSlider label="Line Height" value={Math.round((selectedObj.lineHeight??1.4)*10)/10} min={0.8} max={3} onChange={v=>updateProp('lineHeight',v)}/>
+              </div>
+            </LSection>
+          )}
+
+          {/* Image filters */}
+          {isImage&&(
+            <LSection label="Filters">
+              <ImageFiltersPanel obj={selectedObj} onChange={updateProp}/>
+            </LSection>
+          )}
+
+          {/* Transform */}
+          <LSection label="Transform">
+            <div style={{display:'flex',flexDirection:'column',gap:7}}>
+              <LNum label="Rotation" value={Math.round(selectedObj.angle||0)} onChange={v=>updateProp('angle',v)}/>
+              <div>
+                <div style={{...UI,fontSize:9,fontWeight:600,color:T.textSm,textTransform:'uppercase',letterSpacing:'.05em',marginBottom:5}}>Blend Mode</div>
+                <select value={selectedObj.globalCompositeOperation||'normal'} onChange={e=>updateProp('globalCompositeOperation',e.target.value)}
+                  style={{...UI,width:'100%',padding:'6px 9px',border:`1px solid ${T.border}`,borderRadius:7,fontSize:12,color:T.text,background:'#fff',outline:'none'}}>
+                  {BLEND_MODES.map(m=><option key={m} value={m}>{m}</option>)}
+                </select>
+              </div>
+              {/* Align buttons */}
+              <div>
+                <div style={{...UI,fontSize:9,fontWeight:600,color:T.textSm,textTransform:'uppercase',letterSpacing:'.05em',marginBottom:5}}>Align to Canvas</div>
+                <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:4}}>
+                  {[
+                    {label:'Left',fn:()=>updateProp('left',0)},
+                    {label:'Center H',fn:()=>updateProp('left',cWRef.current/2-(selectedObj.width*(selectedObj.scaleX||1))/2)},
+                    {label:'Right',fn:()=>updateProp('left',cWRef.current-(selectedObj.width*(selectedObj.scaleX||1)))},
+                    {label:'Top',fn:()=>updateProp('top',0)},
+                    {label:'Center V',fn:()=>updateProp('top',cHRef.current/2-(selectedObj.height*(selectedObj.scaleY||1))/2)},
+                    {label:'Bottom',fn:()=>updateProp('top',cHRef.current-(selectedObj.height*(selectedObj.scaleY||1)))},
+                  ].map(a=>(
+                    <button key={a.label} onClick={a.fn} style={{...UI,padding:'4px 0',border:`1px solid ${T.border}`,borderRadius:6,background:'#fff',fontSize:9,cursor:'pointer',color:T.textMd,fontWeight:500}}>{a.label}</button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </LSection>
+        </div>
+      </div>
+    )
+  }
 
   // ─── RENDER ────────────────────────────────────────────────────────────────
   return (
-    <div style={{display:'flex',flexDirection:'column',height:'100vh',background:'#0c0d10',fontFamily:"'Jost',system-ui,sans-serif",color:'#fff',overflow:'hidden'}}>
+    <div style={{display:'flex',flexDirection:'column',height:'100vh',background:T.bgApp,...UI,color:T.text,overflow:'hidden'}}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Jost:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
         *{box-sizing:border-box;margin:0;padding:0}
-        ::-webkit-scrollbar{width:3px;height:3px}
+        ::-webkit-scrollbar{width:4px;height:4px}
         ::-webkit-scrollbar-track{background:transparent}
-        ::-webkit-scrollbar-thumb{background:rgba(255,255,255,.12);border-radius:99px}
-        ::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,.25)}
+        ::-webkit-scrollbar-thumb{background:${T.borderMd};border-radius:99px}
+        ::-webkit-scrollbar-thumb:hover{background:#C0BDBA}
         input[type="color"]{-webkit-appearance:none;border:none;cursor:pointer;padding:0;border-radius:6px;overflow:hidden}
         input[type="color"]::-webkit-color-swatch-wrapper{padding:0}
         input[type="color"]::-webkit-color-swatch{border:none}
-        input[type="range"]{cursor:pointer}
-        .tbtn{
-          width:34px;height:32px;border:none;cursor:pointer;border-radius:7px;
-          background:transparent;color:rgba(255,255,255,.45);
-          display:flex;align-items:center;justify-content:center;
-          transition:all .14s;flex-shrink:0;
-        }
-        .tbtn:hover{background:rgba(255,255,255,.08);color:rgba(255,255,255,.9)}
-        .tbtn.on{background:rgba(79,70,229,.25);color:#818cf8;border:1px solid rgba(79,70,229,.4)}
-        .rail{
-          width:52px;height:52px;border:none;background:transparent;cursor:pointer;
-          display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
-          color:rgba(255,255,255,.35);transition:all .15s;border-radius:10px;
-          font-family:'Jost',sans-serif;position:relative;
-        }
-        .rail:hover{background:rgba(255,255,255,.06);color:rgba(255,255,255,.8)}
-        .rail.on{background:rgba(79,70,229,.2);color:#818cf8}
-        .rail.on::after{content:'';position:absolute;left:0;top:50%;transform:translateY(-50%);width:2px;height:28px;background:#4f46e5;border-radius:0 2px 2px 0}
-        .rail span{font-size:8px;font-weight:700;letter-spacing:.04em;text-transform:uppercase}
-        .pthumb{cursor:pointer;border-radius:8px;border:1.5px solid rgba(255,255,255,.08);overflow:hidden;transition:all .15s;background:rgba(255,255,255,.04);position:relative}
-        .pthumb:hover{border-color:rgba(255,255,255,.22)}
-        .pthumb.on{border-color:#4f46e5;box-shadow:0 0 0 3px rgba(79,70,229,.2)}
-        .card-hover{transition:all .15s;cursor:pointer}
-        .card-hover:hover{border-color:rgba(79,70,229,.5)!important;background:rgba(79,70,229,.06)!important;transform:translateY(-1px)}
-        .sp-inp{
-          width:100%;background:rgba(255,255,255,.05);
-          border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.85);
-          border-radius:8px;padding:7px 11px;font:400 12px 'Jost',sans-serif;outline:none;transition:border-color .15s;
-        }
-        .sp-inp::placeholder{color:rgba(255,255,255,.25)}
-        .sp-inp:focus{border-color:rgba(79,70,229,.6);background:rgba(79,70,229,.06)}
-        .font-row{padding:7px 10px;cursor:pointer;font-size:13px;border-radius:7px;transition:background .1s;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:rgba(255,255,255,.7)}
-        .font-row:hover{background:rgba(255,255,255,.07)}
-        .font-row.on{background:rgba(79,70,229,.2);color:#818cf8;font-weight:700}
-        .divider{width:1px;height:20px;background:rgba(255,255,255,.08);margin:0 3px;flex-shrink:0}
-        .shape-btn{
-          height:60px;border:1px solid rgba(255,255,255,.08);border-radius:10px;
-          background:rgba(255,255,255,.03);cursor:pointer;display:flex;flex-direction:column;
-          align-items:center;justify-content:center;gap:5px;font-size:9px;font-weight:700;
-          color:rgba(255,255,255,.4);font-family:'Jost',sans-serif;transition:all .14s;
-        }
-        .shape-btn:hover{border-color:rgba(79,70,229,.5);color:#818cf8;background:rgba(79,70,229,.1)}
-        .panel-hdr{font-size:9px;font-weight:800;color:rgba(255,255,255,.25);text-transform:uppercase;letter-spacing:.1em;margin-bottom:10px;padding:0 2px}
-        .canvas-dot-bg{background-color:#141519;background-image:radial-gradient(rgba(255,255,255,.07) 1px, transparent 1px);background-size:24px 24px}
-        .page-actions{display:flex;gap:2px;opacity:0;transition:opacity .15s}
-        .pthumb:hover .page-actions{opacity:1}
-        .tbar-btn{
-          padding:5px 12px;height:30px;border-radius:7px;font-size:12px;font-weight:600;
-          border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.05);
-          color:rgba(255,255,255,.65);cursor:pointer;font-family:'Jost',sans-serif;
-          transition:all .14s;display:flex;align-items:center;gap:5px;white-space:nowrap;
-        }
-        .tbar-btn:hover{background:rgba(255,255,255,.1);color:rgba(255,255,255,.95);border-color:rgba(255,255,255,.2)}
-        .pri-btn{
-          padding:6px 16px;height:32px;border-radius:8px;font-size:12px;font-weight:700;
-          border:none;background:linear-gradient(135deg,#4f46e5,#7c3aed);color:white;
-          cursor:pointer;font-family:'Jost',sans-serif;transition:all .15s;
-          box-shadow:0 0 20px rgba(79,70,229,.35);display:flex;align-items:center;gap:6px;
-        }
-        .pri-btn:hover{box-shadow:0 0 28px rgba(79,70,229,.55);transform:translateY(-1px)}
-        .sec-btn{
-          padding:6px 14px;height:32px;border-radius:8px;font-size:12px;font-weight:600;
-          border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);
-          color:rgba(255,255,255,.8);cursor:pointer;font-family:'Jost',sans-serif;transition:all .14s;
-        }
-        .sec-btn:hover{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.22)}
+        .layer-row:hover .layer-actions{opacity:1!important}
+        .layout-card{transition:all .15s;border:1.5px solid ${T.border};border-radius:10px;overflow:hidden;cursor:pointer;background:#fff}
+        .layout-card:hover{border-color:${T.accent};box-shadow:0 0 0 3px ${T.accentLt};transform:translateY(-1px)}
+        .page-thumb{cursor:pointer;border-radius:8px;border:1.5px solid ${T.border};overflow:hidden;transition:all .15s;background:#fff}
+        .page-thumb:hover{border-color:${T.borderMd}}
+        .page-thumb.active{border-color:${T.accent};box-shadow:0 0 0 2px ${T.accentLt}}
+        .left-tab{height:40px;border:none;cursor:pointer;background:transparent;font-family:'Plus Jakarta Sans',sans-serif;font-size:11px;font-weight:600;color:${T.textMd};padding:0 10px;border-bottom:2px solid transparent;transition:all .15s;white-space:nowrap}
+        .left-tab:hover{color:${T.text}}
+        .left-tab.on{color:${T.accent};border-bottom-color:${T.accent};background:transparent}
+        .tool-btn{width:34px;height:32px;border:none;cursor:pointer;border-radius:7px;background:transparent;color:${T.textMd};display:flex;align-items:center;justify-content:center;transition:all .14s;flex-shrink:0}
+        .tool-btn:hover{background:${T.bgApp};color:${T.text}}
+        .tool-btn.on{background:${T.accentLt};color:${T.accent};border:1px solid ${T.accentMd}}
+        .shape-card{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;height:56px;border:1px solid ${T.border};border-radius:9px;background:#fff;cursor:pointer;font-size:9px;font-weight:700;color:${T.textMd};font-family:'Plus Jakarta Sans',sans-serif;transition:all .14s}
+        .shape-card:hover{border-color:${T.accent};color:${T.accent};background:${T.accentLt}}
+        .divider-v{width:1px;height:20px;background:${T.border};margin:0 3px;flex-shrink:0}
+        .stock-img{width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:8px;cursor:pointer;border:2px solid transparent;transition:all .15s}
+        .stock-img:hover{border-color:${T.accent}}
+        .pri-btn{padding:6px 16px;height:32px;border-radius:8px;font-size:12px;font-weight:700;border:none;background:${T.accent};color:white;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;transition:all .15s;display:flex;align-items:center;gap:6px}
+        .pri-btn:hover{background:#4338CA;transform:translateY(-1px);box-shadow:0 4px 14px rgba(79,70,229,.3)}
+        .sec-btn{padding:6px 14px;height:32px;border-radius:8px;font-size:12px;font-weight:600;border:1px solid ${T.border};background:#fff;color:${T.textMd};cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;transition:all .14s}
+        .sec-btn:hover{background:${T.bgApp};border-color:${T.borderMd}}
+        .top-action{height:30px;padding:0 11px;border-radius:7px;font-size:12px;font-weight:600;border:1px solid ${T.border};background:#fff;color:${T.textMd};cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;transition:all .14s;display:flex;align-items:center;gap:5px}
+        .top-action:hover{background:${T.bgApp};border-color:${T.borderMd};color:${T.text}}
+        .cat-pill{padding:4px 10px;border-radius:20px;font-size:10px;font-weight:600;border:1px solid ${T.border};background:#fff;color:${T.textMd};cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;transition:all .12s;white-space:nowrap}
+        .cat-pill:hover{background:${T.bgApp}}
+        .cat-pill.on{background:${T.accentLt};color:${T.accent};border-color:${T.accentMd}}
       `}</style>
 
-      {/* ══ TOPBAR ══════════════════════════════════════════════════════════════ */}
-      <div style={{
-        height:52,
-        background:'rgba(13,14,18,0.95)',
-        backdropFilter:'blur(20px)',
-        borderBottom:'1px solid rgba(255,255,255,.07)',
-        display:'flex',alignItems:'center',
-        padding:'0 16px',gap:8,flexShrink:0,zIndex:30,
-        boxShadow:'0 1px 0 rgba(255,255,255,.04)',
-      }}>
+      {/* ══ TOP BAR ═══════════════════════════════════════════════════════════ */}
+      <div style={{height:52,background:T.bgPanel,borderBottom:`1px solid ${T.border}`,display:'flex',alignItems:'center',padding:'0 16px',gap:8,flexShrink:0,zIndex:30}}>
         {/* Back */}
-        <button onClick={()=>router.push('/dashboard')} style={{background:'none',border:'none',cursor:'pointer',color:'rgba(255,255,255,.4)',display:'flex',alignItems:'center',gap:5,fontSize:12,fontFamily:'Jost,sans-serif',fontWeight:500,padding:'5px 8px',borderRadius:7,transition:'all .14s',flexShrink:0}}
-          onMouseOver={e=>(e.currentTarget.style.color='rgba(255,255,255,.8)')}
-          onMouseOut={e=>(e.currentTarget.style.color='rgba(255,255,255,.4)')}>
+        <button onClick={()=>router.push('/dashboard')} style={{...UI,background:'none',border:'none',cursor:'pointer',color:T.textMd,display:'flex',alignItems:'center',gap:4,fontSize:12,fontWeight:500,padding:'4px 6px',borderRadius:6,transition:'color .14s',flexShrink:0}}
+          onMouseOver={e=>(e.currentTarget.style.color=T.text)} onMouseOut={e=>(e.currentTarget.style.color=T.textMd)}>
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M9 2L4 7l5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
           Docs
         </button>
-        <svg width="5" height="10" viewBox="0 0 5 10" fill="none"><path d="M1 1l3 4-3 4" stroke="rgba(255,255,255,0.15)" strokeWidth="1.3" strokeLinecap="round"/></svg>
+        <svg width="5" height="10" viewBox="0 0 5 10" fill="none"><path d="M1 1l3 4-3 4" stroke={T.border} strokeWidth="1.5" strokeLinecap="round"/></svg>
 
         {/* Title */}
         <input value={title} onChange={e=>setTitle(e.target.value)} onBlur={saveTitle} placeholder="Untitled"
-          style={{border:'none',outline:'none',fontSize:14,fontWeight:600,color:'rgba(255,255,255,.85)',background:'transparent',fontFamily:'Jost,sans-serif',flex:1,maxWidth:240,minWidth:60,letterSpacing:'-.01em'}}/>
-
-        {/* Undo/Redo */}
-        <div style={{display:'flex',gap:1}}>
-          <button onClick={undo} title="Undo (⌘Z)" className="tbtn">
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2.5 7A4.5 4.5 0 107 2.5H4M4 2.5L1.5 5 4 7.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
-          </button>
-          <button onClick={redo} title="Redo (⌘⇧Z)" className="tbtn">
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M11.5 7A4.5 4.5 0 107 2.5H10M10 2.5L12.5 5 10 7.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
-          </button>
-        </div>
-
-        <div className="divider"/>
+          style={{...UI,border:'none',outline:'none',fontSize:14,fontWeight:600,color:T.text,background:'transparent',flex:1,maxWidth:200,minWidth:60,letterSpacing:'-.01em'}}/>
 
         {/* Save status */}
-        <span style={{fontSize:10,color:saving?'#818cf8':'rgba(255,255,255,.25)',fontFamily:'JetBrains Mono,monospace',minWidth:72,letterSpacing:'.01em'}}>
-          {saving?'● saving…':lastSaved?`✓ saved`:''}
+        <span style={{fontSize:10,color:saving?T.accent:T.textSm,fontFamily:"'JetBrains Mono',monospace",minWidth:60}}>
+          {saving?'saving…':lastSaved?'✓ saved':''}
         </span>
 
         {/* Status badge */}
-        <span style={{padding:'3px 9px',borderRadius:20,fontSize:9,fontWeight:800,letterSpacing:'.08em',background:isActive?'rgba(16,185,129,.12)':'rgba(255,255,255,.06)',color:isActive?'#34d399':'rgba(255,255,255,.3)',border:`1px solid ${isActive?'rgba(16,185,129,.25)':'rgba(255,255,255,.07)'}`,flexShrink:0}}>
+        <span style={{padding:'3px 8px',borderRadius:20,fontSize:9,fontWeight:700,letterSpacing:'.06em',background:isActive?'#ecfdf5':'#f1f5f9',color:isActive?T.green:T.textSm,border:`1px solid ${isActive?'#a7f3d0':T.border}`,flexShrink:0}}>
           {isActive?'LIVE':'DRAFT'}
         </span>
 
-        <div style={{display:'flex',alignItems:'center',gap:5,marginLeft:4}}>
-          <button onClick={()=>setShowTplModal(true)} className="tbar-btn">Templates</button>
-          <button onClick={()=>setShowDrafter(true)} className="tbar-btn">
-            <svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M5.5 1L6.8 4.2H10L7.4 6.1 8.3 9.3 5.5 7.4 2.7 9.3 3.6 6.1 1 4.2H4.2L5.5 1z" stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round" fill="rgba(251,191,36,.4)"/></svg>
-            AI Draft
-          </button>
-          <button onClick={()=>router.push(`/documents/${params.id}/present`)} className="tbar-btn">Present</button>
+        <div style={{flex:1}}/>
 
-          {/* Export */}
-          <div style={{position:'relative'}}>
-            <button onClick={()=>setActivePanel(activePanel==='export'?null:'export')} className="tbar-btn">
-              Export
-              <svg width="9" height="5" viewBox="0 0 9 5" fill="none"><path d="M1 1l3.5 3L8 1" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>
+        {/* Tool mode */}
+        <div style={{display:'flex',alignItems:'center',gap:1,background:T.bgApp,borderRadius:8,padding:2,border:`1px solid ${T.border}`}}>
+          {([
+            {id:'select',tip:'Select (V)',icon:<svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M2.5 1.5l8 4.5-3.8 1.2-1.8 4-2.4-9.7z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/></svg>},
+            {id:'text',  tip:'Text (T)', icon:<svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M2 4h9M6.5 4v6M4 10h5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>},
+            {id:'draw',  tip:'Draw (P)', icon:<svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M2 11l2-1 6.5-6.5-1-1L3 10 2 11zm6.5-7.5l1 1" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>},
+          ] as {id:string;tip:string;icon:React.ReactNode}[]).map(tool=>(
+            <button key={tool.id} title={tool.tip} className={`tool-btn${activeToolState===tool.id?' on':''}`}
+              onClick={()=>setActiveTool(tool.id)}>
+              {tool.icon}
             </button>
-            {activePanel==='export'&&(
-              <div style={{position:'absolute',top:'110%',right:0,background:'#1a1d26',border:'1px solid rgba(255,255,255,.1)',borderRadius:12,boxShadow:'0 12px 40px rgba(0,0,0,.5)',zIndex:300,minWidth:170,padding:6,overflow:'hidden'}}>
-                {[{label:'Export as PDF',fn:exportPDF,icon:'📄'},{label:'Export as PNG',fn:exportPNG,icon:'🖼'}].map(b=>(
-                  <button key={b.label} onClick={()=>{b.fn();setActivePanel(null)}}
-                    style={{display:'flex',width:'100%',padding:'9px 14px',border:'none',background:'none',cursor:'pointer',fontSize:12,fontFamily:'Jost,sans-serif',fontWeight:500,color:'rgba(255,255,255,.7)',borderRadius:8,textAlign:'left',gap:8,alignItems:'center',transition:'background .12s'}}
-                    onMouseOver={e=>{(e.target as HTMLElement).closest('button')!.style.background='rgba(255,255,255,.06)'}}
-                    onMouseOut={e=>{(e.target as HTMLElement).closest('button')!.style.background='none'}}>
-                    {b.icon} {b.label}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {isActive
-            ?<button onClick={()=>setShowShare(true)} className="pri-btn">
-              <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><circle cx="9" cy="2" r="1.5" stroke="white" strokeWidth="1.2"/><circle cx="9" cy="10" r="1.5" stroke="white" strokeWidth="1.2"/><circle cx="3" cy="6" r="1.5" stroke="white" strokeWidth="1.2"/><path d="M7.5 2.8l-3 2.4M7.5 9.2l-3-2.4" stroke="white" strokeWidth="1.2"/></svg>
-              Share
-            </button>
-            :<button onClick={publishDocument} className="pri-btn">Publish & Share</button>}
-
-          <button onClick={()=>setShowDeleteConfirm(true)} style={{width:30,height:30,border:'none',borderRadius:7,background:'transparent',cursor:'pointer',color:'rgba(255,255,255,.2)',display:'flex',alignItems:'center',justifyContent:'center',transition:'all .15s',flexShrink:0}}
-            onMouseOver={e=>{e.currentTarget.style.color='#ef4444';e.currentTarget.style.background='rgba(239,68,68,.1)'}}
-            onMouseOut={e=>{e.currentTarget.style.color='rgba(255,255,255,.2)';e.currentTarget.style.background='transparent'}}>
-            <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M2 3.5h9M4.5 3.5V2h4v1.5M4 10.5V6M9 10.5V6M2.5 3.5l.8 7.5h5.4l.8-7.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg>
-          </button>
+          ))}
         </div>
-      </div>
 
-      {/* ══ TOOLBAR ═════════════════════════════════════════════════════════════ */}
-      <div style={{
-        height:46,
-        background:'rgba(17,18,23,.97)',
-        backdropFilter:'blur(20px)',
-        borderBottom:'1px solid rgba(255,255,255,.06)',
-        display:'flex',alignItems:'center',
-        padding:'0 12px',gap:2,flexShrink:0,
-        overflowX:'auto',zIndex:20,
-      }}>
-        {/* Tool select */}
-        {([
-          {id:'select',tip:'Select (V)',  icon:<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2.5 1.5l9 5-4.5 1.4-2.2 4.6-2.3-11z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/></svg>},
-          {id:'text',  tip:'Text (T)',   icon:<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 4h10M7 4v7M4.5 11h5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>},
-          {id:'draw',  tip:'Draw (P)',   icon:<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 12l2-1 7-7-1-1-7 7-1 2zm7-8l1 1" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg>},
-        ]).map(tool=>(
-          <button key={tool.id} title={tool.tip} className={`tbtn${activeToolState===tool.id?' on':''}`}
-            onClick={()=>{
-              if(tool.id==='text'){setActiveTool('text');return}
-              setActiveTool(tool.id)
-              if(fabricRef.current){
-                fabricRef.current.isDrawingMode=tool.id==='draw'
-                if(tool.id==='draw'&&fabricRef.current.freeDrawingBrush){
-                  fabricRef.current.freeDrawingBrush.color=fontColor
-                  fabricRef.current.freeDrawingBrush.width=3
-                }
-              }
-            }}>{tool.icon}
-          </button>
-        ))}
-        <div className="divider"/>
+        <div className="divider-v"/>
 
-        {/* Shape quick-add */}
-        {([
-          {id:'rect',    tip:'Rectangle', icon:<svg width="13" height="13" viewBox="0 0 13 13" fill="none"><rect x="1.5" y="2.5" width="10" height="8" rx="1.5" stroke="currentColor" strokeWidth="1.2"/></svg>},
-          {id:'circle',  tip:'Circle',    icon:<svg width="13" height="13" viewBox="0 0 13 13" fill="none"><circle cx="6.5" cy="6.5" r="5" stroke="currentColor" strokeWidth="1.2"/></svg>},
-          {id:'triangle',tip:'Triangle',  icon:<svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M6.5 1.5l5.5 10H1L6.5 1.5z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/></svg>},
-          {id:'star',    tip:'Star',      icon:<svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M6.5 1l1.4 3.2H11L8.6 6l.9 3.1L6.5 7.5 3.5 9.1l.9-3.1L2 4.2h3.1L6.5 1z" stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round"/></svg>},
-          {id:'line',    tip:'Line',      icon:<svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M1.5 11.5L11.5 1.5" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"/></svg>},
-          {id:'arrow',   tip:'Arrow',     icon:<svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M2 6.5h9M7.5 3l4 3.5-4 3.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg>},
-        ]).map(s=>(
-          <button key={s.id} title={s.tip} className="tbtn" onClick={()=>addShape(s.id)}>{s.icon}</button>
-        ))}
-        <button title="Insert table" className="tbtn" onClick={()=>addTable()}>
-          <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><rect x="1" y="1" width="11" height="11" rx="1.5" stroke="currentColor" strokeWidth="1.1"/><path d="M1 5h11M1 9h11M5 5v6M9 5v6" stroke="currentColor" strokeWidth="1" strokeLinecap="round"/></svg>
+        {/* Actions */}
+        <button onClick={undo} title="Undo (⌘Z)" className="tool-btn"><svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M2 6.5A4 4 0 116.5 2.5H4M4 2.5L1.5 5 4 7.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg></button>
+        <button onClick={redo} title="Redo (⌘⇧Z)" className="tool-btn"><svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M11 6.5A4 4 0 106.5 2.5H9M9 2.5L11.5 5 9 7.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg></button>
+
+        <div className="divider-v"/>
+
+        <button onClick={()=>setShowDrafter(true)} className="top-action">
+          <svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M5.5 1L6.8 4.2H10L7.4 6.1 8.3 9.3 5.5 7.4 2.7 9.3 3.6 6.1 1 4.2H4.2L5.5 1z" fill={T.amber} stroke={T.amber} strokeWidth=".6" strokeLinejoin="round"/></svg>
+          AI Draft
         </button>
-        <label title="Upload image" className="tbtn" style={{cursor:'pointer'}}>
-          <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><rect x="1" y="3" width="11" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.1"/><circle cx="4" cy="5.5" r=".9" fill="currentColor"/><path d="M1 9.5l2.5-2.5L6 9.5l2-2L12 10" stroke="currentColor" strokeWidth="1" strokeLinejoin="round"/></svg>
-          <input type="file" accept="image/*" style={{display:'none'}} onChange={e=>{const f=e.target.files?.[0];if(f)uploadImage(f)}}/>
-        </label>
-        <div className="divider"/>
 
-        {/* Font picker */}
+        {/* Export */}
         <div style={{position:'relative'}}>
-          <button onClick={()=>setShowFontPicker(!showFontPicker)}
-            style={{height:30,padding:'0 10px',border:'1px solid rgba(255,255,255,.1)',borderRadius:7,background:'rgba(255,255,255,.05)',cursor:'pointer',fontSize:12,fontFamily:`'${fontFamily}',sans-serif`,fontWeight:500,color:'rgba(255,255,255,.75)',display:'flex',alignItems:'center',gap:6,minWidth:130,maxWidth:160,transition:'all .14s'}}
-            onMouseOver={e=>{e.currentTarget.style.background='rgba(255,255,255,.09)'}}
-            onMouseOut={e=>{e.currentTarget.style.background='rgba(255,255,255,.05)'}}>
-            <span style={{flex:1,textAlign:'left',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{fontFamily}</span>
-            <svg width="9" height="5" viewBox="0 0 9 5" fill="none"><path d="M1 1l3.5 3L8 1" stroke="rgba(255,255,255,0.3)" strokeWidth="1.3" strokeLinecap="round"/></svg>
+          <button onClick={()=>setShowExport(!showExport)} className="top-action">
+            Export
+            <svg width="9" height="5" viewBox="0 0 9 5" fill="none"><path d="M1 1l3.5 3L8 1" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>
           </button>
-          {showFontPicker&&(
-            <div style={{position:'absolute',top:'110%',left:0,background:'#1a1d26',border:'1px solid rgba(255,255,255,.1)',borderRadius:12,boxShadow:'0 16px 50px rgba(0,0,0,.6)',zIndex:200,width:240}}>
-              <div style={{padding:'10px 8px 5px'}}>
-                <input value={fontSearch} onChange={e=>setFontSearch(e.target.value)} placeholder="Search 60+ fonts…" className="sp-inp" autoFocus/>
-              </div>
-              <div style={{maxHeight:260,overflow:'auto',padding:'4px 8px 6px'}}>
-                {filteredFonts.slice(0,60).map(f=>(
-                  <div key={f} className={`font-row${fontFamily===f?' on':''}`} style={{fontFamily:`'${f}',sans-serif`}}
-                    onClick={()=>applyFont(f)}>{f}</div>
-                ))}
-              </div>
-              <div style={{padding:'8px',borderTop:'1px solid rgba(255,255,255,.06)'}}>
-                <label style={{display:'flex',alignItems:'center',gap:6,cursor:'pointer',fontSize:11,color:'rgba(255,255,255,.35)',fontFamily:'Jost,sans-serif'}}>
-                  <svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M5.5 1v9M1.5 5.5h8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
-                  Upload custom font
-                  <input type="file" accept=".ttf,.otf,.woff,.woff2" style={{display:'none'}} onChange={e=>{const f=e.target.files?.[0];if(f)uploadFont(f)}}/>
-                </label>
-              </div>
+          {showExport&&(
+            <div style={{position:'absolute',top:'110%',right:0,background:T.bgPanel,border:`1px solid ${T.border}`,borderRadius:10,boxShadow:'0 8px 30px rgba(0,0,0,.1)',zIndex:300,minWidth:160,padding:4}}>
+              {[
+                {label:'Export as PDF',fn:()=>{exportPDF();setShowExport(false)},icon:<svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M2.5 1.5h5.6l2.4 2.4V11c0 .6-.4 1-.9 1H2.5c-.5 0-1-.4-1-1V2.5c0-.5.5-1 1-1z" stroke="currentColor" strokeWidth="1.1"/><path d="M8 1.5v3H11" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round"/></svg>},
+                {label:'Export as PNG',fn:()=>{exportPNG();setShowExport(false)},icon:<svg width="13" height="13" viewBox="0 0 13 13" fill="none"><rect x="1.5" y="1.5" width="10" height="10" rx="2" stroke="currentColor" strokeWidth="1.1"/><circle cx="4.5" cy="4.5" r="1" fill="currentColor"/><path d="M1.5 9l2.5-2.5L6.5 9l2-2 3 3" stroke="currentColor" strokeWidth="1" strokeLinejoin="round"/></svg>},
+              ].map(b=>(
+                <button key={b.label} onClick={b.fn} style={{...UI,display:'flex',width:'100%',padding:'8px 12px',border:'none',background:'none',cursor:'pointer',fontSize:12,fontWeight:500,color:T.textMd,borderRadius:7,textAlign:'left',gap:8,alignItems:'center',transition:'background .12s'}}
+                  onMouseOver={e=>{(e.target as HTMLElement).closest('button')!.style.background=T.bgApp}}
+                  onMouseOut={e=>{(e.target as HTMLElement).closest('button')!.style.background='none'}}>
+                  {b.icon}{b.label}
+                </button>
+              ))}
             </div>
           )}
         </div>
 
-        {/* Font size */}
-        <input type="number" value={fontSize} min={6} max={400}
-          onChange={e=>{const v=parseInt(e.target.value);setFontSize(v);updateProp('fontSize',v)}}
-          style={{width:52,height:30,border:'1px solid rgba(255,255,255,.1)',borderRadius:7,padding:'0 8px',fontSize:12,fontFamily:'JetBrains Mono,monospace',color:'rgba(255,255,255,.8)',background:'rgba(255,255,255,.05)',outline:'none',textAlign:'center'}}/>
-
-        {/* B/I/U */}
-        {[
-          {tip:'Bold',    prop:'fontWeight',valOn:'bold', valOff:'normal',label:'B',style:{fontWeight:800,fontFamily:'Georgia,serif'}},
-          {tip:'Italic',  prop:'fontStyle', valOn:'italic',valOff:'normal',label:'I',style:{fontStyle:'italic',fontFamily:'Georgia,serif'}},
-          {tip:'Underline',prop:'underline',valOn:true,  valOff:false,   label:'U',style:{textDecoration:'underline'}},
-        ].map(f=>(
-          <button key={f.tip} title={f.tip} className="tbtn"
-            style={{...f.style,fontSize:13}}
-            onClick={()=>{
-              const obj=fabricRef.current?.getActiveObject();if(!obj)return
-              const cur=obj[f.prop]
-              obj.set(f.prop,cur===f.valOn||cur===true?f.valOff:f.valOn)
-              fabricRef.current.renderAll()
-            }}>{f.label}</button>
-        ))}
-        <div className="divider"/>
-
-        {/* Color swatches */}
-        <div style={{display:'flex',alignItems:'center',gap:8}}>
-          {([
-            {l:'A',  v:fontColor, onChange:(v:string)=>{setFontColor(v);updateProp('fill',v)}, title:'Text color'},
-            {l:'Fill',v:fillColor,onChange:(v:string)=>{setFillColor(v);updateProp('fill',v)}, title:'Fill color'},
-            {l:'BG', v:bgColor,   onChange:(v:string)=>{setBgColor(v);if(fabricRef.current){fabricRef.current.backgroundColor=v;fabricRef.current.renderAll()}}, title:'Background color'},
-          ]).map(c=>(
-            <div key={c.l} style={{display:'flex',flexDirection:'column',alignItems:'center',gap:2}} title={c.title}>
-              <div style={{position:'relative',width:26,height:26,borderRadius:6,overflow:'hidden',border:'1.5px solid rgba(255,255,255,.12)',boxShadow:`0 0 0 2px transparent`}}>
-                <input type="color" value={c.v} onChange={e=>c.onChange(e.target.value)}
-                  style={{width:36,height:36,transform:'translate(-5px,-5px)',cursor:'pointer'}}/>
-              </div>
-              <div style={{fontSize:7,color:'rgba(255,255,255,.25)',fontFamily:'JetBrains Mono,monospace',fontWeight:700,letterSpacing:'.02em'}}>{c.l}</div>
-            </div>
-          ))}
-        </div>
-        <div className="divider"/>
-
-        {/* Edit actions */}
-        {[
-          {tip:'Duplicate (⌘D)', fn:duplicateSelected, icon:<svg width="13" height="13" viewBox="0 0 13 13" fill="none"><rect x="1" y="4" width="8" height="8" rx="1.5" stroke="currentColor" strokeWidth="1.2"/><path d="M4 4V2.5A1.5 1.5 0 015.5 1h5A1.5 1.5 0 0112 2.5V8a1.5 1.5 0 01-1.5 1.5H9" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/></svg>},
-          {tip:'Delete (Del)', fn:deleteSelected, icon:<svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M2 3.5h9M4.5 3.5V2h4v1.5M4 10.5V6M9 10.5V6M2.5 3.5l.8 7.5h5.4l.8-7.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>},
-          {tip:'Bring to Front', fn:()=>{const o=fabricRef.current?.getActiveObject();if(o){fabricRef.current.bringToFront(o);fabricRef.current.renderAll()}}, icon:<svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M6.5 2v8M4 4.5l2.5-2.5 2.5 2.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/><path d="M2 11h9" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/></svg>},
-          {tip:'Send to Back', fn:()=>{const o=fabricRef.current?.getActiveObject();if(o){fabricRef.current.sendToBack(o);fabricRef.current.renderAll()}}, icon:<svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M6.5 11V3M4 8.5l2.5 2.5 2.5-2.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/><path d="M2 2h9" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/></svg>},
-          {tip:'Group (⌘G)', fn:groupSelected, icon:<svg width="13" height="13" viewBox="0 0 13 13" fill="none"><rect x="1" y="1" width="4.5" height="4.5" rx="1" stroke="currentColor" strokeWidth="1.1"/><rect x="7.5" y="1" width="4.5" height="4.5" rx="1" stroke="currentColor" strokeWidth="1.1"/><rect x="1" y="7.5" width="4.5" height="4.5" rx="1" stroke="currentColor" strokeWidth="1.1"/><rect x="7.5" y="7.5" width="4.5" height="4.5" rx="1" stroke="currentColor" strokeWidth="1.1"/></svg>},
-        ].map(b=><button key={b.tip} title={b.tip} className="tbtn" onClick={b.fn}>{b.icon}</button>)}
-
-        {/* Zoom */}
-        <div style={{marginLeft:'auto',display:'flex',alignItems:'center',gap:2,background:'rgba(255,255,255,.05)',borderRadius:8,padding:'2px 8px',border:'1px solid rgba(255,255,255,.07)',flexShrink:0}}>
-          <button onClick={()=>setZoom(z=>Math.max(.1,+(z-.1).toFixed(2)))} style={{background:'none',border:'none',cursor:'pointer',color:'rgba(255,255,255,.5)',fontSize:16,lineHeight:1,padding:'0 2px',transition:'color .12s'}}
-            onMouseOver={e=>e.currentTarget.style.color='rgba(255,255,255,.9)'}
-            onMouseOut={e=>e.currentTarget.style.color='rgba(255,255,255,.5)'}>−</button>
-          <button onClick={()=>setZoom(1)} style={{background:'none',border:'none',cursor:'pointer',fontSize:10,color:'rgba(255,255,255,.45)',minWidth:36,textAlign:'center',fontFamily:'JetBrains Mono,monospace',letterSpacing:'.02em'}}>{Math.round(zoom*100)}%</button>
-          <button onClick={()=>setZoom(z=>Math.min(3,+(z+.1).toFixed(2)))} style={{background:'none',border:'none',cursor:'pointer',color:'rgba(255,255,255,.5)',fontSize:16,lineHeight:1,padding:'0 2px',transition:'color .12s'}}
-            onMouseOver={e=>e.currentTarget.style.color='rgba(255,255,255,.9)'}
-            onMouseOut={e=>e.currentTarget.style.color='rgba(255,255,255,.5)'}>+</button>
-        </div>
+        {isActive
+          ?<button onClick={()=>setShowShare(true)} className="pri-btn">
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><circle cx="9" cy="2" r="1.5" stroke="white" strokeWidth="1.2"/><circle cx="9" cy="10" r="1.5" stroke="white" strokeWidth="1.2"/><circle cx="3" cy="6" r="1.5" stroke="white" strokeWidth="1.2"/><path d="M7.5 2.8l-3 2.4M7.5 9.2l-3-2.4" stroke="white" strokeWidth="1.2"/></svg>
+            Share
+          </button>
+          :<button onClick={publishDocument} className="pri-btn">Publish & Share</button>}
       </div>
 
-      {/* ══ BODY ════════════════════════════════════════════════════════════════ */}
+      {/* ══ BODY ══════════════════════════════════════════════════════════════ */}
       <div style={{flex:1,display:'flex',overflow:'hidden'}}>
 
-        {/* ── Left Rail ── */}
-        <div style={{
-          width:56,flexShrink:0,
-          background:'rgba(13,14,18,0.98)',
-          borderRight:'1px solid rgba(255,255,255,.05)',
-          display:'flex',flexDirection:'column',alignItems:'center',
-          paddingTop:6,gap:1,zIndex:10,
-        }}>
-          {[
-            {id:'layouts', label:'Layouts',icon:<svg width="17" height="17" viewBox="0 0 17 17" fill="none"><rect x="1" y="1" width="5" height="5" rx="1.2" stroke="currentColor" strokeWidth="1.2"/><rect x="9" y="1" width="7" height="5" rx="1.2" stroke="currentColor" strokeWidth="1.2"/><rect x="1" y="9" width="7" height="7" rx="1.2" stroke="currentColor" strokeWidth="1.2"/><rect x="11" y="9" width="5" height="7" rx="1.2" stroke="currentColor" strokeWidth="1.2"/></svg>},
-            {id:'photos',  label:'Photos', icon:<svg width="17" height="17" viewBox="0 0 17 17" fill="none"><rect x="1.5" y="3.5" width="14" height="10" rx="2" stroke="currentColor" strokeWidth="1.2"/><circle cx="5.5" cy="7" r="1.5" stroke="currentColor" strokeWidth="1.1"/><path d="M1.5 12l4-3.5 3 3 2.5-2.5 5 5" stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round"/></svg>},
-            {id:'shapes',  label:'Shapes', icon:<svg width="17" height="17" viewBox="0 0 17 17" fill="none"><circle cx="5.5" cy="5.5" r="3.5" stroke="currentColor" strokeWidth="1.2"/><rect x="9.5" y="9.5" width="6" height="6" rx="1.2" stroke="currentColor" strokeWidth="1.2"/><path d="M12 2l3 5H9L12 2z" stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round"/></svg>},
-            {id:'text',    label:'Text',   icon:<svg width="17" height="17" viewBox="0 0 17 17" fill="none"><path d="M2 5A1.5 1.5 0 013.5 3.5h10A1.5 1.5 0 0115 5v1M8.5 3.5v10M5.5 13.5h6" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/></svg>},
-            {id:'bg',      label:'BG',     icon:<svg width="17" height="17" viewBox="0 0 17 17" fill="none"><circle cx="8.5" cy="8.5" r="6.5" stroke="currentColor" strokeWidth="1.2"/><path d="M8.5 2v13" stroke="currentColor" strokeWidth="1.2" opacity=".4"/><path d="M2 8.5h13" stroke="currentColor" strokeWidth="1.2" opacity=".4"/></svg>},
-            {id:'props',   label:'Props',  icon:<svg width="17" height="17" viewBox="0 0 17 17" fill="none"><circle cx="8.5" cy="8.5" r="2.5" stroke="currentColor" strokeWidth="1.2"/><path d="M8.5 1.5v2M8.5 13.5v2M1.5 8.5h2M13.5 8.5h2M3.6 3.6l1.4 1.4M12 12l1.4 1.4M3.6 13.4l1.4-1.4M12 5l1.4-1.4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/></svg>},
-            {id:'layers',  label:'Layers', icon:<svg width="17" height="17" viewBox="0 0 17 17" fill="none"><path d="M1.5 6l7-3.5 7 3.5-7 3.5L1.5 6z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/><path d="M1.5 9.5l7 3.5 7-3.5M1.5 13l7 3.5 7-3.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/></svg>},
-          ].map(item=>(
-            <button key={item.id} className={`rail${activePanel===item.id?' on':''}`} onClick={()=>setActivePanel(activePanel===item.id?null:item.id)}>
-              {item.icon}<span>{item.label}</span>
-            </button>
-          ))}
-        </div>
+        {/* ── LEFT RAIL ─────────────────────────────────────────────────── */}
+        <div style={{width:252,background:T.bgPanel,borderRight:`1px solid ${T.border}`,display:'flex',flexDirection:'column',flexShrink:0}}>
+          {/* Tabs */}
+          <div style={{display:'flex',borderBottom:`1px solid ${T.border}`,padding:'0 4px',overflowX:'auto',flexShrink:0}}>
+            {([
+              {id:'layouts',  label:'Layouts'},
+              {id:'elements', label:'Elements'},
+              {id:'text',     label:'Text'},
+              {id:'media',    label:'Media'},
+              {id:'layers',   label:'Layers'},
+            ] as {id:typeof leftTab;label:string}[]).map(t=>(
+              <button key={t.id} className={`left-tab${leftTab===t.id?' on':''}`} onClick={()=>setLeftTab(t.id)}>{t.label}</button>
+            ))}
+          </div>
 
-        {/* ── Left Panel ── */}
-        {activePanel&&activePanel!=='export'&&(
-          <div style={{
-            width:272,flexShrink:0,
-            background:'rgba(13,14,18,0.98)',
-            borderRight:'1px solid rgba(255,255,255,.05)',
-            display:'flex',flexDirection:'column',overflow:'hidden',
-          }}>
-            {/* Panel header */}
-            <div style={{padding:'14px 16px 10px',borderBottom:'1px solid rgba(255,255,255,.05)',flexShrink:0}}>
-              <div style={{fontSize:13,fontWeight:700,color:'rgba(255,255,255,.8)',fontFamily:'Jost,sans-serif',letterSpacing:'-.01em'}}>
-                {activePanel==='layouts'&&'Layouts'}
-                {activePanel==='photos'&&'Photos'}
-                {activePanel==='shapes'&&'Shapes'}
-                {activePanel==='text'&&'Typography'}
-                {activePanel==='bg'&&'Background'}
-                {activePanel==='props'&&'Properties'}
-                {activePanel==='layers'&&'Layers'}
+          {/* Tab content */}
+          <div style={{flex:1,overflow:'auto',padding:'10px'}}>
+
+            {/* ── LAYOUTS tab ── */}
+            {leftTab==='layouts'&&(
+              <div>
+                {/* Re-layout button */}
+                <button onClick={()=>setShowRelayout(true)} style={{...UI,width:'100%',padding:'9px',border:`1px solid ${T.accent}`,borderRadius:9,background:T.accentLt,cursor:'pointer',fontSize:12,fontWeight:700,color:T.accent,display:'flex',alignItems:'center',justifyContent:'center',gap:6,marginBottom:10}}>
+                  <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M2 6.5C2 4 4 2 6.5 2s4.5 2 4.5 4.5M11 5l.5 1.5L10 7" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/><path d="M11 6.5C11 9 9 11 6.5 11S2 9 2 6.5M2 8l-.5-1.5L3 6" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  Re-Layout Content
+                </button>
+                {/* Categories */}
+                <div style={{display:'flex',gap:4,flexWrap:'wrap',marginBottom:10}}>
+                  {LAYOUT_CATS.map(c=>(
+                    <button key={c} className={`cat-pill${layoutCat===c?' on':''}`} onClick={()=>setLayoutCat(c)}>{c}</button>
+                  ))}
+                </div>
+                {/* Layout grid */}
+                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:7}}>
+                  {filteredLayouts.map(l=>(
+                    <div key={l.id} className="layout-card" onClick={()=>applyLayout(l)}>
+                      <div style={{aspectRatio:'16/9',background:'#f8f9fa',display:'flex',alignItems:'center',justifyContent:'center',padding:6,borderBottom:`1px solid ${T.border}`}}>
+                        <div style={{width:'100%',height:'100%',background:l.build(160,90).background||'#fff',borderRadius:4,position:'relative',overflow:'hidden'}}>
+                          {/* Mini preview */}
+                          {l.build(160,90).objects?.slice(0,4).map((o:any,oi:number)=>(
+                            o.type==='rect'&&<div key={oi} style={{position:'absolute',left:`${(o.left/160)*100}%`,top:`${(o.top/90)*100}%`,width:`${(o.width/160)*100}%`,height:`${(o.height/90)*100}%`,background:o.fill,borderRadius:o.rx?`${(o.rx/160)*100}%`:0,opacity:o.opacity??1}}/>
+                          ))}
+                        </div>
+                      </div>
+                      <div style={{padding:'6px 8px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+                        <span style={{...UI,fontSize:10,fontWeight:600,color:T.textMd}}>{l.label}</span>
+                        <span style={{...UI,fontSize:8,color:T.textSm,background:T.bgApp,padding:'1px 5px',borderRadius:8}}>{l.category}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
 
-            <div style={{flex:1,overflow:'auto',padding:activePanel==='props'||activePanel==='layers'?0:14}}>
-
-              {activePanel==='layouts'&&(
+            {/* ── ELEMENTS tab ── */}
+            {leftTab==='elements'&&(
+              <div style={{display:'flex',flexDirection:'column',gap:14}}>
                 <div>
-                  {/* Category pills */}
-                  <div style={{display:'flex',gap:5,flexWrap:'wrap',marginBottom:14}}>
-                    {LAYOUT_CATS.map(c=>(
-                      <button key={c} onClick={()=>setLayoutCat(c)}
-                        style={{padding:'4px 10px',borderRadius:20,border:`1px solid ${layoutCat===c?'rgba(79,70,229,.6)':'rgba(255,255,255,.08)'}`,background:layoutCat===c?'rgba(79,70,229,.2)':'transparent',color:layoutCat===c?'#818cf8':'rgba(255,255,255,.4)',cursor:'pointer',fontSize:10,fontWeight:700,fontFamily:'Jost,sans-serif',transition:'all .14s',letterSpacing:'.02em'}}>
-                        {c}
-                      </button>
-                    ))}
-                  </div>
-                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
-                    {filteredLayouts.map(l=>(
-                      <div key={l.id} className="card-hover" onClick={()=>applyLayout(l)}
-                        style={{border:'1px solid rgba(255,255,255,.07)',borderRadius:10,overflow:'hidden',cursor:'pointer',background:'rgba(255,255,255,.02)'}}>
-                        <div style={{aspectRatio:'16/9',background:'rgba(255,255,255,.04)',display:'flex',alignItems:'center',justifyContent:'center',padding:6}}>
-                          <div style={{fontSize:8,textAlign:'center',color:'rgba(255,255,255,.3)',fontFamily:'JetBrains Mono,monospace',lineHeight:1.4}}>{l.label}</div>
-                        </div>
-                        <div style={{padding:'6px 8px',fontSize:10,fontWeight:600,color:'rgba(255,255,255,.55)',fontFamily:'Jost,sans-serif',borderTop:'1px solid rgba(255,255,255,.05)',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-                          <span>{l.label}</span>
-                          <span style={{fontSize:8,color:'rgba(255,255,255,.2)'}}>{l.category}</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {activePanel==='photos'&&(
-                <div>
-                  <div style={{display:'flex',gap:6,marginBottom:12}}>
-                    <input value={stockQuery} onChange={e=>setStockQuery(e.target.value)} placeholder="Search images…" className="sp-inp"/>
-                    <button onClick={()=>searchStock(stockQuery)} style={{padding:'7px 12px',background:'rgba(79,70,229,.7)',color:'white',border:'none',borderRadius:8,fontSize:12,fontWeight:700,fontFamily:'Jost,sans-serif',cursor:'pointer',flexShrink:0,transition:'all .14s'}}
-                      onMouseOver={e=>e.currentTarget.style.background='rgba(79,70,229,.9)'}
-                      onMouseOut={e=>e.currentTarget.style.background='rgba(79,70,229,.7)'}>Go</button>
-                  </div>
-                  {stockImages.length===0&&(
-                    <button onClick={()=>searchStock(stockQuery)} style={{width:'100%',padding:'12px',background:'rgba(255,255,255,.03)',border:'1px dashed rgba(255,255,255,.1)',borderRadius:10,cursor:'pointer',fontSize:12,color:'rgba(255,255,255,.3)',fontFamily:'Jost,sans-serif',transition:'all .14s'}}
-                      onMouseOver={e=>{(e.currentTarget as HTMLElement).style.borderColor='rgba(255,255,255,.25)'}}
-                      onMouseOut={e=>{(e.currentTarget as HTMLElement).style.borderColor='rgba(255,255,255,.1)'}}>Load curated photos</button>
-                  )}
-                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:6}}>
-                    {stockImages.map((url,i)=>(
-                      <div key={i} className="card-hover" onClick={()=>addStockImage(url.replace('w=400','w=1280'))}
-                        style={{aspectRatio:'4/3',borderRadius:9,overflow:'hidden',border:'1px solid rgba(255,255,255,.07)',cursor:'pointer'}}>
-                        <img src={url} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}} crossOrigin="anonymous"/>
-                      </div>
-                    ))}
-                  </div>
-                  <div style={{marginTop:14,paddingTop:14,borderTop:'1px solid rgba(255,255,255,.05)'}}>
-                    <div className="panel-hdr">Upload</div>
-                    <label style={{display:'flex',alignItems:'center',gap:8,padding:'11px',border:'1px dashed rgba(255,255,255,.1)',borderRadius:10,cursor:'pointer',fontSize:12,color:'rgba(255,255,255,.35)',fontFamily:'Jost,sans-serif',transition:'all .14s'}}
-                      onMouseOver={e=>{(e.currentTarget as HTMLElement).style.borderColor='rgba(255,255,255,.25)'}}
-                      onMouseOut={e=>{(e.currentTarget as HTMLElement).style.borderColor='rgba(255,255,255,.1)'}}>
-                      <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 2v9M4 5l3-3 3 3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/><path d="M2 13h10" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>
-                      Upload an image
-                      <input type="file" accept="image/*" style={{display:'none'}} onChange={e=>{const f=e.target.files?.[0];if(f)uploadImage(f)}}/>
-                    </label>
-                  </div>
-                </div>
-              )}
-
-              {activePanel==='shapes'&&(
-                <div>
-                  <div className="panel-hdr">Basic Shapes</div>
-                  <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:6,marginBottom:16}}>
-                    {[
-                      {id:'rect',     label:'Rect',     icon:'▭'},
-                      {id:'circle',   label:'Circle',   icon:'◯'},
-                      {id:'triangle', label:'Triangle', icon:'△'},
-                      {id:'star',     label:'Star',     icon:'★'},
-                      {id:'line',     label:'Line',     icon:'─'},
-                      {id:'arrow',    label:'Arrow',    icon:'→'},
-                    ].map(s=>(
-                      <button key={s.id} className="shape-btn" onClick={()=>addShape(s.id)}>
-                        <span style={{fontSize:18,lineHeight:1}}>{s.icon}</span>
+                  <div style={{...UI,fontSize:9,fontWeight:700,color:T.textSm,textTransform:'uppercase',letterSpacing:'.1em',marginBottom:7}}>Shapes</div>
+                  <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:5}}>
+                    {([
+                      {id:'rect',    label:'Rect',     icon:<rect x="2" y="3" width="10" height="8" rx="1.5"/>},
+                      {id:'circle',  label:'Circle',   icon:<circle cx="7" cy="7" r="5"/>},
+                      {id:'triangle',label:'Triangle', icon:<path d="M7 2l5.5 10H1.5L7 2z" strokeLinejoin="round"/>},
+                      {id:'star',    label:'Star',     icon:<path d="M7 1l1.5 3.5H12L9.2 6.6l1 3.4L7 8.4 3.8 10l1-3.4L2 4.5h3.5L7 1z" strokeLinejoin="round"/>},
+                      {id:'line',    label:'Line',     icon:<path d="M2 12L12 2"/>},
+                      {id:'arrow',   label:'Arrow',    icon:<><path d="M2 7h9M8 4l3 3-3 3"/></>},
+                    ]).map(s=>(
+                      <button key={s.id} className="shape-card" onClick={()=>addShape(s.id)}>
+                        <svg width="18" height="18" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.2">{s.icon}</svg>
                         {s.label}
                       </button>
                     ))}
                   </div>
-                  <div className="panel-hdr">Tables</div>
-                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:6}}>
-                    {[[4,3,'4×3 Table'],[3,2,'3×2 Table'],[6,4,'6×4 Table']].map(([r,c,l])=>(
-                      <button key={l as string} className="shape-btn" onClick={()=>addTable(r as number,c as number)} style={{height:52,width:'100%',flexDirection:'row',gap:8}}>
-                        <svg width="16" height="12" viewBox="0 0 16 12" fill="none"><rect x="1" y="1" width="14" height="10" rx="1.2" stroke="currentColor" strokeWidth="1"/><path d="M1 4.5h14M1 8h14M6 4.5v5.5M11 4.5v5.5" stroke="currentColor" strokeWidth=".9" strokeLinecap="round"/></svg>
-                        {l}
-                      </button>
-                    ))}
-                  </div>
                 </div>
-              )}
-
-              {activePanel==='text'&&(
                 <div>
-                  <div className="panel-hdr">Text Styles</div>
-                  <div style={{display:'flex',flexDirection:'column',gap:6}}>
+                  <div style={{...UI,fontSize:9,fontWeight:700,color:T.textSm,textTransform:'uppercase',letterSpacing:'.1em',marginBottom:7}}>Components</div>
+                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:5}}>
                     {[
-                      {label:'Heading',    fs:48,fw:'800',ff:'Jost',    preview:'Aa'},
-                      {label:'Subheading', fs:28,fw:'700',ff:'Jost',    preview:'Aa'},
-                      {label:'Body text',  fs:16,fw:'400',ff:'Jost',    preview:'Aa'},
-                      {label:'Caption',    fs:12,fw:'400',ff:'Jost',    preview:'Aa'},
-                      {label:'MONO LABEL', fs:11,fw:'700',ff:'JetBrains Mono', preview:'Aa'},
-                    ].map(s=>(
-                      <button key={s.label} onClick={()=>addText({text:s.label,fs:s.fs,fw:s.fw,ff:s.ff})}
-                        style={{padding:'11px 14px',border:'1px solid rgba(255,255,255,.07)',borderRadius:10,background:'rgba(255,255,255,.02)',cursor:'pointer',textAlign:'left',display:'flex',alignItems:'center',justifyContent:'space-between',transition:'all .14s'}}
-                        onMouseOver={e=>{(e.currentTarget as HTMLElement).style.borderColor='rgba(79,70,229,.45)';(e.currentTarget as HTMLElement).style.background='rgba(79,70,229,.06)'}}
-                        onMouseOut={e=>{(e.currentTarget as HTMLElement).style.borderColor='rgba(255,255,255,.07)';(e.currentTarget as HTMLElement).style.background='rgba(255,255,255,.02)'}}>
-                        <span style={{fontSize:s.fs>28?16:s.fs>16?13:s.fs>12?11:10,fontFamily:`'${s.ff}',sans-serif`,fontWeight:s.fw,color:'rgba(255,255,255,.75)'}}>{s.label}</span>
-                        <span style={{fontSize:8,color:'rgba(255,255,255,.2)',fontFamily:'JetBrains Mono,monospace'}}>{s.fs}px</span>
+                      {label:'Table',   fn:()=>addTable(4,3),icon:<svg width="13" height="13" viewBox="0 0 13 13" fill="none"><rect x="1" y="1" width="11" height="11" rx="1.5" stroke="currentColor" strokeWidth="1"/><path d="M1 5h11M1 9h11M5 5v6M9 5v6" stroke="currentColor" strokeWidth="1" strokeLinecap="round"/></svg>},
+                      {label:'Divider', fn:()=>addShape('line',{fill:'#e2e8f0'}),icon:<svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M1 6.5h11M3 3l-1 3.5L3 10M10 3l1 3.5L10 10" stroke="currentColor" strokeWidth="1" strokeLinecap="round"/></svg>},
+                      {label:'Button',  fn:()=>{addShape('rect',{fill:'#4f46e5',rx:8,w:140,h:42});},icon:<svg width="13" height="13" viewBox="0 0 13 13" fill="none"><rect x="1" y="4" width="11" height="5" rx="2" stroke="currentColor" strokeWidth="1"/></svg>},
+                      {label:'Card',    fn:()=>addShape('rect',{fill:'#f8fafc',rx:12}),icon:<svg width="13" height="13" viewBox="0 0 13 13" fill="none"><rect x="1" y="1" width="11" height="11" rx="2.5" stroke="currentColor" strokeWidth="1"/></svg>},
+                    ].map(c=>(
+                      <button key={c.label} className="shape-card" style={{height:44}} onClick={c.fn}>
+                        {c.icon}
+                        <span>{c.label}</span>
                       </button>
                     ))}
                   </div>
-                  <div style={{marginTop:12,paddingTop:12,borderTop:'1px solid rgba(255,255,255,.05)'}}>
-                    <button onClick={()=>addText()} style={{width:'100%',padding:'11px',border:'1px dashed rgba(255,255,255,.1)',borderRadius:10,cursor:'pointer',fontSize:12,color:'rgba(255,255,255,.35)',fontFamily:'Jost,sans-serif',background:'none',display:'flex',alignItems:'center',justifyContent:'center',gap:7,transition:'all .14s'}}
-                      onMouseOver={e=>{(e.currentTarget as HTMLElement).style.borderColor='rgba(255,255,255,.25)'}}
-                      onMouseOut={e=>{(e.currentTarget as HTMLElement).style.borderColor='rgba(255,255,255,.1)'}}>
-                      <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 1v10M1 6h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
-                      Add empty text box
-                    </button>
-                  </div>
                 </div>
-              )}
-
-              {activePanel==='bg'&&(
                 <div>
-                  <div className="panel-hdr">Canvas Color</div>
-                  <div style={{display:'flex',gap:10,alignItems:'center',marginBottom:14}}>
-                    <div style={{width:44,height:44,borderRadius:10,overflow:'hidden',border:'1.5px solid rgba(255,255,255,.12)',flexShrink:0}}>
-                      <input type="color" value={bgColor} onChange={e=>{setBgColor(e.target.value);if(fabricRef.current){fabricRef.current.backgroundColor=e.target.value;fabricRef.current.renderAll();scheduleAutoSave()}}}
-                        style={{width:60,height:60,transform:'translate(-8px,-8px)',cursor:'pointer'}}/>
+                  <div style={{...UI,fontSize:9,fontWeight:700,color:T.textSm,textTransform:'uppercase',letterSpacing:'.1em',marginBottom:7}}>Fill Color</div>
+                  <div style={{display:'flex',alignItems:'center',gap:7}}>
+                    <input type="color" value={fillColor} onChange={e=>setFillColor(e.target.value)} style={{width:36,height:36,borderRadius:8,border:`1px solid ${T.border}`,cursor:'pointer'}}/>
+                    <div style={{display:'flex',gap:4,flexWrap:'wrap'}}>
+                      {['#4f46e5','#10b981','#f59e0b','#ef4444','#0f172a','#ffffff','#f8fafc','#6366f1'].map(c=>(
+                        <button key={c} onClick={()=>setFillColor(c)} style={{width:22,height:22,borderRadius:4,background:c,border:`1.5px solid ${fillColor===c?T.accent:T.border}`,cursor:'pointer',padding:0}}/>
+                      ))}
                     </div>
-                    <span style={{fontSize:12,color:'rgba(255,255,255,.5)',fontFamily:'JetBrains Mono,monospace'}}>{bgColor}</span>
                   </div>
-                  <div className="panel-hdr">Color Presets</div>
-                  <div style={{display:'grid',gridTemplateColumns:'repeat(6,1fr)',gap:5,marginBottom:18}}>
-                    {['#ffffff','#0f172a','#1e293b','#f8fafc','#eff6ff','#fdf4ff','#ecfdf5','#fff7ed','#fdf2f8','#f0fdf4','#4f46e5','#10b981','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#ec4899','#3b82f6'].map(c=>(
-                      <button key={c} onClick={()=>{setBgColor(c);if(fabricRef.current){fabricRef.current.backgroundColor=c;fabricRef.current.renderAll();scheduleAutoSave()}}}
-                        style={{width:32,height:32,borderRadius:7,background:c,border:`2px solid ${bgColor===c?'#4f46e5':'rgba(255,255,255,.1)'}`,cursor:'pointer',transition:'transform .1s,border-color .14s'}}
-                        onMouseOver={e=>(e.currentTarget.style.transform='scale(1.15)')}
-                        onMouseOut={e=>(e.currentTarget.style.transform='scale(1)')}/>
-                    ))}
-                  </div>
-                  <div className="panel-hdr">Canvas Size</div>
+                </div>
+              </div>
+            )}
+
+            {/* ── TEXT tab ── */}
+            {leftTab==='text'&&(
+              <div style={{display:'flex',flexDirection:'column',gap:10}}>
+                <div>
+                  <div style={{...UI,fontSize:9,fontWeight:700,color:T.textSm,textTransform:'uppercase',letterSpacing:'.1em',marginBottom:7}}>Add Text</div>
                   <div style={{display:'flex',flexDirection:'column',gap:5}}>
-                    {CANVAS_SIZES.map(s=>(
-                      <button key={s.id} onClick={()=>{
-                        setCanvasW(s.w);setCanvasH(s.h);cWRef.current=s.w;cHRef.current=s.h
-                        if(fabricRef.current){fabricRef.current.setWidth(s.w);fabricRef.current.setHeight(s.h);fabricRef.current.renderAll()}
-                      }}
-                        style={{padding:'8px 12px',border:`1px solid ${canvasW===s.w&&canvasH===s.h?'rgba(79,70,229,.5)':'rgba(255,255,255,.07)'}`,borderRadius:8,background:canvasW===s.w&&canvasH===s.h?'rgba(79,70,229,.15)':'rgba(255,255,255,.02)',cursor:'pointer',display:'flex',justifyContent:'space-between',alignItems:'center',fontSize:12,fontFamily:'Jost,sans-serif',color:canvasW===s.w&&canvasH===s.h?'#818cf8':'rgba(255,255,255,.55)',fontWeight:canvasW===s.w&&canvasH===s.h?700:400,transition:'all .14s'}}>
-                        <span>{s.label}</span>
-                        <span style={{fontSize:9,color:'rgba(255,255,255,.25)',fontFamily:'JetBrains Mono,monospace'}}>{s.dims}</span>
+                    {[
+                      {label:'Heading 1',  opts:{fs:52,fw:'900',ff:'Jost',  text:'Heading 1'}},
+                      {label:'Heading 2',  opts:{fs:36,fw:'700',ff:'Jost',  text:'Heading 2'}},
+                      {label:'Heading 3',  opts:{fs:24,fw:'600',ff:'Jost',  text:'Heading 3'}},
+                      {label:'Body Text',  opts:{fs:16,fw:'400',           text:'Body text goes here'}},
+                      {label:'Caption',    opts:{fs:11,fw:'400',fill:'#64748b',text:'Caption text'}},
+                      {label:'Label',      opts:{fs:10,fw:'700',ff:'JetBrains Mono',fill:'#4f46e5',text:'LABEL TEXT'}},
+                    ].map(t=>(
+                      <button key={t.label} onClick={()=>{
+                        const fab=fabricLib.current||((window as any).fabric);const fc=fabricRef.current;if(!fc||!fab)return
+                        const tb=new fab.Textbox(t.opts.text,{left:80,top:100,width:400,...t.opts,fontFamily:t.opts.ff||fontFamily,fill:(t.opts as any).fill||fontColor,editable:true,lineHeight:1.4})
+                        fc.add(tb);fc.setActiveObject(tb);fc.renderAll();pushHistory()
+                      }} style={{...UI,padding:'9px 11px',border:`1px solid ${T.border}`,borderRadius:8,background:'#fff',cursor:'pointer',textAlign:'left',transition:'border-color .14s'}}
+                        onMouseOver={e=>{(e.currentTarget).style.borderColor=T.accent}}
+                        onMouseOut={e=>{(e.currentTarget).style.borderColor=T.border}}>
+                        <span style={{fontSize:t.opts.fs>30?16:t.opts.fs>20?13:11,fontWeight:t.opts.fw,fontFamily:`'${t.opts.ff||fontFamily}',sans-serif`,color:T.text}}>{t.label}</span>
                       </button>
                     ))}
                   </div>
                 </div>
-              )}
-
-              {activePanel==='props'&&(
-                <div style={{display:'flex',flexDirection:'column',height:'100%',overflow:'auto'}}>
-                  <PropsPanel obj={selectedObj} fabric={{...fabricRef.current,fabric:(window as any).fabric}} onUpdate={scheduleAutoSave}/>
+                <div>
+                  <div style={{...UI,fontSize:9,fontWeight:700,color:T.textSm,textTransform:'uppercase',letterSpacing:'.1em',marginBottom:7}}>Font Pairings</div>
+                  <div style={{display:'flex',flexDirection:'column',gap:5}}>
+                    {FONT_PAIRINGS.map(p=>(
+                      <button key={p.label} onClick={()=>{loadGoogleFont(p.heading);loadGoogleFont(p.body)}}
+                        style={{...UI,padding:'9px 11px',border:`1px solid ${T.border}`,borderRadius:8,background:'#fff',cursor:'pointer',textAlign:'left'}}>
+                        <div style={{fontSize:10,fontWeight:700,color:T.textSm,marginBottom:2}}>{p.label}</div>
+                        <div style={{fontSize:14,fontFamily:`'${p.heading}',serif`,color:T.text,fontWeight:700}}>{p.heading}</div>
+                        <div style={{fontSize:11,fontFamily:`'${p.body}',sans-serif`,color:T.textMd}}>{p.body}</div>
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              )}
+              </div>
+            )}
 
-              {activePanel==='layers'&&(
-                <LayersPanel fabric={fabricRef.current} onSelect={obj=>{setSelectedObj(obj);setActivePanel('props')}}/>
-              )}
-            </div>
-          </div>
-        )}
+            {/* ── MEDIA tab ── */}
+            {leftTab==='media'&&(
+              <div style={{display:'flex',flexDirection:'column',gap:12}}>
+                <label style={{...UI,display:'flex',alignItems:'center',justifyContent:'center',gap:6,padding:'10px',border:`1px dashed ${T.borderMd}`,borderRadius:10,cursor:'pointer',fontSize:12,fontWeight:600,color:T.textMd,background:T.bgApp,transition:'border-color .14s'}}
+                  onMouseOver={e=>{(e.currentTarget).style.borderColor=T.accent}}
+                  onMouseOut={e=>{(e.currentTarget).style.borderColor=T.borderMd}}>
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1v8M4 4l3-3 3 3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/><path d="M1 10v1.5A1.5 1.5 0 002.5 13h9a1.5 1.5 0 001.5-1.5V10" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
+                  Upload Image
+                  <input type="file" accept="image/*" style={{display:'none'}} onChange={e=>{const f=e.target.files?.[0];if(f)uploadImage(f)}}/>
+                </label>
+                <div>
+                  <div style={{...UI,fontSize:9,fontWeight:700,color:T.textSm,textTransform:'uppercase',letterSpacing:'.1em',marginBottom:7}}>Stock Photos</div>
+                  <div style={{display:'flex',gap:5,marginBottom:8}}>
+                    <input value={stockQuery} onChange={e=>setStockQuery(e.target.value)} onKeyDown={e=>{if(e.key==='Enter')searchStock(stockQuery)}} placeholder="Search photos…"
+                      style={{...UI,flex:1,padding:'6px 9px',border:`1px solid ${T.border}`,borderRadius:7,fontSize:11,color:T.text,background:'#fff',outline:'none'}}/>
+                    <button onClick={()=>searchStock(stockQuery)} style={{...UI,padding:'0 10px',border:`1px solid ${T.border}`,borderRadius:7,background:'#fff',cursor:'pointer',fontSize:11,color:T.textMd,fontWeight:600}}>Go</button>
+                  </div>
+                  {stockImages.length===0&&(
+                    <button onClick={()=>searchStock('business')} style={{...UI,width:'100%',padding:'8px',border:`1px solid ${T.border}`,borderRadius:8,background:T.bgApp,cursor:'pointer',fontSize:11,color:T.textMd,fontWeight:600}}>Load photos</button>
+                  )}
+                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:5}}>
+                    {stockImages.map(url=>(
+                      <img key={url} src={url} alt="" className="stock-img" onClick={()=>addStockImage(url)}/>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
 
-        {/* ── Canvas Area ── */}
-        <div className="canvas-dot-bg" style={{flex:1,overflow:'auto',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'flex-start',padding:'32px 28px'}}
-          onClick={e=>{if(e.target===e.currentTarget&&activePanel==='export')setActivePanel(null)}}>
-          {/* Canvas wrapper */}
-          <div style={{
-            transform:`scale(${zoom})`,
-            transformOrigin:'top center',
-            boxShadow:'0 0 0 1px rgba(255,255,255,.06), 0 8px 60px rgba(0,0,0,.6), 0 2px 12px rgba(0,0,0,.4)',
-            borderRadius:3,
-            overflow:'hidden',
-            flexShrink:0,
-          }}>
-            <canvas ref={canvasEl}/>
-          </div>
-          {/* Canvas info */}
-          <div style={{marginTop:16,fontSize:10,color:'rgba(255,255,255,.2)',fontFamily:'JetBrains Mono,monospace',letterSpacing:'.04em'}}>
-            {Math.round(zoom*100)}% · {canvasW}×{canvasH}px
+            {/* ── LAYERS tab ── */}
+            {leftTab==='layers'&&(
+              <LayersPanel fabric={fabricRef.current} onSelect={syncSel}/>
+            )}
           </div>
         </div>
 
-        {/* ── Pages Sidebar ── */}
-        <div style={{
-          width:130,flexShrink:0,
-          background:'rgba(13,14,18,0.98)',
-          borderLeft:'1px solid rgba(255,255,255,.05)',
-          display:'flex',flexDirection:'column',overflow:'hidden',
-        }}>
-          <div style={{padding:'12px 10px 8px',borderBottom:'1px solid rgba(255,255,255,.05)',flexShrink:0}}>
-            <div style={{fontSize:9,fontWeight:800,color:'rgba(255,255,255,.25)',textTransform:'uppercase',letterSpacing:'.1em'}}>Pages</div>
-          </div>
-          <div style={{flex:1,overflowY:'auto',padding:'8px 8px 0'}}>
-            {pages.map((_,i)=>(
-              <div key={i} style={{marginBottom:8,position:'relative'}}>
-                <div className={`pthumb${currentPage===i?' on':''}`} onClick={()=>switchPage(i)}
-                  style={{width:'100%',aspectRatio:`${canvasW}/${canvasH}`,display:'flex',alignItems:'center',justifyContent:'center'}}>
-                  {thumbnails[i]
-                    ?<img src={thumbnails[i]} alt={`Page ${i+1}`} style={{width:'100%',height:'100%',objectFit:'cover'}}/>
-                    :<span style={{fontSize:10,color:'rgba(255,255,255,.2)',fontFamily:'JetBrains Mono,monospace'}}>{i+1}</span>}
-                  <div className="page-actions" style={{position:'absolute',top:3,right:3}}>
-                    <button onClick={e=>{e.stopPropagation();duplicatePage(i)}} title="Duplicate" style={{width:18,height:18,background:'rgba(0,0,0,.7)',border:'1px solid rgba(255,255,255,.15)',borderRadius:4,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',color:'rgba(255,255,255,.7)'}}>
-                      <svg width="8" height="8" viewBox="0 0 8 8" fill="none"><rect x=".5" y="2.5" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1"/><path d="M2.5 2.5V1.5A1 1 0 013.5.5H7A1 1 0 018 1.5V5a1 1 0 01-1 1H6.5" stroke="currentColor" strokeWidth="1"/></svg>
-                    </button>
-                    {pages.length>1&&<button onClick={e=>{e.stopPropagation();removePage(i)}} title="Delete" style={{width:18,height:18,background:'rgba(0,0,0,.7)',border:'1px solid rgba(239,68,68,.4)',borderRadius:4,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',color:'#f87171',fontSize:9}}>✕</button>}
-                  </div>
-                </div>
-                <div style={{fontSize:9,color:'rgba(255,255,255,.2)',fontFamily:'JetBrains Mono,monospace',textAlign:'center',marginTop:3}}>{i+1}</div>
+        {/* ── CANVAS + RIGHT PANEL ────────────────────────────────────────── */}
+        <div style={{flex:1,display:'flex',overflow:'hidden',position:'relative'}}>
+          {/* Canvas viewport */}
+          <div style={{flex:1,overflow:'auto',background:T.bgCanvas,backgroundImage:'radial-gradient(#CCCBC7 1px, transparent 1px)',backgroundSize:'22px 22px',display:'flex',alignItems:'flex-start',justifyContent:'center',padding:'48px 32px',position:'relative'}}>
+
+            {/* Canvas container */}
+            <div style={{flexShrink:0,boxShadow:'0 4px 40px rgba(0,0,0,.12)',borderRadius:2,transform:`scale(${zoom})`,transformOrigin:'top center',transition:'transform .15s',background:'#fff'}}>
+              <canvas ref={canvasEl}/>
+            </div>
+
+            {/* Zoom controls */}
+            <div style={{position:'fixed',bottom:100,right:selectedObj?260:16,display:'flex',alignItems:'center',gap:2,background:T.bgPanel,border:`1px solid ${T.border}`,borderRadius:9,padding:'3px 4px',boxShadow:'0 2px 10px rgba(0,0,0,.08)',zIndex:20}}>
+              <button onClick={()=>setZoom(z=>Math.max(.15,z-.1))} style={{width:26,height:26,border:'none',background:'none',cursor:'pointer',borderRadius:6,display:'flex',alignItems:'center',justifyContent:'center',color:T.textMd,fontSize:16,fontWeight:300}}>−</button>
+              <span style={{...UI,fontSize:10,fontWeight:700,color:T.textMd,minWidth:36,textAlign:'center',fontFamily:"'JetBrains Mono',monospace"}}>{Math.round(zoom*100)}%</span>
+              <button onClick={()=>setZoom(z=>Math.min(3,z+.1))} style={{width:26,height:26,border:'none',background:'none',cursor:'pointer',borderRadius:6,display:'flex',alignItems:'center',justifyContent:'center',color:T.textMd,fontSize:16,fontWeight:300}}>+</button>
+              <div style={{width:1,height:16,background:T.border,margin:'0 1px'}}/>
+              <button onClick={()=>setZoom(.62)} style={{...UI,height:26,padding:'0 6px',border:'none',background:'none',cursor:'pointer',fontSize:9,fontWeight:700,color:T.textSm,borderRadius:6}}>FIT</button>
+            </div>
+
+            {/* Floating quick toolbar when object selected */}
+            {selectedObj&&(
+              <div style={{position:'fixed',top:60,left:'50%',transform:'translateX(-50%)',background:T.bgPanel,border:`1px solid ${T.border}`,borderRadius:10,boxShadow:'0 4px 20px rgba(0,0,0,.1)',padding:'4px 6px',display:'flex',alignItems:'center',gap:2,zIndex:50}}>
+                {/* Font family mini */}
+                {(selectedObj.type==='textbox'||selectedObj.type==='text'||selectedObj.type==='i-text')&&(
+                  <>
+                    <div style={{position:'relative'}}>
+                      <button onClick={()=>setShowFontPicker(!showFontPicker)} style={{...UI,height:28,padding:'0 8px',border:`1px solid ${T.border}`,borderRadius:6,background:T.bgApp,cursor:'pointer',fontSize:11,fontFamily:`'${fontFamily}',sans-serif`,fontWeight:600,color:T.text,maxWidth:100,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+                        {fontFamily}
+                      </button>
+                    </div>
+                    <input type="number" value={fontSize} min={6} max={400} onChange={e=>{const v=parseInt(e.target.value);setFontSize(v);updateProp('fontSize',v)}}
+                      style={{...UI,width:46,height:28,border:`1px solid ${T.border}`,borderRadius:6,padding:'0 6px',fontSize:11,fontFamily:"'JetBrains Mono',monospace",color:T.text,background:T.bgApp,outline:'none',textAlign:'center'}}/>
+                    {[
+                      {prop:'fontWeight',on:'bold',off:'normal',label:'B',active:selectedObj.fontWeight==='bold',st:{fontWeight:800}},
+                      {prop:'fontStyle', on:'italic',off:'normal',label:'I',active:selectedObj.fontStyle==='italic',st:{fontStyle:'italic'}},
+                    ].map(f=>(
+                      <button key={f.prop} onClick={()=>updateProp(f.prop,f.active?f.off:f.on)} style={{...LBtn(f.active),...f.st,width:28,height:28,padding:0,display:'flex',alignItems:'center',justifyContent:'center',fontSize:13}}>{f.label}</button>
+                    ))}
+                    <div style={{width:1,height:18,background:T.border}}/>
+                    <input type="color" value={fontColor} onChange={e=>{setFontColor(e.target.value);updateProp('fill',e.target.value)}} style={{width:28,height:28,borderRadius:6,border:`1px solid ${T.border}`,cursor:'pointer'}}/>
+                  </>
+                )}
+                {/* Align distribute for all objects */}
+                <div style={{width:1,height:18,background:T.border}}/>
+                <button onClick={duplicateSelected} title="Duplicate" style={{width:28,height:28,border:`1px solid ${T.border}`,borderRadius:6,background:T.bgApp,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',color:T.textMd}}>
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><rect x="4" y="1" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.1"/><rect x="1" y="4" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.1" fill="white"/></svg>
+                </button>
+                <button onClick={deleteSelected} title="Delete" style={{width:28,height:28,border:`1px solid #fee2e2`,borderRadius:6,background:'#fff5f5',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',color:T.red}}>
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 3h8M5 3V2h2v1M4.5 9.5V5M7.5 9.5V5M2.5 3l.7 7h5.6l.7-7" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round"/></svg>
+                </button>
               </div>
-            ))}
+            )}
           </div>
-          <div style={{padding:'8px',borderTop:'1px solid rgba(255,255,255,.05)',flexShrink:0}}>
-            <button onClick={addPage} style={{width:'100%',padding:'8px 0',background:'rgba(79,70,229,.1)',border:'1px dashed rgba(79,70,229,.3)',borderRadius:8,cursor:'pointer',fontSize:10,color:'rgba(129,140,248,.7)',fontFamily:'Jost,sans-serif',fontWeight:700,display:'flex',alignItems:'center',justifyContent:'center',gap:5,transition:'all .15s'}}
-              onMouseOver={e=>{(e.currentTarget as HTMLElement).style.background='rgba(79,70,229,.2)';(e.currentTarget as HTMLElement).style.borderColor='rgba(79,70,229,.5)'}}
-              onMouseOut={e=>{(e.currentTarget as HTMLElement).style.background='rgba(79,70,229,.1)';(e.currentTarget as HTMLElement).style.borderColor='rgba(79,70,229,.3)'}}>
-              <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M5 1v8M1 5h8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
-              Add page
-            </button>
-          </div>
+
+          {/* Right panel */}
+          <RightPanel/>
         </div>
       </div>
 
-      {/* ══ TEMPLATE MODAL ══════════════════════════════════════════════════════ */}
-      {showTplModal&&(
-        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.75)',zIndex:200,display:'flex',alignItems:'center',justifyContent:'center',padding:24,backdropFilter:'blur(8px)'}}>
-          <div style={{background:'#0f1117',borderRadius:20,width:'min(920px,96vw)',maxHeight:'90vh',display:'flex',flexDirection:'column',boxShadow:'0 30px 80px rgba(0,0,0,.7)',border:'1px solid rgba(255,255,255,.08)'}}>
-            <div style={{padding:'28px 32px 18px',borderBottom:'1px solid rgba(255,255,255,.07)',display:'flex',alignItems:'center',justifyContent:'space-between',flexShrink:0}}>
-              <div>
-                <h2 style={{margin:'0 0 5px',fontSize:22,fontWeight:900,color:'#fff',fontFamily:'Jost,sans-serif',letterSpacing:'-.02em'}}>Start designing</h2>
-                <p style={{margin:0,fontSize:13,color:'rgba(255,255,255,.4)',fontFamily:'Jost,sans-serif'}}>Pick a canvas size or jump in with a layout</p>
+      {/* ══ BOTTOM PAGES STRIP ══════════════════════════════════════════════ */}
+      <div style={{height:104,background:T.bgPanel,borderTop:`1px solid ${T.border}`,display:'flex',alignItems:'center',gap:0,flexShrink:0}}>
+        <div style={{flex:1,overflow:'auto',display:'flex',alignItems:'center',gap:8,padding:'0 16px',height:'100%'}}>
+          {pages.map((_, i)=>(
+            <div key={i} className={`page-thumb${currentPage===i?' active':''}`}
+              style={{flexShrink:0,width:Math.round(canvasW*(72/canvasH)),height:72,cursor:'pointer',position:'relative'}}
+              onClick={()=>switchPage(i)}>
+              {thumbnails[i]
+                ?<img src={thumbnails[i]} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/>
+                :<div style={{width:'100%',height:'100%',background:'#f8f9fa',display:'flex',alignItems:'center',justifyContent:'center'}}>
+                  <span style={{fontSize:9,color:T.textSm,fontFamily:"'JetBrains Mono',monospace"}}>{i+1}</span>
+                </div>
+              }
+              <div style={{position:'absolute',top:3,right:3,display:'flex',gap:2,opacity:0,transition:'opacity .15s'}} className="page-actions">
+                <button onClick={e=>{e.stopPropagation();duplicatePage(i)}} title="Duplicate" style={{width:18,height:18,borderRadius:4,background:'rgba(255,255,255,.9)',border:`1px solid ${T.border}`,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',color:T.textMd,padding:0}}>
+                  <svg width="9" height="9" viewBox="0 0 9 9" fill="none"><rect x="3" y="1" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1"/><rect x="1" y="3" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1" fill="white"/></svg>
+                </button>
+                {pages.length>1&&<button onClick={e=>{e.stopPropagation();removePage(i)}} title="Delete" style={{width:18,height:18,borderRadius:4,background:'rgba(255,255,255,.9)',border:`1px solid #fecaca`,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',color:T.red,padding:0}}>
+                  <svg width="8" height="8" viewBox="0 0 8 8" fill="none"><path d="M1.5 1.5l5 5M6.5 1.5l-5 5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/></svg>
+                </button>}
               </div>
-              {pages.length>0&&<button onClick={()=>setShowTplModal(false)} style={{background:'rgba(255,255,255,.07)',border:'none',cursor:'pointer',color:'rgba(255,255,255,.5)',padding:9,borderRadius:10,display:'flex',alignItems:'center',justifyContent:'center'}}
-                onMouseOver={e=>(e.currentTarget.style.background='rgba(255,255,255,.12)')}
-                onMouseOut={e=>(e.currentTarget.style.background='rgba(255,255,255,.07)')}>
-                <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M2 2l9 9M11 2L2 11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+              <div style={{position:'absolute',bottom:2,left:0,right:0,textAlign:'center',fontSize:8,color:T.textSm,fontFamily:"'JetBrains Mono',monospace"}}>{i+1}</div>
+            </div>
+          ))}
+          <button onClick={addPage} style={{...UI,flexShrink:0,width:52,height:72,border:`1.5px dashed ${T.borderMd}`,borderRadius:8,background:'transparent',cursor:'pointer',fontSize:10,fontWeight:700,color:T.textSm,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:4,transition:'all .15s'}}
+            onMouseOver={e=>{(e.currentTarget).style.borderColor=T.accent;(e.currentTarget).style.color=T.accent}}
+            onMouseOut={e=>{(e.currentTarget).style.borderColor=T.borderMd;(e.currentTarget).style.color=T.textSm}}>
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1v12M1 7h12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+            Add
+          </button>
+        </div>
+        {/* Page count */}
+        <div style={{padding:'0 16px',flexShrink:0,borderLeft:`1px solid ${T.border}`,height:'100%',display:'flex',flexDirection:'column',justifyContent:'center',gap:2}}>
+          <span style={{...UI,fontSize:10,fontWeight:700,color:T.textMd}}>{currentPage+1} / {pages.length}</span>
+          <span style={{...UI,fontSize:9,color:T.textSm}}>pages</span>
+        </div>
+      </div>
+
+      {/* ══ START MODAL ══════════════════════════════════════════════════════ */}
+      {showTplModal&&(
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.35)',zIndex:200,display:'flex',alignItems:'center',justifyContent:'center',padding:24,backdropFilter:'blur(8px)'}}>
+          <div style={{background:T.bgPanel,borderRadius:16,width:'min(900px,96vw)',maxHeight:'90vh',display:'flex',flexDirection:'column',boxShadow:'0 24px 80px rgba(0,0,0,.2)',border:`1px solid ${T.border}`}}>
+            <div style={{padding:'24px 28px 16px',borderBottom:`1px solid ${T.border}`,display:'flex',alignItems:'center',justifyContent:'space-between',flexShrink:0}}>
+              <div>
+                <h2 style={{...UI,margin:'0 0 4px',fontSize:20,fontWeight:800,color:T.text,letterSpacing:'-.02em'}}>Start designing</h2>
+                <p style={{...UI,margin:0,fontSize:13,color:T.textMd}}>Choose a canvas size or start with a layout</p>
+              </div>
+              {pages.length>0&&<button onClick={()=>setShowTplModal(false)} style={{background:T.bgApp,border:`1px solid ${T.border}`,cursor:'pointer',color:T.textMd,padding:8,borderRadius:8,display:'flex',alignItems:'center'}}>
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 2l8 8M10 2L2 10" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
               </button>}
             </div>
-            <div style={{overflow:'auto',padding:'22px 32px',flex:1}}>
-              <div style={{fontSize:9,fontWeight:800,color:'rgba(255,255,255,.25)',textTransform:'uppercase',letterSpacing:'.1em',marginBottom:12}}>Quick start — blank canvas</div>
-              <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(130px,1fr))',gap:7,marginBottom:28}}>
+            <div style={{overflow:'auto',padding:'20px 28px',flex:1}}>
+              <div style={{...UI,fontSize:9,fontWeight:800,color:T.textSm,textTransform:'uppercase',letterSpacing:'.1em',marginBottom:10}}>Blank Canvas</div>
+              <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(120px,1fr))',gap:6,marginBottom:24}}>
                 {CANVAS_SIZES.map(s=>(
                   <button key={s.id} onClick={()=>startBlank(s.id)}
-                    style={{padding:'13px 10px',border:'1px solid rgba(255,255,255,.07)',borderRadius:11,background:'rgba(255,255,255,.03)',cursor:'pointer',textAlign:'center',fontFamily:'Jost,sans-serif',transition:'all .15s'}}
-                    onMouseOver={e=>{(e.currentTarget as HTMLElement).style.borderColor='rgba(79,70,229,.5)';(e.currentTarget as HTMLElement).style.background='rgba(79,70,229,.08)'}}
-                    onMouseOut={e=>{(e.currentTarget as HTMLElement).style.borderColor='rgba(255,255,255,.07)';(e.currentTarget as HTMLElement).style.background='rgba(255,255,255,.03)'}}>
-                    <div style={{fontSize:11,fontWeight:700,color:'rgba(255,255,255,.75)',marginBottom:4,letterSpacing:'-.01em'}}>{s.label}</div>
-                    <div style={{fontSize:9,color:'rgba(255,255,255,.25)',fontFamily:'JetBrains Mono,monospace'}}>{s.dims}</div>
+                    style={{...UI,padding:'11px 8px',border:`1px solid ${T.border}`,borderRadius:10,background:'#fff',cursor:'pointer',textAlign:'center',transition:'all .15s'}}
+                    onMouseOver={e=>{(e.currentTarget).style.borderColor=T.accent;(e.currentTarget).style.background=T.accentLt}}
+                    onMouseOut={e=>{(e.currentTarget).style.borderColor=T.border;(e.currentTarget).style.background='#fff'}}>
+                    <div style={{fontSize:11,fontWeight:700,color:T.text,marginBottom:3}}>{s.label}</div>
+                    <div style={{fontSize:9,color:T.textSm,fontFamily:"'JetBrains Mono',monospace"}}>{s.dims}</div>
                   </button>
                 ))}
               </div>
-              <div style={{fontSize:9,fontWeight:800,color:'rgba(255,255,255,.25)',textTransform:'uppercase',letterSpacing:'.1em',marginBottom:12}}>Start with a layout</div>
-              <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(155px,1fr))',gap:9}}>
+              <div style={{...UI,fontSize:9,fontWeight:800,color:T.textSm,textTransform:'uppercase',letterSpacing:'.1em',marginBottom:10}}>Start with a Layout</div>
+              <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(145px,1fr))',gap:8}}>
                 {LAYOUTS.map(l=>(
-                  <div key={l.id} className="card-hover" onClick={()=>{
+                  <div key={l.id} className="layout-card" style={{border:`1px solid ${T.border}`}} onClick={()=>{
                     const size=CANVAS_SIZES[0]
                     setCanvasW(size.w);setCanvasH(size.h);cWRef.current=size.w;cHRef.current=size.h
                     const built=l.build(size.w,size.h)
                     pagesRef.current=[built];setPages([built]);setCurrentPage(0);currentPageRef.current=0
                     setShowTplModal(false);setThumbnails({})
                     waitForFabricThenLoad(built,size.w,size.h)
-                  }}
-                    style={{border:'1px solid rgba(255,255,255,.07)',borderRadius:12,overflow:'hidden',cursor:'pointer',background:'rgba(255,255,255,.02)'}}>
-                    <div style={{aspectRatio:'16/9',background:'rgba(255,255,255,.04)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:10,color:'rgba(255,255,255,.25)',fontFamily:'JetBrains Mono,monospace',padding:8}}>
-                      <span style={{textAlign:'center',lineHeight:1.4}}>{l.label}</span>
+                  }}>
+                    <div style={{aspectRatio:'16/9',background:l.build(160,90).background||'#f8f9fa',padding:4,position:'relative',overflow:'hidden'}}>
+                      {l.build(160,90).objects?.slice(0,6).map((o:any,oi:number)=>(
+                        o.type==='rect'&&<div key={oi} style={{position:'absolute',left:`${(o.left/160)*100}%`,top:`${(o.top/90)*100}%`,width:`${Math.min((o.width/160)*100,100)}%`,height:`${Math.min((o.height/90)*100,100)}%`,background:o.fill,borderRadius:o.rx?2:0,opacity:Math.min(o.opacity??1,1)}}/>
+                      ))}
                     </div>
-                    <div style={{padding:'8px 10px',fontSize:11,fontWeight:600,color:'rgba(255,255,255,.5)',fontFamily:'Jost,sans-serif',borderTop:'1px solid rgba(255,255,255,.05)',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-                      {l.label}
-                      <span style={{fontSize:8,color:'rgba(255,255,255,.2)',background:'rgba(255,255,255,.05)',padding:'2px 6px',borderRadius:10}}>{l.category}</span>
+                    <div style={{padding:'6px 9px',display:'flex',alignItems:'center',justifyContent:'space-between',borderTop:`1px solid ${T.border}`}}>
+                      <span style={{...UI,fontSize:10,fontWeight:600,color:T.textMd}}>{l.label}</span>
+                      <span style={{...UI,fontSize:8,color:T.textSm,background:T.bgApp,padding:'1px 5px',borderRadius:8}}>{l.category}</span>
                     </div>
                   </div>
                 ))}
@@ -1783,27 +1763,61 @@ export default function DocumentEditorPage({ params }: { params: { id: string } 
         </div>
       )}
 
-      {/* ══ SHARE MODAL ═════════════════════════════════════════════════════════ */}
-      {showShare&&(
-        <ShareModal documentId={params.id} links={shareLinks} onClose={()=>setShowShare(false)}
-          onRefresh={loadShareLinks} isActive={isActive} onPublish={publishDocument}/>
+      {/* ══ RE-LAYOUT MODAL ═════════════════════════════════════════════════ */}
+      {showRelayout&&(
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.35)',zIndex:200,display:'flex',alignItems:'center',justifyContent:'center',padding:24,backdropFilter:'blur(8px)'}}>
+          <div style={{background:T.bgPanel,borderRadius:16,width:'min(700px,96vw)',maxHeight:'80vh',display:'flex',flexDirection:'column',boxShadow:'0 24px 80px rgba(0,0,0,.2)',border:`1px solid ${T.border}`}}>
+            <div style={{padding:'20px 24px 14px',borderBottom:`1px solid ${T.border}`,display:'flex',alignItems:'center',justifyContent:'space-between',flexShrink:0}}>
+              <div>
+                <h2 style={{...UI,margin:'0 0 3px',fontSize:17,fontWeight:800,color:T.text}}>Re-Layout Content</h2>
+                <p style={{...UI,margin:0,fontSize:12,color:T.textMd}}>Your existing text and images will be mapped into the new layout</p>
+              </div>
+              <button onClick={()=>setShowRelayout(false)} style={{background:T.bgApp,border:`1px solid ${T.border}`,cursor:'pointer',color:T.textMd,padding:7,borderRadius:8,display:'flex',alignItems:'center'}}>
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 2l8 8M10 2L2 10" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
+              </button>
+            </div>
+            <div style={{overflow:'auto',padding:'16px 24px'}}>
+              <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(140px,1fr))',gap:7}}>
+                {LAYOUTS.filter(l=>(l as any).zones?.length>0).map(l=>(
+                  <div key={l.id} className="layout-card" onClick={()=>doRelayout(l)}>
+                    <div style={{aspectRatio:'16/9',background:l.build(160,90).background||'#f8f9fa',padding:4,position:'relative',overflow:'hidden'}}>
+                      {l.build(160,90).objects?.slice(0,6).map((o:any,oi:number)=>(
+                        o.type==='rect'&&<div key={oi} style={{position:'absolute',left:`${(o.left/160)*100}%`,top:`${(o.top/90)*100}%`,width:`${Math.min((o.width/160)*100,100)}%`,height:`${Math.min((o.height/90)*100,100)}%`,background:o.fill,borderRadius:o.rx?2:0}}/>
+                      ))}
+                      {/* Zone overlays */}
+                      {(l as any).zones?.map((z:Zone)=>(
+                        <div key={z.id} style={{position:'absolute',left:`${z.bounds.x*100}%`,top:`${z.bounds.y*100}%`,width:`${z.bounds.w*100}%`,height:`${z.bounds.h*100}%`,border:`1.5px dashed ${T.accent}`,borderRadius:2,background:'rgba(79,70,229,.06)'}}/>
+                      ))}
+                    </div>
+                    <div style={{padding:'6px 8px',display:'flex',alignItems:'center',justifyContent:'space-between',borderTop:`1px solid ${T.border}`}}>
+                      <span style={{...UI,fontSize:10,fontWeight:600,color:T.textMd}}>{l.label}</span>
+                      <span style={{...UI,fontSize:7,color:T.accent,fontWeight:700}}>{(l as any).zones?.length} zones</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
-      {/* ══ DELETE CONFIRM ══════════════════════════════════════════════════════ */}
+      {/* ══ SHARE MODAL ═════════════════════════════════════════════════════ */}
+      {showShare&&(
+        <ShareModal documentId={params.id} links={shareLinks} onClose={()=>setShowShare(false)} onRefresh={loadShareLinks} isActive={isActive} onPublish={publishDocument}/>
+      )}
+
+      {/* ══ DELETE CONFIRM ══════════════════════════════════════════════════ */}
       {showDeleteConfirm&&(
-        <div style={{position:'fixed',inset:0,zIndex:200,background:'rgba(0,0,0,.7)',display:'flex',alignItems:'center',justifyContent:'center',backdropFilter:'blur(8px)'}}>
-          <div style={{background:'#0f1117',borderRadius:16,padding:'32px 36px',width:400,boxShadow:'0 24px 70px rgba(0,0,0,.6)',border:'1px solid rgba(255,255,255,.08)'}}>
-            <div style={{width:44,height:44,borderRadius:12,background:'rgba(239,68,68,.12)',border:'1px solid rgba(239,68,68,.2)',display:'flex',alignItems:'center',justifyContent:'center',marginBottom:16}}>
-              <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M9 3v8M9 13.5v.5" stroke="#ef4444" strokeWidth="1.8" strokeLinecap="round"/></svg>
+        <div style={{position:'fixed',inset:0,zIndex:200,background:'rgba(0,0,0,.3)',display:'flex',alignItems:'center',justifyContent:'center',backdropFilter:'blur(6px)'}}>
+          <div style={{background:T.bgPanel,borderRadius:14,padding:'28px 30px',width:380,boxShadow:'0 20px 60px rgba(0,0,0,.15)',border:`1px solid ${T.border}`}}>
+            <div style={{width:40,height:40,borderRadius:10,background:'#fef2f2',border:`1px solid #fecaca`,display:'flex',alignItems:'center',justifyContent:'center',marginBottom:14}}>
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 3v7M8 12.5v.5" stroke="#ef4444" strokeWidth="1.8" strokeLinecap="round"/></svg>
             </div>
-            <h3 style={{fontSize:18,fontWeight:800,color:'#fff',margin:'0 0 8px',fontFamily:'Jost,sans-serif',letterSpacing:'-.01em'}}>Delete document?</h3>
-            <p style={{fontSize:13,color:'rgba(255,255,255,.45)',margin:'0 0 24px',lineHeight:1.6,fontFamily:'Jost,sans-serif'}}>This permanently deletes this document and all its share links. This cannot be undone.</p>
+            <h3 style={{...UI,fontSize:16,fontWeight:800,color:T.text,margin:'0 0 7px',letterSpacing:'-.01em'}}>Delete document?</h3>
+            <p style={{...UI,fontSize:13,color:T.textMd,margin:'0 0 22px',lineHeight:1.6}}>This permanently deletes this document and all its share links. This cannot be undone.</p>
             <div style={{display:'flex',gap:8,justifyContent:'flex-end'}}>
               <button onClick={()=>setShowDeleteConfirm(false)} className="sec-btn">Cancel</button>
-              <button onClick={deleteDocument} disabled={deleting}
-                style={{padding:'7px 18px',borderRadius:8,border:'none',background:'#ef4444',color:'white',cursor:'pointer',fontSize:12,fontWeight:700,fontFamily:'Jost,sans-serif',opacity:deleting?.6:1,transition:'all .14s'}}
-                onMouseOver={e=>!deleting&&(e.currentTarget.style.background='#dc2626')}
-                onMouseOut={e=>(e.currentTarget.style.background='#ef4444')}>
+              <button onClick={deleteDocument} disabled={deleting} style={{...UI,padding:'7px 16px',borderRadius:8,border:'none',background:T.red,color:'white',cursor:'pointer',fontSize:12,fontWeight:700,opacity:deleting?.6:1,transition:'all .14s'}}>
                 {deleting?'Deleting…':'Delete permanently'}
               </button>
             </div>
@@ -1811,7 +1825,7 @@ export default function DocumentEditorPage({ params }: { params: { id: string } 
         </div>
       )}
 
-      {/* ══ AI DRAFTER ══════════════════════════════════════════════════════════ */}
+      {/* ══ AI DRAFTER ══════════════════════════════════════════════════════ */}
       {showDrafter&&(
         <AIDrafter documentType={doc?.type??'document'}
           onDraftComplete={(html:string)=>{
