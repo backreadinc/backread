@@ -51,7 +51,6 @@ const UNSPLASH_CURATED = [
   'photo-1573496359142-b8d87734a5a2','photo-1600880292203-757bb62b4baf',
 ]
 
-// ─── Template helpers ───────────────────────────────────────────────────────────
 function pg(bg='#ffffff', objects:any[]=[]) {
   return { version:'5.3.0', objects, background:bg }
 }
@@ -73,7 +72,6 @@ function fs(W:number, base:number):number {
   return Math.max(Math.round(base*(W/1280)), Math.round(base*0.55))
 }
 
-// ─── LAYOUTS ───────────────────────────────────────────────────────────────────
 const LAYOUTS = [
   {
     id:'full-bleed-dark', label:'Full Bleed Dark', category:'Hero',
@@ -165,15 +163,6 @@ const LAYOUTS = [
 
 const LAYOUT_CATS = ['All','Hero','Split','Editorial','Metrics','Content','Minimal','Process']
 
-const TEMPLATES = [
-  { id:'blank',    cat:'blank',    label:'Blank Canvas',   desc:'Start fresh',         pages:1, size:'pres-169' },
-  { id:'pitch',    cat:'startup',  label:'Pitch Deck',     desc:'Seed to Series B',    pages:8, size:'pres-169' },
-  { id:'proposal', cat:'freelance',label:'Client Proposal',desc:'Win more clients',    pages:6, size:'a4-port'  },
-  { id:'brand',    cat:'marketing',label:'Brand Guidelines',desc:'Brand system',       pages:5, size:'pres-169' },
-  { id:'qreport',  cat:'report',   label:'Quarterly Report',desc:'Q-over-Q review',   pages:4, size:'pres-169' },
-]
-
-// ─── Gradient presets ─────────────────────────────────────────────────────────
 const GRADIENT_PRESETS = [
   { label:'Indigo', stops:[{offset:0,color:'#4f46e5'},{offset:1,color:'#7c3aed'}] },
   { label:'Ocean',  stops:[{offset:0,color:'#06b6d4'},{offset:1,color:'#3b82f6'}] },
@@ -182,10 +171,6 @@ const GRADIENT_PRESETS = [
   { label:'Rose',   stops:[{offset:0,color:'#ec4899'},{offset:1,color:'#f43f5e'}] },
   { label:'Night',  stops:[{offset:0,color:'#0f172a'},{offset:1,color:'#1e1b4b'}] },
 ]
-
-// ─── Style constants ───────────────────────────────────────────────────────────
-const pBtn:React.CSSProperties={padding:'7px 18px',borderRadius:9,fontSize:13,fontWeight:700,border:'none',background:'#4f46e5',color:'white',cursor:'pointer',fontFamily:'Jost,sans-serif',boxShadow:'0 2px 8px rgba(79,70,229,.25)'}
-const sBtn:React.CSSProperties={padding:'7px 16px',borderRadius:9,fontSize:13,fontWeight:600,border:'1.5px solid #e5e7eb',background:'white',cursor:'pointer',color:'#374151',fontFamily:'Jost,sans-serif'}
 
 // ─── Share Modal ──────────────────────────────────────────────────────────────
 function ShareModal({documentId,links,onClose,onRefresh,isActive,onPublish}:{documentId:string;links:ShareLink[];onClose:()=>void;onRefresh:()=>void;isActive:boolean;onPublish:()=>void}){
@@ -218,46 +203,48 @@ function ShareModal({documentId,links,onClose,onRefresh,isActive,onPublish}:{doc
   async function deleteLink(id:string){await supabase.from('share_links').delete().eq('id',id);onRefresh()}
 
   return(
-    <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.45)',zIndex:100,display:'flex',alignItems:'flex-end',justifyContent:'flex-end'}} onClick={e=>{if(e.target===e.currentTarget)onClose()}}>
-      <div style={{width:440,height:'100vh',background:'white',borderLeft:'1px solid #e5e7eb',display:'flex',flexDirection:'column',boxShadow:'-8px 0 40px rgba(0,0,0,.1)'}}>
-        <div style={{padding:'20px 24px',borderBottom:'1px solid #e5e7eb',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+    <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.6)',zIndex:100,display:'flex',alignItems:'flex-end',justifyContent:'flex-end',backdropFilter:'blur(4px)'}} onClick={e=>{if(e.target===e.currentTarget)onClose()}}>
+      <div style={{width:460,height:'100vh',background:'#0f1117',borderLeft:'1px solid rgba(255,255,255,.08)',display:'flex',flexDirection:'column',boxShadow:'-20px 0 60px rgba(0,0,0,.4)'}}>
+        <div style={{padding:'24px 28px',borderBottom:'1px solid rgba(255,255,255,.08)',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
           <div>
-            <h2 style={{margin:'0 0 3px',fontSize:17,fontWeight:800,color:'#0f172a',fontFamily:'Jost,sans-serif'}}>Share & Track</h2>
-            <p style={{margin:0,fontSize:12,color:'#94a3b8',fontFamily:'Jost,sans-serif'}}>{links.length} link{links.length!==1?'s':''} · {links.reduce((a,l)=>a+(l.view_count||0),0)} total views</p>
+            <h2 style={{margin:'0 0 4px',fontSize:18,fontWeight:800,color:'#ffffff',fontFamily:'Jost,sans-serif',letterSpacing:'-.02em'}}>Share & Track</h2>
+            <p style={{margin:0,fontSize:12,color:'rgba(255,255,255,.4)',fontFamily:'Jost,sans-serif'}}>{links.length} link{links.length!==1?'s':''} · {links.reduce((a,l)=>a+(l.view_count||0),0)} total views</p>
           </div>
-          <button onClick={onClose} style={{background:'#f3f4f6',border:'none',cursor:'pointer',color:'#6b7280',padding:7,borderRadius:8}}>
+          <button onClick={onClose} style={{background:'rgba(255,255,255,.08)',border:'none',cursor:'pointer',color:'rgba(255,255,255,.6)',padding:8,borderRadius:10,display:'flex',alignItems:'center',justifyContent:'center',transition:'all .15s'}}
+            onMouseOver={e=>(e.currentTarget.style.background='rgba(255,255,255,.14)')}
+            onMouseOut={e=>(e.currentTarget.style.background='rgba(255,255,255,.08)')}>
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M3 3l8 8M11 3l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
           </button>
         </div>
         {!isActive&&(
-          <div style={{margin:'14px 20px',padding:'12px 16px',background:'#fffbeb',border:'1.5px solid #fcd34d',borderRadius:10}}>
-            <div style={{fontSize:12,fontWeight:700,color:'#92400e',marginBottom:4,fontFamily:'Jost,sans-serif'}}>Document not published</div>
-            <div style={{fontSize:11,color:'#b45309',marginBottom:10,fontFamily:'Jost,sans-serif'}}>Publish first to enable link sharing and tracking.</div>
-            <button onClick={onPublish} style={{...pBtn,fontSize:12,padding:'6px 14px'}}>Publish now</button>
+          <div style={{margin:'16px 24px',padding:'14px 18px',background:'rgba(251,191,36,.08)',border:'1px solid rgba(251,191,36,.25)',borderRadius:12}}>
+            <div style={{fontSize:12,fontWeight:700,color:'#fbbf24',marginBottom:4,fontFamily:'Jost,sans-serif'}}>Document not published</div>
+            <div style={{fontSize:11,color:'rgba(251,191,36,.7)',marginBottom:12,fontFamily:'Jost,sans-serif'}}>Publish first to enable link sharing and tracking.</div>
+            <button onClick={onPublish} style={{padding:'6px 14px',borderRadius:8,background:'#fbbf24',color:'#000',border:'none',cursor:'pointer',fontSize:12,fontWeight:700,fontFamily:'Jost,sans-serif'}}>Publish now</button>
           </div>
         )}
-        <div style={{flex:1,overflow:'auto',padding:'16px 20px'}}>
+        <div style={{flex:1,overflow:'auto',padding:'16px 24px'}}>
           {links.length>0&&(
-            <div style={{marginBottom:18}}>
-              <div style={{fontSize:10,fontWeight:700,color:'#94a3b8',textTransform:'uppercase',letterSpacing:'.07em',marginBottom:10}}>Active links</div>
+            <div style={{marginBottom:20}}>
+              <div style={{fontSize:10,fontWeight:700,color:'rgba(255,255,255,.3)',textTransform:'uppercase',letterSpacing:'.08em',marginBottom:12}}>Active links</div>
               {links.map(link=>(
-                <div key={link.id} style={{border:'1.5px solid #e5e7eb',borderRadius:14,padding:'14px 16px',marginBottom:10}}>
-                  <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:10}}>
-                    <span style={{flex:1,fontSize:13,fontWeight:700,color:'#0f172a',fontFamily:'Jost,sans-serif'}}>{link.label??'Share link'}</span>
-                    <span style={{padding:'3px 9px',borderRadius:20,fontSize:10,fontWeight:700,background:link.is_active?'#dcfce7':'#f1f5f9',color:link.is_active?'#15803d':'#64748b'}}>{link.is_active?'LIVE':'OFF'}</span>
+                <div key={link.id} style={{border:'1px solid rgba(255,255,255,.08)',borderRadius:14,padding:'16px 18px',marginBottom:10,background:'rgba(255,255,255,.03)'}}>
+                  <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:12}}>
+                    <span style={{flex:1,fontSize:13,fontWeight:700,color:'#fff',fontFamily:'Jost,sans-serif'}}>{link.label??'Share link'}</span>
+                    <span style={{padding:'3px 10px',borderRadius:20,fontSize:9,fontWeight:800,letterSpacing:'.06em',background:link.is_active?'rgba(16,185,129,.15)':'rgba(255,255,255,.06)',color:link.is_active?'#10b981':'rgba(255,255,255,.4)',border:`1px solid ${link.is_active?'rgba(16,185,129,.3)':'rgba(255,255,255,.1)'}`}}>{link.is_active?'LIVE':'OFF'}</span>
                   </div>
-                  <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:10}}>
-                    <code style={{flex:1,fontSize:10,color:'#64748b',background:'#f8fafc',padding:'5px 9px',borderRadius:7,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',display:'block',border:'1px solid #e5e7eb'}}>{buildShareUrl(link.token)}</code>
-                    <button onClick={()=>copyLink(link.token)} style={{padding:'5px 11px',background:copied===link.token?'#f0fdf4':'#f8fafc',border:`1.5px solid ${copied===link.token?'#86efac':'#e5e7eb'}`,borderRadius:8,fontSize:11,cursor:'pointer',color:copied===link.token?'#15803d':'#64748b',fontFamily:'Jost,sans-serif',fontWeight:700,whiteSpace:'nowrap'}}>
-                      {copied===link.token?'Copied!':'Copy'}
+                  <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:12}}>
+                    <code style={{flex:1,fontSize:10,color:'rgba(255,255,255,.4)',background:'rgba(255,255,255,.04)',padding:'6px 10px',borderRadius:8,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',display:'block',border:'1px solid rgba(255,255,255,.07)',fontFamily:'JetBrains Mono,monospace'}}>{buildShareUrl(link.token)}</code>
+                    <button onClick={()=>copyLink(link.token)} style={{padding:'6px 12px',background:copied===link.token?'rgba(16,185,129,.15)':'rgba(255,255,255,.06)',border:`1px solid ${copied===link.token?'rgba(16,185,129,.4)':'rgba(255,255,255,.1)'}`,borderRadius:8,fontSize:11,cursor:'pointer',color:copied===link.token?'#10b981':'rgba(255,255,255,.6)',fontFamily:'Jost,sans-serif',fontWeight:700,whiteSpace:'nowrap',transition:'all .15s'}}>
+                      {copied===link.token?'Copied ✓':'Copy'}
                     </button>
                   </div>
-                  <div style={{display:'flex',gap:12,fontSize:11,color:'#94a3b8',flexWrap:'wrap',marginBottom:8}}>
+                  <div style={{display:'flex',gap:14,fontSize:11,color:'rgba(255,255,255,.3)',flexWrap:'wrap',marginBottom:10,fontFamily:'Jost,sans-serif'}}>
                     <span>{link.view_count||0} views</span>
-                    {link.require_email&&<span>Email gate</span>}
-                    {link.password&&<span>Password</span>}
+                    {link.require_email&&<span>• Email gate</span>}
+                    {link.password&&<span>• Password</span>}
                   </div>
-                  <div style={{display:'flex',justifyContent:'flex-end',gap:14}}>
+                  <div style={{display:'flex',justifyContent:'flex-end',gap:16}}>
                     <button onClick={()=>toggleLink(link.id,!link.is_active)} style={{fontSize:11,color:link.is_active?'#f59e0b':'#10b981',background:'none',border:'none',cursor:'pointer',fontFamily:'Jost,sans-serif',fontWeight:700}}>{link.is_active?'Disable':'Enable'}</button>
                     <button onClick={()=>deleteLink(link.id)} style={{fontSize:11,color:'#ef4444',background:'none',border:'none',cursor:'pointer',fontFamily:'Jost,sans-serif',fontWeight:700}}>Delete</button>
                   </div>
@@ -266,11 +253,13 @@ function ShareModal({documentId,links,onClose,onRefresh,isActive,onPublish}:{doc
             </div>
           )}
           {!showNew
-            ?<button onClick={()=>setShowNew(true)} style={{width:'100%',padding:'12px',background:'none',border:'2px dashed #e5e7eb',borderRadius:12,cursor:'pointer',fontSize:13,color:'#94a3b8',fontFamily:'Jost,sans-serif',fontWeight:500,display:'flex',alignItems:'center',justifyContent:'center',gap:6}}>
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1v12M1 7h12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>Create new link
+            ?<button onClick={()=>setShowNew(true)} style={{width:'100%',padding:'13px',background:'none',border:'1px dashed rgba(255,255,255,.15)',borderRadius:12,cursor:'pointer',fontSize:13,color:'rgba(255,255,255,.35)',fontFamily:'Jost,sans-serif',fontWeight:500,display:'flex',alignItems:'center',justifyContent:'center',gap:7,transition:'all .15s'}}
+              onMouseOver={e=>{(e.currentTarget as HTMLElement).style.borderColor='rgba(79,70,229,.5)';(e.currentTarget as HTMLElement).style.color='rgba(255,255,255,.6)'}}
+              onMouseOut={e=>{(e.currentTarget as HTMLElement).style.borderColor='rgba(255,255,255,.15)';(e.currentTarget as HTMLElement).style.color='rgba(255,255,255,.35)'}}>
+              <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M6.5 1v11M1 6.5h11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>Create new link
             </button>
-            :<div style={{border:'1.5px solid #e5e7eb',borderRadius:14,padding:'18px'}}>
-              <p style={{margin:'0 0 16px',fontSize:14,fontWeight:700,color:'#0f172a',fontFamily:'Jost,sans-serif'}}>New share link</p>
+            :<div style={{border:'1px solid rgba(255,255,255,.1)',borderRadius:14,padding:'20px',background:'rgba(255,255,255,.03)'}}>
+              <p style={{margin:'0 0 16px',fontSize:14,fontWeight:700,color:'#fff',fontFamily:'Jost,sans-serif'}}>New share link</p>
               <div style={{display:'flex',flexDirection:'column',gap:12}}>
                 <Input label="Link label" placeholder="e.g. Sequoia meeting" value={label} onChange={(e:any)=>setLabel(e.target.value)}/>
                 <Input label="Password (optional)" type="password" placeholder="Leave empty for no password" value={password} onChange={(e:any)=>setPassword(e.target.value)}/>
@@ -292,9 +281,9 @@ function ShareModal({documentId,links,onClose,onRefresh,isActive,onPublish}:{doc
 // ─── Properties Panel ─────────────────────────────────────────────────────────
 function PropsPanel({obj, fabric, onUpdate}:{obj:any,fabric:any,onUpdate:()=>void}){
   if(!obj) return(
-    <div style={{padding:20,color:'#94a3b8',fontSize:12,textAlign:'center',fontFamily:'Jost,sans-serif'}}>
-      <div style={{marginBottom:8,fontSize:24}}>↖</div>
-      Select an element to edit its properties
+    <div style={{padding:'32px 20px',color:'rgba(255,255,255,.25)',fontSize:12,textAlign:'center',fontFamily:'Jost,sans-serif',display:'flex',flexDirection:'column',alignItems:'center',gap:12}}>
+      <div style={{width:48,height:48,borderRadius:12,background:'rgba(255,255,255,.05)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:20}}>↖</div>
+      <span>Select an element to edit its properties</span>
     </div>
   )
 
@@ -322,105 +311,97 @@ function PropsPanel({obj, fabric, onUpdate}:{obj:any,fabric:any,onUpdate:()=>voi
   const opacity=Math.round((obj.opacity??1)*100)
 
   return(
-    <div style={{padding:'12px 14px',display:'flex',flexDirection:'column',gap:10,overflow:'auto',flex:1}}>
-      {/* Position & Size */}
-      <Section label="Position & Size">
+    <div style={{padding:'4px 0',display:'flex',flexDirection:'column',gap:2,overflow:'auto',flex:1}}>
+      <DarkSection label="Position & Size">
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:6}}>
           {[['X','left'],['Y','top'],['W','width'],['H','height']].map(([l,p])=>(
-            <NumField key={p} label={l} value={Math.round(obj[p]??0)} onChange={v=>set(p,v)}/>
+            <DarkNumField key={p} label={l} value={Math.round(obj[p]??0)} onChange={v=>set(p,v)}/>
           ))}
         </div>
-        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:6,marginTop:4}}>
-          <NumField label="Rotate°" value={Math.round(obj.angle??0)} onChange={v=>set('angle',v)}/>
-          <NumField label="Opacity%" value={opacity} onChange={v=>set('opacity',v/100)}/>
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:6,marginTop:6}}>
+          <DarkNumField label="Rotate°" value={Math.round(obj.angle??0)} onChange={v=>set('angle',v)}/>
+          <DarkNumField label="Opacity%" value={opacity} onChange={v=>set('opacity',v/100)}/>
         </div>
-        {/* Flip */}
-        <div style={{display:'flex',gap:6,marginTop:4}}>
-          <button onClick={()=>set('flipX',!obj.flipX)} style={propBtn(obj.flipX)}>Flip H</button>
-          <button onClick={()=>set('flipY',!obj.flipY)} style={propBtn(obj.flipY)}>Flip V</button>
-          <button onClick={()=>set('lockMovementX',!obj.lockMovementX)} style={propBtn(obj.lockMovementX)}>Lock</button>
+        <div style={{display:'flex',gap:5,marginTop:6}}>
+          <button onClick={()=>set('flipX',!obj.flipX)} style={darkPropBtn(obj.flipX)}>Flip H</button>
+          <button onClick={()=>set('flipY',!obj.flipY)} style={darkPropBtn(obj.flipY)}>Flip V</button>
+          <button onClick={()=>set('lockMovementX',!obj.lockMovementX)} style={darkPropBtn(obj.lockMovementX)}>Lock</button>
         </div>
-      </Section>
+      </DarkSection>
 
-      {/* Fill & Stroke */}
-      <Section label="Fill & Stroke">
-        <div style={{display:'flex',flexDirection:'column',gap:8}}>
+      <DarkSection label="Fill & Stroke">
+        <div style={{display:'flex',flexDirection:'column',gap:10}}>
           <div style={{display:'flex',gap:8,alignItems:'center'}}>
-            <label style={propLabel}>Fill</label>
-            <input type="color" value={typeof obj.fill==='string'?obj.fill:'#4f46e5'} onChange={e=>set('fill',e.target.value)} style={{width:30,height:28,borderRadius:7,border:'2px solid #e5e7eb',cursor:'pointer',padding:0}}/>
-            <span style={{fontSize:11,color:'#64748b',fontFamily:'JetBrains Mono,monospace'}}>{typeof obj.fill==='string'?obj.fill:'gradient'}</span>
+            <label style={darkPropLabel}>Fill</label>
+            <input type="color" value={typeof obj.fill==='string'?obj.fill:'#4f46e5'} onChange={e=>set('fill',e.target.value)} style={{width:32,height:28,borderRadius:7,border:'1.5px solid rgba(255,255,255,.12)',cursor:'pointer',padding:0,background:'transparent'}}/>
+            <span style={{fontSize:10,color:'rgba(255,255,255,.35)',fontFamily:'JetBrains Mono,monospace'}}>{typeof obj.fill==='string'?obj.fill:'gradient'}</span>
           </div>
-          {/* Gradient presets */}
           <div>
-            <div style={{fontSize:9,fontWeight:700,color:'#94a3b8',textTransform:'uppercase',letterSpacing:'.06em',marginBottom:5}}>Gradient Presets</div>
+            <div style={{fontSize:9,fontWeight:700,color:'rgba(255,255,255,.3)',textTransform:'uppercase',letterSpacing:'.06em',marginBottom:6}}>Gradient Presets</div>
             <div style={{display:'flex',gap:5,flexWrap:'wrap'}}>
               {GRADIENT_PRESETS.map(g=>(
                 <button key={g.label} onClick={()=>applyGradient(g.stops)} title={g.label}
-                  style={{width:28,height:28,borderRadius:6,border:'2px solid transparent',cursor:'pointer',
+                  style={{width:28,height:28,borderRadius:6,border:'1.5px solid transparent',cursor:'pointer',
                     background:`linear-gradient(135deg,${g.stops[0].color},${g.stops[1].color})`,
-                    outline:'none',transition:'transform .1s'}} onMouseOver={e=>(e.currentTarget.style.transform='scale(1.15)')} onMouseOut={e=>(e.currentTarget.style.transform='scale(1)')}/>
+                    outline:'none',transition:'transform .1s'}} onMouseOver={e=>(e.currentTarget.style.transform='scale(1.18)')} onMouseOut={e=>(e.currentTarget.style.transform='scale(1)')}/>
               ))}
               <button onClick={()=>set('fill',typeof obj.fill==='string'?obj.fill:'#4f46e5')} title="Remove gradient"
-                style={{width:28,height:28,borderRadius:6,border:'2px solid #e5e7eb',cursor:'pointer',background:'white',fontSize:11,color:'#94a3b8'}}>✕</button>
+                style={{width:28,height:28,borderRadius:6,border:'1.5px solid rgba(255,255,255,.1)',cursor:'pointer',background:'rgba(255,255,255,.05)',fontSize:11,color:'rgba(255,255,255,.4)'}}>✕</button>
             </div>
           </div>
           <div style={{display:'flex',gap:8,alignItems:'center'}}>
-            <label style={propLabel}>Stroke</label>
-            <input type="color" value={obj.stroke||'#000000'} onChange={e=>set('stroke',e.target.value)} style={{width:30,height:28,borderRadius:7,border:'2px solid #e5e7eb',cursor:'pointer',padding:0}}/>
-            <NumField label="px" value={obj.strokeWidth??0} onChange={v=>set('strokeWidth',v)}/>
+            <label style={darkPropLabel}>Stroke</label>
+            <input type="color" value={obj.stroke||'#000000'} onChange={e=>set('stroke',e.target.value)} style={{width:32,height:28,borderRadius:7,border:'1.5px solid rgba(255,255,255,.12)',cursor:'pointer',padding:0}}/>
+            <DarkNumField label="px" value={obj.strokeWidth??0} onChange={v=>set('strokeWidth',v)}/>
           </div>
           {isShape&&(
-            <NumField label="Corner radius" value={obj.rx??0} onChange={v=>{set('rx',v);set('ry',v)}}/>
+            <DarkNumField label="Corner radius" value={obj.rx??0} onChange={v=>{set('rx',v);set('ry',v)}}/>
           )}
         </div>
-      </Section>
+      </DarkSection>
 
-      {/* Shadow */}
-      <Section label="Shadow">
+      <DarkSection label="Shadow">
         <ShadowControls obj={obj} fabric={fabric} onUpdate={onUpdate}/>
-      </Section>
+      </DarkSection>
 
-      {/* Blend Mode */}
-      <Section label="Blend Mode">
+      <DarkSection label="Blend Mode">
         <select value={obj.globalCompositeOperation??'normal'} onChange={e=>set('globalCompositeOperation',e.target.value)}
-          style={{width:'100%',padding:'6px 9px',border:'1.5px solid #e5e7eb',borderRadius:8,fontSize:12,fontFamily:'Jost,sans-serif',background:'white',color:'#374151',cursor:'pointer'}}>
-          {BLEND_MODES.map(m=><option key={m} value={m}>{m}</option>)}
+          style={{width:'100%',padding:'7px 10px',border:'1px solid rgba(255,255,255,.1)',borderRadius:8,fontSize:12,fontFamily:'Jost,sans-serif',background:'rgba(255,255,255,.05)',color:'rgba(255,255,255,.8)',cursor:'pointer',outline:'none'}}>
+          {BLEND_MODES.map(m=><option key={m} value={m} style={{background:'#1a1d26'}}>{m}</option>)}
         </select>
-      </Section>
+      </DarkSection>
 
-      {/* Typography — text only */}
       {isText&&(
-        <Section label="Typography">
+        <DarkSection label="Typography">
           <div style={{display:'flex',flexDirection:'column',gap:8}}>
             <div>
-              <div style={propLabel}>Text Color</div>
-              <input type="color" value={typeof obj.fill==='string'?obj.fill:'#0f172a'} onChange={e=>set('fill',e.target.value)} style={{width:30,height:28,borderRadius:7,border:'2px solid #e5e7eb',cursor:'pointer',padding:0,marginTop:4}}/>
+              <div style={darkPropLabel}>Text Color</div>
+              <input type="color" value={typeof obj.fill==='string'?obj.fill:'#0f172a'} onChange={e=>set('fill',e.target.value)} style={{width:32,height:28,borderRadius:7,border:'1.5px solid rgba(255,255,255,.12)',cursor:'pointer',padding:0,marginTop:5}}/>
             </div>
             <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:6}}>
-              <NumField label="Size" value={obj.fontSize??16} onChange={v=>set('fontSize',v)}/>
-              <NumField label="Line H" value={obj.lineHeight??1.4} onChange={v=>set('lineHeight',v)} step={0.05}/>
+              <DarkNumField label="Size" value={obj.fontSize??16} onChange={v=>set('fontSize',v)}/>
+              <DarkNumField label="Line H" value={obj.lineHeight??1.4} onChange={v=>set('lineHeight',v)} step={0.05}/>
             </div>
-            <NumField label="Letter Spacing" value={obj.charSpacing??0} onChange={v=>set('charSpacing',v)}/>
+            <DarkNumField label="Letter Spacing" value={obj.charSpacing??0} onChange={v=>set('charSpacing',v)}/>
             <div style={{display:'flex',gap:4,flexWrap:'wrap'}}>
               {(['left','center','right','justify'] as const).map(a=>(
-                <button key={a} onClick={()=>set('textAlign',a)} style={propBtn(obj.textAlign===a)}>{a==='left'?'⫷':a==='center'?'⫶':a==='right'?'⫸':'⟺'}</button>
+                <button key={a} onClick={()=>set('textAlign',a)} style={darkPropBtn(obj.textAlign===a)}>{a==='left'?'⫷':a==='center'?'⫶':a==='right'?'⫸':'⟺'}</button>
               ))}
             </div>
             <div style={{display:'flex',gap:4}}>
-              <button onClick={()=>set('fontWeight',obj.fontWeight==='bold'?'normal':'bold')} style={{...propBtn(obj.fontWeight==='bold'),fontWeight:700,fontFamily:'serif'}}>B</button>
-              <button onClick={()=>set('fontStyle',obj.fontStyle==='italic'?'normal':'italic')} style={{...propBtn(obj.fontStyle==='italic'),fontStyle:'italic'}}>I</button>
-              <button onClick={()=>set('underline',!obj.underline)} style={{...propBtn(obj.underline),textDecoration:'underline'}}>U</button>
-              <button onClick={()=>set('linethrough',!obj.linethrough)} style={{...propBtn(obj.linethrough),textDecoration:'line-through'}}>S</button>
+              <button onClick={()=>set('fontWeight',obj.fontWeight==='bold'?'normal':'bold')} style={{...darkPropBtn(obj.fontWeight==='bold'),fontWeight:700,fontFamily:'serif'}}>B</button>
+              <button onClick={()=>set('fontStyle',obj.fontStyle==='italic'?'normal':'italic')} style={{...darkPropBtn(obj.fontStyle==='italic'),fontStyle:'italic'}}>I</button>
+              <button onClick={()=>set('underline',!obj.underline)} style={{...darkPropBtn(obj.underline),textDecoration:'underline'}}>U</button>
+              <button onClick={()=>set('linethrough',!obj.linethrough)} style={{...darkPropBtn(obj.linethrough),textDecoration:'line-through'}}>S</button>
             </div>
           </div>
-        </Section>
+        </DarkSection>
       )}
 
-      {/* Image filters — image only */}
       {obj.type==='image'&&(
-        <Section label="Image Filters">
+        <DarkSection label="Image Filters">
           <ImageFilters obj={obj} fabric={fabric} onUpdate={onUpdate}/>
-        </Section>
+        </DarkSection>
       )}
     </div>
   )
@@ -443,21 +424,21 @@ function ShadowControls({obj,fabric,onUpdate}:{obj:any,fabric:any,onUpdate:()=>v
   }
 
   return(
-    <div style={{display:'flex',flexDirection:'column',gap:6}}>
-      <label style={{display:'flex',alignItems:'center',gap:7,cursor:'pointer'}}>
-        <input type="checkbox" checked={enabled} onChange={e=>{setEnabled(e.target.checked);apply(e.target.checked)}}/>
-        <span style={{fontSize:12,color:'#374151',fontFamily:'Jost,sans-serif'}}>Enable shadow</span>
+    <div style={{display:'flex',flexDirection:'column',gap:7}}>
+      <label style={{display:'flex',alignItems:'center',gap:8,cursor:'pointer'}}>
+        <input type="checkbox" checked={enabled} onChange={e=>{setEnabled(e.target.checked);apply(e.target.checked)}} style={{accentColor:'#4f46e5'}}/>
+        <span style={{fontSize:12,color:'rgba(255,255,255,.65)',fontFamily:'Jost,sans-serif'}}>Enable shadow</span>
       </label>
       {enabled&&(
         <>
           <div style={{display:'flex',gap:6,alignItems:'center'}}>
-            <label style={propLabel}>Color</label>
-            <input type="color" value={color.startsWith('rgba')?'#000000':color} onChange={e=>{setColor(e.target.value);apply(true,e.target.value,blur,ox,oy)}} style={{width:30,height:24,borderRadius:6,border:'2px solid #e5e7eb',cursor:'pointer',padding:0}}/>
+            <label style={darkPropLabel}>Color</label>
+            <input type="color" value={color.startsWith('rgba')?'#000000':color} onChange={e=>{setColor(e.target.value);apply(true,e.target.value,blur,ox,oy)}} style={{width:30,height:24,borderRadius:6,border:'1px solid rgba(255,255,255,.1)',cursor:'pointer',padding:0}}/>
           </div>
-          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:6}}>
-            <NumField label="Blur" value={blur} onChange={v=>{setBlur(v);apply(true,color,v,ox,oy)}}/>
-            <NumField label="X" value={ox} onChange={v=>{setOx(v);apply(true,color,blur,v,oy)}}/>
-            <NumField label="Y" value={oy} onChange={v=>{setOy(v);apply(true,color,blur,ox,v)}}/>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:5}}>
+            <DarkNumField label="Blur" value={blur} onChange={v=>{setBlur(v);apply(true,color,v,ox,oy)}}/>
+            <DarkNumField label="X" value={ox} onChange={v=>{setOx(v);apply(true,color,blur,v,oy)}}/>
+            <DarkNumField label="Y" value={oy} onChange={v=>{setOy(v);apply(true,color,blur,ox,v)}}/>
           </div>
         </>
       )}
@@ -489,13 +470,13 @@ function ImageFilters({obj,fabric,onUpdate}:{obj:any,fabric:any,onUpdate:()=>voi
 
   return(
     <div style={{display:'flex',flexDirection:'column',gap:8}}>
-      <SliderField label="Brightness" value={brightness} min={-100} max={100} onChange={v=>{setBrightness(v);applyFilters(v)}}/>
-      <SliderField label="Contrast" value={contrast} min={-100} max={100} onChange={v=>{setContrast(v);applyFilters(brightness,v)}}/>
-      <SliderField label="Saturation" value={saturation} min={-100} max={100} onChange={v=>{setSaturation(v);applyFilters(brightness,contrast,v)}}/>
-      <SliderField label="Blur" value={blur} min={0} max={100} onChange={v=>{setBlur(v);applyFilters(brightness,contrast,saturation,v)}}/>
-      <div style={{display:'flex',gap:6}}>
-        <button onClick={()=>{setGrayscale(!grayscale);applyFilters(brightness,contrast,saturation,blur,!grayscale,sepia)}} style={propBtn(grayscale)}>Grayscale</button>
-        <button onClick={()=>{setSepia(!sepia);applyFilters(brightness,contrast,saturation,blur,grayscale,!sepia)}} style={propBtn(sepia)}>Sepia</button>
+      <DarkSliderField label="Brightness" value={brightness} min={-100} max={100} onChange={v=>{setBrightness(v);applyFilters(v)}}/>
+      <DarkSliderField label="Contrast" value={contrast} min={-100} max={100} onChange={v=>{setContrast(v);applyFilters(brightness,v)}}/>
+      <DarkSliderField label="Saturation" value={saturation} min={-100} max={100} onChange={v=>{setSaturation(v);applyFilters(brightness,contrast,v)}}/>
+      <DarkSliderField label="Blur" value={blur} min={0} max={100} onChange={v=>{setBlur(v);applyFilters(brightness,contrast,saturation,v)}}/>
+      <div style={{display:'flex',gap:5}}>
+        <button onClick={()=>{setGrayscale(!grayscale);applyFilters(brightness,contrast,saturation,blur,!grayscale,sepia)}} style={darkPropBtn(grayscale)}>Grayscale</button>
+        <button onClick={()=>{setSepia(!sepia);applyFilters(brightness,contrast,saturation,blur,grayscale,!sepia)}} style={darkPropBtn(sepia)}>Sepia</button>
       </div>
       <button onClick={()=>{setBrightness(0);setContrast(0);setSaturation(0);setBlur(0);setGrayscale(false);setSepia(false);applyFilters(0,0,0,0,false,false)}}
         style={{fontSize:11,color:'#ef4444',background:'none',border:'none',cursor:'pointer',fontFamily:'Jost,sans-serif',fontWeight:600,textAlign:'left',padding:0}}>Reset filters</button>
@@ -503,61 +484,58 @@ function ImageFilters({obj,fabric,onUpdate}:{obj:any,fabric:any,onUpdate:()=>voi
   )
 }
 
-function Section({label,children}:{label:string,children:React.ReactNode}){
+function DarkSection({label,children}:{label:string,children:React.ReactNode}){
   const [open,setOpen]=useState(true)
   return(
-    <div style={{borderBottom:'1px solid #f1f5f9',paddingBottom:10}}>
-      <button onClick={()=>setOpen(!open)} style={{width:'100%',display:'flex',alignItems:'center',justifyContent:'space-between',border:'none',background:'none',cursor:'pointer',padding:'4px 0',marginBottom:open?8:0}}>
-        <span style={{fontSize:10,fontWeight:700,color:'#94a3b8',textTransform:'uppercase',letterSpacing:'.06em',fontFamily:'Jost,sans-serif'}}>{label}</span>
-        <svg width="10" height="6" viewBox="0 0 10 6" fill="none" style={{transform:open?'rotate(0)':'rotate(-90deg)',transition:'transform .15s'}}><path d="M1 1l4 4 4-4" stroke="#94a3b8" strokeWidth="1.5" strokeLinecap="round"/></svg>
+    <div style={{borderBottom:'1px solid rgba(255,255,255,.05)',padding:'10px 16px 12px'}}>
+      <button onClick={()=>setOpen(!open)} style={{width:'100%',display:'flex',alignItems:'center',justifyContent:'space-between',border:'none',background:'none',cursor:'pointer',padding:'0 0 8px',marginBottom:open?0:-8}}>
+        <span style={{fontSize:9,fontWeight:800,color:'rgba(255,255,255,.3)',textTransform:'uppercase',letterSpacing:'.1em',fontFamily:'Jost,sans-serif'}}>{label}</span>
+        <svg width="10" height="6" viewBox="0 0 10 6" fill="none" style={{transform:open?'rotate(0)':'rotate(-90deg)',transition:'transform .15s'}}><path d="M1 1l4 4 4-4" stroke="rgba(255,255,255,0.3)" strokeWidth="1.5" strokeLinecap="round"/></svg>
       </button>
       {open&&children}
     </div>
   )
 }
 
-function NumField({label,value,onChange,step=1}:{label:string,value:number,onChange:(v:number)=>void,step?:number}){
+function DarkNumField({label,value,onChange,step=1}:{label:string,value:number,onChange:(v:number)=>void,step?:number}){
   return(
     <div>
-      <div style={{fontSize:9,fontWeight:600,color:'#94a3b8',textTransform:'uppercase',letterSpacing:'.05em',marginBottom:3,fontFamily:'Jost,sans-serif'}}>{label}</div>
+      <div style={{fontSize:9,fontWeight:600,color:'rgba(255,255,255,.3)',textTransform:'uppercase',letterSpacing:'.05em',marginBottom:4,fontFamily:'Jost,sans-serif'}}>{label}</div>
       <input type="number" value={value} step={step} onChange={e=>onChange(parseFloat(e.target.value)||0)}
-        style={{width:'100%',padding:'5px 8px',border:'1.5px solid #e5e7eb',borderRadius:7,fontSize:12,fontFamily:'JetBrains Mono,monospace',color:'#374151',background:'#f9fafb',outline:'none'}}
-        onFocus={e=>e.target.style.borderColor='#4f46e5'}
-        onBlur={e=>e.target.style.borderColor='#e5e7eb'}/>
+        style={{width:'100%',padding:'6px 9px',border:'1px solid rgba(255,255,255,.08)',borderRadius:7,fontSize:12,fontFamily:'JetBrains Mono,monospace',color:'rgba(255,255,255,.8)',background:'rgba(255,255,255,.04)',outline:'none',transition:'border-color .15s'}}
+        onFocus={e=>e.target.style.borderColor='rgba(79,70,229,.6)'}
+        onBlur={e=>e.target.style.borderColor='rgba(255,255,255,.08)'}/>
     </div>
   )
 }
 
-function SliderField({label,value,min,max,onChange}:{label:string,value:number,min:number,max:number,onChange:(v:number)=>void}){
+function DarkSliderField({label,value,min,max,onChange}:{label:string,value:number,min:number,max:number,onChange:(v:number)=>void}){
   return(
     <div>
-      <div style={{display:'flex',justifyContent:'space-between',marginBottom:3}}>
-        <span style={{fontSize:9,fontWeight:600,color:'#94a3b8',textTransform:'uppercase',letterSpacing:'.05em',fontFamily:'Jost,sans-serif'}}>{label}</span>
-        <span style={{fontSize:10,color:'#374151',fontFamily:'JetBrains Mono,monospace'}}>{value}</span>
+      <div style={{display:'flex',justifyContent:'space-between',marginBottom:4}}>
+        <span style={{fontSize:9,fontWeight:600,color:'rgba(255,255,255,.3)',textTransform:'uppercase',letterSpacing:'.05em',fontFamily:'Jost,sans-serif'}}>{label}</span>
+        <span style={{fontSize:10,color:'rgba(255,255,255,.5)',fontFamily:'JetBrains Mono,monospace'}}>{value}</span>
       </div>
       <input type="range" min={min} max={max} value={value} onChange={e=>onChange(parseFloat(e.target.value))}
-        style={{width:'100%',accentColor:'#4f46e5'}}/>
+        style={{width:'100%',accentColor:'#4f46e5',height:4,cursor:'pointer'}}/>
     </div>
   )
 }
 
-const propLabel:React.CSSProperties={fontSize:9,fontWeight:600,color:'#94a3b8',textTransform:'uppercase',letterSpacing:'.05em',fontFamily:'Jost,sans-serif',flexShrink:0,minWidth:36}
-function propBtn(active:boolean):React.CSSProperties{
-  return{padding:'4px 10px',fontSize:11,fontWeight:600,fontFamily:'Jost,sans-serif',border:`1.5px solid ${active?'#4f46e5':'#e5e7eb'}`,borderRadius:6,background:active?'#eef2ff':'white',color:active?'#4f46e5':'#64748b',cursor:'pointer'}
+const darkPropLabel:React.CSSProperties={fontSize:9,fontWeight:600,color:'rgba(255,255,255,.3)',textTransform:'uppercase',letterSpacing:'.05em',fontFamily:'Jost,sans-serif',flexShrink:0,minWidth:38}
+function darkPropBtn(active:boolean):React.CSSProperties{
+  return{padding:'5px 11px',fontSize:11,fontWeight:600,fontFamily:'Jost,sans-serif',border:`1px solid ${active?'rgba(79,70,229,.6)':'rgba(255,255,255,.09)'}`,borderRadius:7,background:active?'rgba(79,70,229,.2)':'rgba(255,255,255,.04)',color:active?'#818cf8':'rgba(255,255,255,.5)',cursor:'pointer',transition:'all .12s'}
 }
 
 // ─── Layers Panel ─────────────────────────────────────────────────────────────
 function LayersPanel({fabric,onSelect}:{fabric:any,onSelect:(obj:any)=>void}){
   const [objs,setObjs]=useState<any[]>([])
-  const [activeId,setActiveId]=useState<string|null>(null)
 
   useEffect(()=>{
     if(!fabric)return
     function refresh(){
       const all=fabric.getObjects().slice().reverse()
       setObjs(all)
-      const active=fabric.getActiveObject()
-      setActiveId(active?active.__uid:null)
     }
     fabric.on('object:added',refresh)
     fabric.on('object:removed',refresh)
@@ -595,7 +573,6 @@ function LayersPanel({fabric,onSelect}:{fabric:any,onSelect:(obj:any)=>void}){
   function selectObj(obj:any){
     fabric.setActiveObject(obj)
     fabric.renderAll()
-    setActiveId(obj.__uid)
     onSelect(obj)
   }
 
@@ -629,23 +606,23 @@ function LayersPanel({fabric,onSelect}:{fabric:any,onSelect:(obj:any)=>void}){
   }
 
   if(objs.length===0) return(
-    <div style={{padding:20,color:'#94a3b8',fontSize:12,textAlign:'center',fontFamily:'Jost,sans-serif'}}>No elements yet</div>
+    <div style={{padding:'32px 16px',color:'rgba(255,255,255,.25)',fontSize:12,textAlign:'center',fontFamily:'Jost,sans-serif'}}>No elements yet</div>
   )
 
   return(
-    <div style={{padding:'8px 10px',display:'flex',flexDirection:'column',gap:2}}>
+    <div style={{padding:'8px 10px',display:'flex',flexDirection:'column',gap:1}}>
       {objs.map((obj,i)=>{
         const isActive=fabric.getActiveObject()===obj
         return(
           <div key={i} onClick={()=>selectObj(obj)}
-            style={{display:'flex',alignItems:'center',gap:7,padding:'6px 9px',borderRadius:9,cursor:'pointer',background:isActive?'#eef2ff':'transparent',border:`1.5px solid ${isActive?'#4f46e5':'transparent'}`,transition:'all .1s'}}>
-            <span style={{fontSize:13,width:18,textAlign:'center',flexShrink:0}}>{getIcon(obj)}</span>
-            <span style={{flex:1,fontSize:12,fontFamily:'Jost,sans-serif',color:'#374151',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{getLabel(obj)}</span>
-            <div style={{display:'flex',gap:2,opacity:.6}} onClick={e=>e.stopPropagation()}>
-              <button onClick={e=>toggleVisible(obj,e)} title="Toggle visibility" style={{width:22,height:22,border:'none',background:'none',cursor:'pointer',fontSize:11,color:obj.visible===false?'#94a3b8':'#374151',borderRadius:4}}>{obj.visible===false?'🙈':'👁'}</button>
-              <button onClick={e=>toggleLock(obj,e)} title="Toggle lock" style={{width:22,height:22,border:'none',background:'none',cursor:'pointer',fontSize:11,color:obj.lockMovementX?'#f59e0b':'#374151',borderRadius:4}}>{obj.lockMovementX?'🔒':'🔓'}</button>
-              <button onClick={e=>moveUp(obj,e)} title="Move up" style={{width:22,height:22,border:'none',background:'none',cursor:'pointer',fontSize:11,borderRadius:4}}>↑</button>
-              <button onClick={e=>moveDown(obj,e)} title="Move down" style={{width:22,height:22,border:'none',background:'none',cursor:'pointer',fontSize:11,borderRadius:4}}>↓</button>
+            style={{display:'flex',alignItems:'center',gap:7,padding:'7px 10px',borderRadius:9,cursor:'pointer',background:isActive?'rgba(79,70,229,.18)':'transparent',border:`1px solid ${isActive?'rgba(79,70,229,.4)':'transparent'}`,transition:'all .1s'}}>
+            <span style={{fontSize:12,width:18,textAlign:'center',flexShrink:0,color:'rgba(255,255,255,.5)'}}>{getIcon(obj)}</span>
+            <span style={{flex:1,fontSize:12,fontFamily:'Jost,sans-serif',color:'rgba(255,255,255,.7)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{getLabel(obj)}</span>
+            <div style={{display:'flex',gap:1,opacity:.5}} onClick={e=>e.stopPropagation()}>
+              <button onClick={e=>toggleVisible(obj,e)} style={{width:22,height:22,border:'none',background:'none',cursor:'pointer',fontSize:11,color:obj.visible===false?'rgba(255,255,255,.3)':'rgba(255,255,255,.6)',borderRadius:4}}>{obj.visible===false?'🙈':'👁'}</button>
+              <button onClick={e=>toggleLock(obj,e)} style={{width:22,height:22,border:'none',background:'none',cursor:'pointer',fontSize:11,color:obj.lockMovementX?'#f59e0b':'rgba(255,255,255,.5)',borderRadius:4}}>{obj.lockMovementX?'🔒':'🔓'}</button>
+              <button onClick={e=>moveUp(obj,e)} style={{width:22,height:22,border:'none',background:'none',cursor:'pointer',fontSize:12,borderRadius:4,color:'rgba(255,255,255,.5)'}}>↑</button>
+              <button onClick={e=>moveDown(obj,e)} style={{width:22,height:22,border:'none',background:'none',cursor:'pointer',fontSize:12,borderRadius:4,color:'rgba(255,255,255,.5)'}}>↓</button>
             </div>
           </div>
         )
@@ -672,11 +649,10 @@ export default function DocumentEditorPage({ params }: { params: { id: string } 
 
   const canvasEl = useRef<HTMLCanvasElement>(null)
   const fabricRef = useRef<any>(null)
-  const fabricLib = useRef<any>(null)  // stores the fabric library itself for use in panels
+  const fabricLib = useRef<any>(null)
 
   const [pages, setPages] = useState<any[]>([])
   const [currentPage, setCurrentPage] = useState(0)
-  const [activeTool, setActiveTool] = useState('select')
   const [activePanel, setActivePanel] = useState<string|null>('layouts')
   const [zoom, setZoom] = useState(0.62)
   const [selectedObj, setSelectedObj] = useState<any>(null)
@@ -694,7 +670,6 @@ export default function DocumentEditorPage({ params }: { params: { id: string } 
   const [stockImages, setStockImages] = useState<string[]>([])
   const [thumbnails, setThumbnails] = useState<Record<number,string>>({})
 
-  // Undo/redo history
   const historyStack = useRef<any[]>([])
   const historyIndex = useRef(-1)
   const isUndoRedo = useRef(false)
@@ -712,9 +687,8 @@ export default function DocumentEditorPage({ params }: { params: { id: string } 
   useEffect(()=>{cWRef.current=canvasW},[canvasW])
   useEffect(()=>{cHRef.current=canvasH},[canvasH])
 
-  // Bootstrap
   useEffect(()=>{
-    const fontsHref='https://fonts.googleapis.com/css2?family=Jost:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap'
+    const fontsHref='https://fonts.googleapis.com/css2?family=Jost:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap'
     if(!document.querySelector(`link[href="${fontsHref}"]`)){
       const l=document.createElement('link');l.rel='stylesheet';l.href=fontsHref;document.head.appendChild(l)
     }
@@ -762,7 +736,6 @@ export default function DocumentEditorPage({ params }: { params: { id: string } 
     fabricRef.current=fc
     fabricReady.current=true
 
-    // ── Snap-to-object alignment guides ──
     let vLine:any=null,hLine:any=null
     const SNAP_THRESHOLD=8
     fc.on('object:moving',(e:any)=>{
@@ -775,19 +748,16 @@ export default function DocumentEditorPage({ params }: { params: { id: string } 
       for(const obj of objects){
         const oCx=obj.left+(obj.width*(obj.scaleX||1))/2
         const oCy=obj.top+(obj.height*(obj.scaleY||1))/2
-        // snap center X
         if(Math.abs(mCx-oCx)<SNAP_THRESHOLD){
           moving.set('left',oCx-(moving.width*moving.scaleX)/2)
           vLine=new fab.Line([oCx,0,oCx,cHRef.current],{stroke:'#4f46e5',strokeWidth:1,strokeDashArray:[4,4],selectable:false,evented:false,opacity:.7})
           fc.add(vLine)
         }
-        // snap center Y
         if(Math.abs(mCy-oCy)<SNAP_THRESHOLD){
           moving.set('top',oCy-(moving.height*moving.scaleY)/2)
           hLine=new fab.Line([0,oCy,cWRef.current,oCy],{stroke:'#4f46e5',strokeWidth:1,strokeDashArray:[4,4],selectable:false,evented:false,opacity:.7})
           fc.add(hLine)
         }
-        // snap canvas center X
         const canvasCx=cWRef.current/2
         if(Math.abs(mCx-canvasCx)<SNAP_THRESHOLD){
           moving.set('left',canvasCx-(moving.width*moving.scaleX)/2)
@@ -809,22 +779,15 @@ export default function DocumentEditorPage({ params }: { params: { id: string } 
       fc.renderAll()
     })
 
-    // Selection sync
     fc.on('selection:created',(e:any)=>syncSel(e.selected?.[0]))
     fc.on('selection:updated',(e:any)=>syncSel(e.selected?.[0]))
     fc.on('selection:cleared',()=>setSelectedObj(null))
-
-    // History tracking
     fc.on('object:modified',()=>{if(!isUndoRedo.current)pushHistory();scheduleAutoSave()})
     fc.on('object:added',()=>{if(!isUndoRedo.current)pushHistory()})
     fc.on('object:removed',()=>{if(!isUndoRedo.current)pushHistory()})
-
-    // Assign UIDs to objects for layer tracking
     fc.on('object:added',(e:any)=>{
       if(!e.target.__uid) e.target.__uid=Math.random().toString(36).slice(2)
     })
-
-    // Click on empty canvas to draw shapes
     fc.on('mouse:down',(opt:any)=>{
       if(activeTool.current==='text'){
         const p=fc.getPointer(opt.e)
@@ -840,7 +803,6 @@ export default function DocumentEditorPage({ params }: { params: { id: string } 
     }
   }
 
-  // We need activeTool as a ref for use inside fabric event handlers
   const activeTool = useRef('select')
   const [activeToolState, setActiveToolState] = useState('select')
   function setActiveTool(t:string){activeTool.current=t;setActiveToolState(t)}
@@ -887,7 +849,6 @@ export default function DocumentEditorPage({ params }: { params: { id: string } 
     if(obj.fontSize)setFontSize(obj.fontSize)
     if(obj.fontFamily)setFontFamily(obj.fontFamily)
     if(typeof obj.fill==='string')setFontColor(obj.fill)
-    // Switch to properties panel
     setActivePanel('props')
   }
 
@@ -934,14 +895,11 @@ export default function DocumentEditorPage({ params }: { params: { id: string } 
     setShowShare(true)
   }
 
-  // ── Unsplash search ──
   function searchStock(q:string){
-    const queries=['architecture','nature','technology','business','minimal','abstract','office','city','people','creative']
     const imgs=UNSPLASH_CURATED.map(id=>`https://images.unsplash.com/${id}?w=400&q=70&auto=format`)
     setStockImages(imgs)
   }
 
-  // ── Page operations ──
   function switchPage(idx:number){
     if(!fabricRef.current)return
     const upd=[...pagesRef.current]
@@ -997,7 +955,6 @@ export default function DocumentEditorPage({ params }: { params: { id: string } 
     waitForFabricThenLoad(blank,size.w,size.h)
   }
 
-  // ── Canvas tools ──
   function addText(opts:any={}){
     const fab=fabricLib.current||((window as any).fabric);const fc=fabricRef.current;if(!fc||!fab)return
     const tb=new fab.Textbox(opts.text||'Click to edit',{
@@ -1017,7 +974,6 @@ export default function DocumentEditorPage({ params }: { params: { id: string } 
     else if(type==='circle')    shape=new fab.Circle({left:100,top:100,radius:70,fill})
     else if(type==='triangle')  shape=new fab.Triangle({left:100,top:100,width:140,height:120,fill})
     else if(type==='star'){
-      // Create star polygon
       const points=[];const outerR=70;const innerR=30;const cx=170;const cy=170
       for(let i=0;i<10;i++){
         const r=i%2===0?outerR:innerR;const angle=(i*Math.PI/5)-Math.PI/2
@@ -1149,7 +1105,6 @@ export default function DocumentEditorPage({ params }: { params: { id: string } 
     a.download=`${title||'page'}.png`;a.click()
   }
 
-  // Keyboard shortcuts
   useEffect(()=>{
     const h=(e:KeyboardEvent)=>{
       const tag=(e.target as HTMLElement).tagName
@@ -1162,7 +1117,6 @@ export default function DocumentEditorPage({ params }: { params: { id: string } 
       if((e.metaKey||e.ctrlKey)&&e.shiftKey&&e.key==='G'){e.preventDefault();ungroupSelected()}
       if((e.key==='Delete'||e.key==='Backspace')&&fabricRef.current?.getActiveObject())deleteSelected()
       if(e.key==='Escape'){setActivePanel(null);fabricRef.current?.discardActiveObject();fabricRef.current?.renderAll()}
-      // Arrow keys nudge
       if(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key)){
         const obj=fabricRef.current?.getActiveObject();if(!obj)return
         const delta=e.shiftKey?10:1
@@ -1183,104 +1137,188 @@ export default function DocumentEditorPage({ params }: { params: { id: string } 
 
   // ─── RENDER ────────────────────────────────────────────────────────────────
   return (
-    <div style={{display:'flex',flexDirection:'column',height:'100%',background:'#e8e8ea',fontFamily:"'Jost',system-ui,sans-serif",color:'#0f172a'}}>
+    <div style={{display:'flex',flexDirection:'column',height:'100vh',background:'#0c0d10',fontFamily:"'Jost',system-ui,sans-serif",color:'#fff',overflow:'hidden'}}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Jost:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap');
-        *{box-sizing:border-box;}
-        ::-webkit-scrollbar{width:4px;height:4px}
+        @import url('https://fonts.googleapis.com/css2?family=Jost:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap');
+        *{box-sizing:border-box;margin:0;padding:0}
+        ::-webkit-scrollbar{width:3px;height:3px}
         ::-webkit-scrollbar-track{background:transparent}
-        ::-webkit-scrollbar-thumb{background:#d1d5db;border-radius:99px}
-        ::-webkit-scrollbar-thumb:hover{background:#9ca3af}
+        ::-webkit-scrollbar-thumb{background:rgba(255,255,255,.12);border-radius:99px}
+        ::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,.25)}
         input[type="color"]{-webkit-appearance:none;border:none;cursor:pointer;padding:0;border-radius:6px;overflow:hidden}
         input[type="color"]::-webkit-color-swatch-wrapper{padding:0}
         input[type="color"]::-webkit-color-swatch{border:none}
-        .tbtn{width:34px;height:32px;border:none;cursor:pointer;border-radius:7px;background:transparent;color:#6b7280;display:flex;align-items:center;justify-content:center;transition:all .1s;flex-shrink:0}
-        .tbtn:hover{background:#f3f4f6;color:#111827}
-        .tbtn.on{background:#eef2ff;color:#4f46e5}
-        .rail{width:54px;height:50px;border:none;background:transparent;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:#6b7280;transition:all .12s;border-radius:10px;font-family:'Jost',sans-serif}
-        .rail:hover{background:#f3f4f6;color:#111827}
-        .rail.on{background:#eef2ff;color:#4f46e5}
-        .rail span{font-size:9px;font-weight:700;letter-spacing:.03em;text-transform:uppercase}
-        .pthumb{cursor:pointer;border-radius:9px;border:2px solid #e5e7eb;overflow:hidden;transition:all .14s;background:white;position:relative}
-        .pthumb:hover{border-color:#9ca3af}
-        .pthumb.on{border-color:#4f46e5;box-shadow:0 0 0 3px rgba(79,70,229,.15)}
+        input[type="range"]{cursor:pointer}
+        .tbtn{
+          width:34px;height:32px;border:none;cursor:pointer;border-radius:7px;
+          background:transparent;color:rgba(255,255,255,.45);
+          display:flex;align-items:center;justify-content:center;
+          transition:all .14s;flex-shrink:0;
+        }
+        .tbtn:hover{background:rgba(255,255,255,.08);color:rgba(255,255,255,.9)}
+        .tbtn.on{background:rgba(79,70,229,.25);color:#818cf8;border:1px solid rgba(79,70,229,.4)}
+        .rail{
+          width:52px;height:52px;border:none;background:transparent;cursor:pointer;
+          display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
+          color:rgba(255,255,255,.35);transition:all .15s;border-radius:10px;
+          font-family:'Jost',sans-serif;position:relative;
+        }
+        .rail:hover{background:rgba(255,255,255,.06);color:rgba(255,255,255,.8)}
+        .rail.on{background:rgba(79,70,229,.2);color:#818cf8}
+        .rail.on::after{content:'';position:absolute;left:0;top:50%;transform:translateY(-50%);width:2px;height:28px;background:#4f46e5;border-radius:0 2px 2px 0}
+        .rail span{font-size:8px;font-weight:700;letter-spacing:.04em;text-transform:uppercase}
+        .pthumb{cursor:pointer;border-radius:8px;border:1.5px solid rgba(255,255,255,.08);overflow:hidden;transition:all .15s;background:rgba(255,255,255,.04);position:relative}
+        .pthumb:hover{border-color:rgba(255,255,255,.22)}
+        .pthumb.on{border-color:#4f46e5;box-shadow:0 0 0 3px rgba(79,70,229,.2)}
         .card-hover{transition:all .15s;cursor:pointer}
-        .card-hover:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(0,0,0,.1);border-color:#4f46e5!important}
-        .sp-inp{width:100%;background:#f9fafb;border:1.5px solid #e5e7eb;color:#0f172a;border-radius:8px;padding:6px 10px;font:400 12px 'Jost',sans-serif;outline:none}
-        .sp-inp:focus{border-color:#4f46e5;background:white}
-        .font-row{padding:7px 10px;cursor:pointer;font-size:13px;border-radius:7px;transition:background .1s;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-        .font-row:hover{background:#f3f4f6}
-        .font-row.on{background:#eef2ff;color:#4f46e5;font-weight:700}
-        .divider{width:1px;height:22px;background:#e5e7eb;margin:0 3px;flex-shrink:0}
-        input[type="range"]{cursor:pointer;height:4px;border-radius:2px}
-        .shape-btn{width:56px;height:56px;border:1.5px solid #e5e7eb;border-radius:10px;background:white;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-size:9px;font-weight:700;color:#6b7280;font-family:'Jost',sans-serif;transition:all .1s}
-        .shape-btn:hover{border-color:#4f46e5;color:#4f46e5;background:#eef2ff}
-        .panel-hdr{font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px;padding:0 2px}
+        .card-hover:hover{border-color:rgba(79,70,229,.5)!important;background:rgba(79,70,229,.06)!important;transform:translateY(-1px)}
+        .sp-inp{
+          width:100%;background:rgba(255,255,255,.05);
+          border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.85);
+          border-radius:8px;padding:7px 11px;font:400 12px 'Jost',sans-serif;outline:none;transition:border-color .15s;
+        }
+        .sp-inp::placeholder{color:rgba(255,255,255,.25)}
+        .sp-inp:focus{border-color:rgba(79,70,229,.6);background:rgba(79,70,229,.06)}
+        .font-row{padding:7px 10px;cursor:pointer;font-size:13px;border-radius:7px;transition:background .1s;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:rgba(255,255,255,.7)}
+        .font-row:hover{background:rgba(255,255,255,.07)}
+        .font-row.on{background:rgba(79,70,229,.2);color:#818cf8;font-weight:700}
+        .divider{width:1px;height:20px;background:rgba(255,255,255,.08);margin:0 3px;flex-shrink:0}
+        .shape-btn{
+          height:60px;border:1px solid rgba(255,255,255,.08);border-radius:10px;
+          background:rgba(255,255,255,.03);cursor:pointer;display:flex;flex-direction:column;
+          align-items:center;justify-content:center;gap:5px;font-size:9px;font-weight:700;
+          color:rgba(255,255,255,.4);font-family:'Jost',sans-serif;transition:all .14s;
+        }
+        .shape-btn:hover{border-color:rgba(79,70,229,.5);color:#818cf8;background:rgba(79,70,229,.1)}
+        .panel-hdr{font-size:9px;font-weight:800;color:rgba(255,255,255,.25);text-transform:uppercase;letter-spacing:.1em;margin-bottom:10px;padding:0 2px}
+        .canvas-dot-bg{background-color:#141519;background-image:radial-gradient(rgba(255,255,255,.07) 1px, transparent 1px);background-size:24px 24px}
+        .page-actions{display:flex;gap:2px;opacity:0;transition:opacity .15s}
+        .pthumb:hover .page-actions{opacity:1}
+        .tbar-btn{
+          padding:5px 12px;height:30px;border-radius:7px;font-size:12px;font-weight:600;
+          border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.05);
+          color:rgba(255,255,255,.65);cursor:pointer;font-family:'Jost',sans-serif;
+          transition:all .14s;display:flex;align-items:center;gap:5px;white-space:nowrap;
+        }
+        .tbar-btn:hover{background:rgba(255,255,255,.1);color:rgba(255,255,255,.95);border-color:rgba(255,255,255,.2)}
+        .pri-btn{
+          padding:6px 16px;height:32px;border-radius:8px;font-size:12px;font-weight:700;
+          border:none;background:linear-gradient(135deg,#4f46e5,#7c3aed);color:white;
+          cursor:pointer;font-family:'Jost',sans-serif;transition:all .15s;
+          box-shadow:0 0 20px rgba(79,70,229,.35);display:flex;align-items:center;gap:6px;
+        }
+        .pri-btn:hover{box-shadow:0 0 28px rgba(79,70,229,.55);transform:translateY(-1px)}
+        .sec-btn{
+          padding:6px 14px;height:32px;border-radius:8px;font-size:12px;font-weight:600;
+          border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);
+          color:rgba(255,255,255,.8);cursor:pointer;font-family:'Jost',sans-serif;transition:all .14s;
+        }
+        .sec-btn:hover{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.22)}
       `}</style>
 
-      {/* ── TOPBAR ────────────────────────────────────────────────────────────── */}
-      <div style={{height:52,background:'white',borderBottom:'1px solid #e5e7eb',display:'flex',alignItems:'center',padding:'0 14px',gap:8,flexShrink:0,boxShadow:'0 1px 3px rgba(0,0,0,.05)',zIndex:20}}>
-        <button onClick={()=>router.push('/dashboard')} style={{background:'none',border:'none',cursor:'pointer',color:'#6b7280',display:'flex',alignItems:'center',gap:5,fontSize:13,fontFamily:'Jost,sans-serif',fontWeight:500,padding:'5px 8px',borderRadius:8}}>
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M9 2L4 7l5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>Docs
+      {/* ══ TOPBAR ══════════════════════════════════════════════════════════════ */}
+      <div style={{
+        height:52,
+        background:'rgba(13,14,18,0.95)',
+        backdropFilter:'blur(20px)',
+        borderBottom:'1px solid rgba(255,255,255,.07)',
+        display:'flex',alignItems:'center',
+        padding:'0 16px',gap:8,flexShrink:0,zIndex:30,
+        boxShadow:'0 1px 0 rgba(255,255,255,.04)',
+      }}>
+        {/* Back */}
+        <button onClick={()=>router.push('/dashboard')} style={{background:'none',border:'none',cursor:'pointer',color:'rgba(255,255,255,.4)',display:'flex',alignItems:'center',gap:5,fontSize:12,fontFamily:'Jost,sans-serif',fontWeight:500,padding:'5px 8px',borderRadius:7,transition:'all .14s',flexShrink:0}}
+          onMouseOver={e=>(e.currentTarget.style.color='rgba(255,255,255,.8)')}
+          onMouseOut={e=>(e.currentTarget.style.color='rgba(255,255,255,.4)')}>
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M9 2L4 7l5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          Docs
         </button>
-        <svg width="5" height="10" viewBox="0 0 5 10" fill="none"><path d="M1 1l3 4-3 4" stroke="#d1d5db" strokeWidth="1.3" strokeLinecap="round"/></svg>
+        <svg width="5" height="10" viewBox="0 0 5 10" fill="none"><path d="M1 1l3 4-3 4" stroke="rgba(255,255,255,0.15)" strokeWidth="1.3" strokeLinecap="round"/></svg>
+
+        {/* Title */}
         <input value={title} onChange={e=>setTitle(e.target.value)} onBlur={saveTitle} placeholder="Untitled"
-          style={{border:'none',outline:'none',fontSize:14,fontWeight:600,color:'#0f172a',background:'transparent',fontFamily:'Jost,sans-serif',flex:1,maxWidth:280,minWidth:80}}/>
+          style={{border:'none',outline:'none',fontSize:14,fontWeight:600,color:'rgba(255,255,255,.85)',background:'transparent',fontFamily:'Jost,sans-serif',flex:1,maxWidth:240,minWidth:60,letterSpacing:'-.01em'}}/>
 
         {/* Undo/Redo */}
-        <div style={{display:'flex',gap:2,marginLeft:4}}>
-          <button onClick={undo} title="Undo (⌘Z)" className="tbtn"><svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M3 7.5A4.5 4.5 0 107.5 3H4.5M4.5 3L2 5.5l2.5 2.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg></button>
-          <button onClick={redo} title="Redo (⌘⇧Z)" className="tbtn"><svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M12 7.5A4.5 4.5 0 107.5 3H10.5M10.5 3L13 5.5l-2.5 2.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg></button>
+        <div style={{display:'flex',gap:1}}>
+          <button onClick={undo} title="Undo (⌘Z)" className="tbtn">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2.5 7A4.5 4.5 0 107 2.5H4M4 2.5L1.5 5 4 7.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          </button>
+          <button onClick={redo} title="Redo (⌘⇧Z)" className="tbtn">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M11.5 7A4.5 4.5 0 107 2.5H10M10 2.5L12.5 5 10 7.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          </button>
         </div>
 
         <div className="divider"/>
-        <div style={{display:'flex',alignItems:'center',gap:7,marginLeft:'auto'}}>
-          <span style={{fontSize:11,color:saving?'#4f46e5':'#94a3b8',fontFamily:'JetBrains Mono,monospace',minWidth:80}}>
-            {saving?'● Saving…':lastSaved?`✓ ${lastSaved.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}':''}</span>
-          <span style={{padding:'4px 10px',borderRadius:20,fontSize:10,fontWeight:700,letterSpacing:'.05em',background:isActive?'#dcfce7':'#f1f5f9',color:isActive?'#15803d':'#64748b'}}>{isActive?'LIVE':'DRAFT'}</span>
-          {[
-            {label:'Templates',fn:()=>setShowTplModal(true)},
-            {label:'AI Draft',fn:()=>setShowDrafter(true)},
-            {label:'Present',fn:()=>router.push(`/documents/${params.id}/present`)},
-          ].map(b=>(
-            <button key={b.label} onClick={b.fn} style={{padding:'6px 12px',borderRadius:8,fontSize:12,fontWeight:600,border:'1.5px solid #e5e7eb',background:'white',cursor:'pointer',color:'#374151',fontFamily:'Jost,sans-serif'}}>
-              {b.label}
-            </button>
-          ))}
-          {/* Export dropdown */}
+
+        {/* Save status */}
+        <span style={{fontSize:10,color:saving?'#818cf8':'rgba(255,255,255,.25)',fontFamily:'JetBrains Mono,monospace',minWidth:72,letterSpacing:'.01em'}}>
+          {saving?'● saving…':lastSaved?`✓ saved`:''}
+        </span>
+
+        {/* Status badge */}
+        <span style={{padding:'3px 9px',borderRadius:20,fontSize:9,fontWeight:800,letterSpacing:'.08em',background:isActive?'rgba(16,185,129,.12)':'rgba(255,255,255,.06)',color:isActive?'#34d399':'rgba(255,255,255,.3)',border:`1px solid ${isActive?'rgba(16,185,129,.25)':'rgba(255,255,255,.07)'}`,flexShrink:0}}>
+          {isActive?'LIVE':'DRAFT'}
+        </span>
+
+        <div style={{display:'flex',alignItems:'center',gap:5,marginLeft:4}}>
+          <button onClick={()=>setShowTplModal(true)} className="tbar-btn">Templates</button>
+          <button onClick={()=>setShowDrafter(true)} className="tbar-btn">
+            <svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M5.5 1L6.8 4.2H10L7.4 6.1 8.3 9.3 5.5 7.4 2.7 9.3 3.6 6.1 1 4.2H4.2L5.5 1z" stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round" fill="rgba(251,191,36,.4)"/></svg>
+            AI Draft
+          </button>
+          <button onClick={()=>router.push(`/documents/${params.id}/present`)} className="tbar-btn">Present</button>
+
+          {/* Export */}
           <div style={{position:'relative'}}>
-            <button onClick={()=>setActivePanel(activePanel==='export'?null:'export')}
-              style={{padding:'6px 12px',borderRadius:8,fontSize:12,fontWeight:600,border:'1.5px solid #e5e7eb',background:'white',cursor:'pointer',color:'#374151',fontFamily:'Jost,sans-serif',display:'flex',alignItems:'center',gap:5}}>
-              Export <svg width="10" height="6" viewBox="0 0 10 6" fill="none"><path d="M1 1l4 4 4-4" stroke="#94a3b8" strokeWidth="1.5" strokeLinecap="round"/></svg>
+            <button onClick={()=>setActivePanel(activePanel==='export'?null:'export')} className="tbar-btn">
+              Export
+              <svg width="9" height="5" viewBox="0 0 9 5" fill="none"><path d="M1 1l3.5 3L8 1" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>
             </button>
             {activePanel==='export'&&(
-              <div style={{position:'absolute',top:'110%',right:0,background:'white',border:'1px solid #e5e7eb',borderRadius:12,boxShadow:'0 8px 32px rgba(0,0,0,.12)',zIndex:300,minWidth:160,padding:8}}>
-                {[{label:'Export as PDF',fn:exportPDF},{label:'Export as PNG',fn:exportPNG}].map(b=>(
+              <div style={{position:'absolute',top:'110%',right:0,background:'#1a1d26',border:'1px solid rgba(255,255,255,.1)',borderRadius:12,boxShadow:'0 12px 40px rgba(0,0,0,.5)',zIndex:300,minWidth:170,padding:6,overflow:'hidden'}}>
+                {[{label:'Export as PDF',fn:exportPDF,icon:'📄'},{label:'Export as PNG',fn:exportPNG,icon:'🖼'}].map(b=>(
                   <button key={b.label} onClick={()=>{b.fn();setActivePanel(null)}}
-                    style={{display:'block',width:'100%',padding:'9px 14px',border:'none',background:'none',cursor:'pointer',fontSize:13,fontFamily:'Jost,sans-serif',fontWeight:500,color:'#374151',borderRadius:8,textAlign:'left'}}
-                    onMouseOver={e=>{(e.target as HTMLElement).style.background='#f3f4f6'}}
-                    onMouseOut={e=>{(e.target as HTMLElement).style.background='none'}}>
-                    {b.label}
+                    style={{display:'flex',width:'100%',padding:'9px 14px',border:'none',background:'none',cursor:'pointer',fontSize:12,fontFamily:'Jost,sans-serif',fontWeight:500,color:'rgba(255,255,255,.7)',borderRadius:8,textAlign:'left',gap:8,alignItems:'center',transition:'background .12s'}}
+                    onMouseOver={e=>{(e.target as HTMLElement).closest('button')!.style.background='rgba(255,255,255,.06)'}}
+                    onMouseOut={e=>{(e.target as HTMLElement).closest('button')!.style.background='none'}}>
+                    {b.icon} {b.label}
                   </button>
                 ))}
               </div>
             )}
           </div>
+
           {isActive
-            ?<button onClick={()=>setShowShare(true)} style={pBtn}>Share</button>
-            :<button onClick={publishDocument} style={pBtn}>Publish & Share</button>}
-          <button onClick={()=>setShowDeleteConfirm(true)} title="Delete document" style={{width:32,height:32,border:'none',borderRadius:8,background:'transparent',cursor:'pointer',color:'#94a3b8',display:'flex',alignItems:'center',justifyContent:'center'}}>
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 3.5h10M5 3.5V2h4v1.5M4.5 10.5v-5M9.5 10.5v-5M3 3.5l.9 8h6.2l.9-8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            ?<button onClick={()=>setShowShare(true)} className="pri-btn">
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><circle cx="9" cy="2" r="1.5" stroke="white" strokeWidth="1.2"/><circle cx="9" cy="10" r="1.5" stroke="white" strokeWidth="1.2"/><circle cx="3" cy="6" r="1.5" stroke="white" strokeWidth="1.2"/><path d="M7.5 2.8l-3 2.4M7.5 9.2l-3-2.4" stroke="white" strokeWidth="1.2"/></svg>
+              Share
+            </button>
+            :<button onClick={publishDocument} className="pri-btn">Publish & Share</button>}
+
+          <button onClick={()=>setShowDeleteConfirm(true)} style={{width:30,height:30,border:'none',borderRadius:7,background:'transparent',cursor:'pointer',color:'rgba(255,255,255,.2)',display:'flex',alignItems:'center',justifyContent:'center',transition:'all .15s',flexShrink:0}}
+            onMouseOver={e=>{e.currentTarget.style.color='#ef4444';e.currentTarget.style.background='rgba(239,68,68,.1)'}}
+            onMouseOut={e=>{e.currentTarget.style.color='rgba(255,255,255,.2)';e.currentTarget.style.background='transparent'}}>
+            <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M2 3.5h9M4.5 3.5V2h4v1.5M4 10.5V6M9 10.5V6M2.5 3.5l.8 7.5h5.4l.8-7.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg>
           </button>
         </div>
       </div>
 
-      {/* ── TOOLBAR ───────────────────────────────────────────────────────────── */}
-      <div style={{height:44,background:'white',borderBottom:'1px solid #e5e7eb',display:'flex',alignItems:'center',padding:'0 10px',gap:2,flexShrink:0,overflowX:'auto',zIndex:15}}>
+      {/* ══ TOOLBAR ═════════════════════════════════════════════════════════════ */}
+      <div style={{
+        height:46,
+        background:'rgba(17,18,23,.97)',
+        backdropFilter:'blur(20px)',
+        borderBottom:'1px solid rgba(255,255,255,.06)',
+        display:'flex',alignItems:'center',
+        padding:'0 12px',gap:2,flexShrink:0,
+        overflowX:'auto',zIndex:20,
+      }}>
+        {/* Tool select */}
         {([
-          {id:'select',tip:'Select (V)',  icon:<svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M3 2l9 5-4.5 1.4-2.2 4.6L3 2z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/></svg>},
-          {id:'text',  tip:'Text (T)',   icon:<svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M2 4h11M7.5 4v8M4.5 12h6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>},
-          {id:'draw',  tip:'Draw (P)',   icon:<svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M2.5 12.5l2-1L12 4 11 3 3.5 10.5l-1 2zm8-9l1 1" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>},
+          {id:'select',tip:'Select (V)',  icon:<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2.5 1.5l9 5-4.5 1.4-2.2 4.6-2.3-11z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/></svg>},
+          {id:'text',  tip:'Text (T)',   icon:<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 4h10M7 4v7M4.5 11h5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>},
+          {id:'draw',  tip:'Draw (P)',   icon:<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 12l2-1 7-7-1-1-7 7-1 2zm7-8l1 1" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg>},
         ]).map(tool=>(
           <button key={tool.id} title={tool.tip} className={`tbtn${activeToolState===tool.id?' on':''}`}
             onClick={()=>{
@@ -1297,46 +1335,50 @@ export default function DocumentEditorPage({ params }: { params: { id: string } 
           </button>
         ))}
         <div className="divider"/>
+
         {/* Shape quick-add */}
         {([
-          {id:'rect',  tip:'Rectangle', icon:<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="2" y="3" width="10" height="8" rx="1.5" stroke="currentColor" strokeWidth="1.3"/></svg>},
-          {id:'circle',tip:'Circle',    icon:<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="5" stroke="currentColor" strokeWidth="1.3"/></svg>},
-          {id:'triangle',tip:'Triangle',icon:<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 2l5.5 10H1.5L7 2z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/></svg>},
-          {id:'star',  tip:'Star',      icon:<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1.5l1.5 3.5H12l-2.8 2.1 1 3.4L7 8.8l-3.2 1.7 1-3.4L2 5h3.5L7 1.5z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/></svg>},
-          {id:'line',  tip:'Line',      icon:<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 12L12 2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>},
-          {id:'arrow', tip:'Arrow',     icon:<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 7h10M8 3l4 4-4 4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>},
+          {id:'rect',    tip:'Rectangle', icon:<svg width="13" height="13" viewBox="0 0 13 13" fill="none"><rect x="1.5" y="2.5" width="10" height="8" rx="1.5" stroke="currentColor" strokeWidth="1.2"/></svg>},
+          {id:'circle',  tip:'Circle',    icon:<svg width="13" height="13" viewBox="0 0 13 13" fill="none"><circle cx="6.5" cy="6.5" r="5" stroke="currentColor" strokeWidth="1.2"/></svg>},
+          {id:'triangle',tip:'Triangle',  icon:<svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M6.5 1.5l5.5 10H1L6.5 1.5z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/></svg>},
+          {id:'star',    tip:'Star',      icon:<svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M6.5 1l1.4 3.2H11L8.6 6l.9 3.1L6.5 7.5 3.5 9.1l.9-3.1L2 4.2h3.1L6.5 1z" stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round"/></svg>},
+          {id:'line',    tip:'Line',      icon:<svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M1.5 11.5L11.5 1.5" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"/></svg>},
+          {id:'arrow',   tip:'Arrow',     icon:<svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M2 6.5h9M7.5 3l4 3.5-4 3.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg>},
         ]).map(s=>(
           <button key={s.id} title={s.tip} className="tbtn" onClick={()=>addShape(s.id)}>{s.icon}</button>
         ))}
         <button title="Insert table" className="tbtn" onClick={()=>addTable()}>
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="1" y="1" width="12" height="12" rx="2" stroke="currentColor" strokeWidth="1.2"/><path d="M1 5h12M1 9h12M5 5v7M9 5v7" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round"/></svg>
+          <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><rect x="1" y="1" width="11" height="11" rx="1.5" stroke="currentColor" strokeWidth="1.1"/><path d="M1 5h11M1 9h11M5 5v6M9 5v6" stroke="currentColor" strokeWidth="1" strokeLinecap="round"/></svg>
         </button>
         <label title="Upload image" className="tbtn" style={{cursor:'pointer'}}>
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="1" y="3" width="12" height="8" rx="1.5" stroke="currentColor" strokeWidth="1.2"/><circle cx="4.5" cy="6" r="1" fill="currentColor"/><path d="M1 10.5l3-2.5 2.5 2.5 2-2L13 11" stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round"/></svg>
+          <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><rect x="1" y="3" width="11" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.1"/><circle cx="4" cy="5.5" r=".9" fill="currentColor"/><path d="M1 9.5l2.5-2.5L6 9.5l2-2L12 10" stroke="currentColor" strokeWidth="1" strokeLinejoin="round"/></svg>
           <input type="file" accept="image/*" style={{display:'none'}} onChange={e=>{const f=e.target.files?.[0];if(f)uploadImage(f)}}/>
         </label>
         <div className="divider"/>
+
         {/* Font picker */}
         <div style={{position:'relative'}}>
           <button onClick={()=>setShowFontPicker(!showFontPicker)}
-            style={{height:32,padding:'0 10px',border:'1.5px solid #e5e7eb',borderRadius:8,background:'white',cursor:'pointer',fontSize:12,fontFamily:`'${fontFamily}',sans-serif`,fontWeight:500,color:'#374151',display:'flex',alignItems:'center',gap:5,minWidth:130}}>
+            style={{height:30,padding:'0 10px',border:'1px solid rgba(255,255,255,.1)',borderRadius:7,background:'rgba(255,255,255,.05)',cursor:'pointer',fontSize:12,fontFamily:`'${fontFamily}',sans-serif`,fontWeight:500,color:'rgba(255,255,255,.75)',display:'flex',alignItems:'center',gap:6,minWidth:130,maxWidth:160,transition:'all .14s'}}
+            onMouseOver={e=>{e.currentTarget.style.background='rgba(255,255,255,.09)'}}
+            onMouseOut={e=>{e.currentTarget.style.background='rgba(255,255,255,.05)'}}>
             <span style={{flex:1,textAlign:'left',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{fontFamily}</span>
-            <svg width="10" height="6" viewBox="0 0 10 6" fill="none"><path d="M1 1l4 4 4-4" stroke="#94a3b8" strokeWidth="1.5" strokeLinecap="round"/></svg>
+            <svg width="9" height="5" viewBox="0 0 9 5" fill="none"><path d="M1 1l3.5 3L8 1" stroke="rgba(255,255,255,0.3)" strokeWidth="1.3" strokeLinecap="round"/></svg>
           </button>
           {showFontPicker&&(
-            <div style={{position:'absolute',top:'110%',left:0,background:'white',border:'1px solid #e5e7eb',borderRadius:12,boxShadow:'0 8px 32px rgba(0,0,0,.12)',zIndex:200,width:230}}>
-              <div style={{padding:'8px 8px 4px'}}>
+            <div style={{position:'absolute',top:'110%',left:0,background:'#1a1d26',border:'1px solid rgba(255,255,255,.1)',borderRadius:12,boxShadow:'0 16px 50px rgba(0,0,0,.6)',zIndex:200,width:240}}>
+              <div style={{padding:'10px 8px 5px'}}>
                 <input value={fontSearch} onChange={e=>setFontSearch(e.target.value)} placeholder="Search 60+ fonts…" className="sp-inp" autoFocus/>
               </div>
-              <div style={{maxHeight:240,overflow:'auto',padding:'4px 8px 6px'}}>
+              <div style={{maxHeight:260,overflow:'auto',padding:'4px 8px 6px'}}>
                 {filteredFonts.slice(0,60).map(f=>(
                   <div key={f} className={`font-row${fontFamily===f?' on':''}`} style={{fontFamily:`'${f}',sans-serif`}}
                     onClick={()=>applyFont(f)}>{f}</div>
                 ))}
               </div>
-              <div style={{padding:'8px',borderTop:'1px solid #f3f4f6'}}>
-                <label style={{display:'flex',alignItems:'center',gap:6,cursor:'pointer',fontSize:11,color:'#6b7280',fontFamily:'Jost,sans-serif'}}>
-                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 1v10M2 6h8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+              <div style={{padding:'8px',borderTop:'1px solid rgba(255,255,255,.06)'}}>
+                <label style={{display:'flex',alignItems:'center',gap:6,cursor:'pointer',fontSize:11,color:'rgba(255,255,255,.35)',fontFamily:'Jost,sans-serif'}}>
+                  <svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M5.5 1v9M1.5 5.5h8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
                   Upload custom font
                   <input type="file" accept=".ttf,.otf,.woff,.woff2" style={{display:'none'}} onChange={e=>{const f=e.target.files?.[0];if(f)uploadFont(f)}}/>
                 </label>
@@ -1344,17 +1386,20 @@ export default function DocumentEditorPage({ params }: { params: { id: string } 
             </div>
           )}
         </div>
+
+        {/* Font size */}
         <input type="number" value={fontSize} min={6} max={400}
           onChange={e=>{const v=parseInt(e.target.value);setFontSize(v);updateProp('fontSize',v)}}
-          style={{width:52,height:32,border:'1.5px solid #e5e7eb',borderRadius:8,padding:'0 8px',fontSize:12,fontFamily:'JetBrains Mono,monospace',color:'#374151',outline:'none',textAlign:'center'}}/>
-        {/* Bold/Italic/Underline */}
+          style={{width:52,height:30,border:'1px solid rgba(255,255,255,.1)',borderRadius:7,padding:'0 8px',fontSize:12,fontFamily:'JetBrains Mono,monospace',color:'rgba(255,255,255,.8)',background:'rgba(255,255,255,.05)',outline:'none',textAlign:'center'}}/>
+
+        {/* B/I/U */}
         {[
-          {tip:'Bold',   prop:'fontWeight', valOn:'bold',   valOff:'normal', label:'B', style:{fontWeight:700}},
-          {tip:'Italic', prop:'fontStyle',  valOn:'italic', valOff:'normal', label:'I', style:{fontStyle:'italic'}},
-          {tip:'Underline',prop:'underline',valOn:true,    valOff:false,    label:'U', style:{textDecoration:'underline'}},
+          {tip:'Bold',    prop:'fontWeight',valOn:'bold', valOff:'normal',label:'B',style:{fontWeight:800,fontFamily:'Georgia,serif'}},
+          {tip:'Italic',  prop:'fontStyle', valOn:'italic',valOff:'normal',label:'I',style:{fontStyle:'italic',fontFamily:'Georgia,serif'}},
+          {tip:'Underline',prop:'underline',valOn:true,  valOff:false,   label:'U',style:{textDecoration:'underline'}},
         ].map(f=>(
           <button key={f.tip} title={f.tip} className="tbtn"
-            style={{...f.style,fontFamily:'Georgia,serif',fontSize:14,fontWeight:f.tip==='Bold'?700:400}}
+            style={{...f.style,fontSize:13}}
             onClick={()=>{
               const obj=fabricRef.current?.getActiveObject();if(!obj)return
               const cur=obj[f.prop]
@@ -1363,52 +1408,65 @@ export default function DocumentEditorPage({ params }: { params: { id: string } 
             }}>{f.label}</button>
         ))}
         <div className="divider"/>
-        {/* Colors */}
-        <div style={{display:'flex',alignItems:'center',gap:10}}>
+
+        {/* Color swatches */}
+        <div style={{display:'flex',alignItems:'center',gap:8}}>
           {([
             {l:'A',  v:fontColor, onChange:(v:string)=>{setFontColor(v);updateProp('fill',v)}, title:'Text color'},
             {l:'Fill',v:fillColor,onChange:(v:string)=>{setFillColor(v);updateProp('fill',v)}, title:'Fill color'},
             {l:'BG', v:bgColor,   onChange:(v:string)=>{setBgColor(v);if(fabricRef.current){fabricRef.current.backgroundColor=v;fabricRef.current.renderAll()}}, title:'Background color'},
           ]).map(c=>(
-            <div key={c.l} style={{textAlign:'center'}} title={c.title}>
-              <div style={{position:'relative',width:28,height:28}}>
+            <div key={c.l} style={{display:'flex',flexDirection:'column',alignItems:'center',gap:2}} title={c.title}>
+              <div style={{position:'relative',width:26,height:26,borderRadius:6,overflow:'hidden',border:'1.5px solid rgba(255,255,255,.12)',boxShadow:`0 0 0 2px transparent`}}>
                 <input type="color" value={c.v} onChange={e=>c.onChange(e.target.value)}
-                  style={{width:28,height:28,borderRadius:7,border:'2px solid #e5e7eb',cursor:'pointer',display:'block'}}/>
+                  style={{width:36,height:36,transform:'translate(-5px,-5px)',cursor:'pointer'}}/>
               </div>
-              <div style={{fontSize:8,color:'#94a3b8',marginTop:1,fontFamily:'JetBrains Mono,monospace',fontWeight:600,letterSpacing:'.02em'}}>{c.l}</div>
+              <div style={{fontSize:7,color:'rgba(255,255,255,.25)',fontFamily:'JetBrains Mono,monospace',fontWeight:700,letterSpacing:'.02em'}}>{c.l}</div>
             </div>
           ))}
         </div>
         <div className="divider"/>
+
         {/* Edit actions */}
         {[
-          {tip:'Duplicate (⌘D)', fn:duplicateSelected, icon:<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="1" y="4" width="9" height="9" rx="1.5" stroke="currentColor" strokeWidth="1.3"/><path d="M4 4V2.5A1.5 1.5 0 015.5 1H11.5A1.5 1.5 0 0113 2.5V8.5A1.5 1.5 0 0111.5 10H10" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>},
-          {tip:'Delete (Del)', fn:deleteSelected, icon:<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 3.5h10M5 3.5V2h4v1.5M4.5 10.5v-5M9.5 10.5v-5M3 3.5l.9 8h6.2l.9-8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg>},
-          {tip:'Bring to Front', fn:()=>{const o=fabricRef.current?.getActiveObject();if(o){fabricRef.current.bringToFront(o);fabricRef.current.renderAll()}}, icon:<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 2v9M4 5l3-3 3 3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/><path d="M2 12h10" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>},
-          {tip:'Send to Back', fn:()=>{const o=fabricRef.current?.getActiveObject();if(o){fabricRef.current.sendToBack(o);fabricRef.current.renderAll()}}, icon:<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 12V3M4 9l3 3 3-3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/><path d="M2 2h10" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>},
-          {tip:'Group (⌘G)', fn:groupSelected, icon:<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="1" y="1" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1.2"/><rect x="8" y="1" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1.2"/><rect x="1" y="8" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1.2"/><rect x="8" y="8" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1.2"/></svg>},
+          {tip:'Duplicate (⌘D)', fn:duplicateSelected, icon:<svg width="13" height="13" viewBox="0 0 13 13" fill="none"><rect x="1" y="4" width="8" height="8" rx="1.5" stroke="currentColor" strokeWidth="1.2"/><path d="M4 4V2.5A1.5 1.5 0 015.5 1h5A1.5 1.5 0 0112 2.5V8a1.5 1.5 0 01-1.5 1.5H9" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/></svg>},
+          {tip:'Delete (Del)', fn:deleteSelected, icon:<svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M2 3.5h9M4.5 3.5V2h4v1.5M4 10.5V6M9 10.5V6M2.5 3.5l.8 7.5h5.4l.8-7.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>},
+          {tip:'Bring to Front', fn:()=>{const o=fabricRef.current?.getActiveObject();if(o){fabricRef.current.bringToFront(o);fabricRef.current.renderAll()}}, icon:<svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M6.5 2v8M4 4.5l2.5-2.5 2.5 2.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/><path d="M2 11h9" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/></svg>},
+          {tip:'Send to Back', fn:()=>{const o=fabricRef.current?.getActiveObject();if(o){fabricRef.current.sendToBack(o);fabricRef.current.renderAll()}}, icon:<svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M6.5 11V3M4 8.5l2.5 2.5 2.5-2.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/><path d="M2 2h9" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/></svg>},
+          {tip:'Group (⌘G)', fn:groupSelected, icon:<svg width="13" height="13" viewBox="0 0 13 13" fill="none"><rect x="1" y="1" width="4.5" height="4.5" rx="1" stroke="currentColor" strokeWidth="1.1"/><rect x="7.5" y="1" width="4.5" height="4.5" rx="1" stroke="currentColor" strokeWidth="1.1"/><rect x="1" y="7.5" width="4.5" height="4.5" rx="1" stroke="currentColor" strokeWidth="1.1"/><rect x="7.5" y="7.5" width="4.5" height="4.5" rx="1" stroke="currentColor" strokeWidth="1.1"/></svg>},
         ].map(b=><button key={b.tip} title={b.tip} className="tbtn" onClick={b.fn}>{b.icon}</button>)}
+
         {/* Zoom */}
-        <div style={{marginLeft:'auto',display:'flex',alignItems:'center',gap:3,background:'#f9fafb',borderRadius:9,padding:'3px 10px',border:'1.5px solid #e5e7eb',flexShrink:0}}>
-          <button onClick={()=>setZoom(z=>Math.max(.1,+(z-.1).toFixed(2)))} style={{background:'none',border:'none',cursor:'pointer',color:'#6b7280',fontSize:18,lineHeight:1,padding:'0 2px'}}>−</button>
-          <button onClick={()=>setZoom(1)} style={{background:'none',border:'none',cursor:'pointer',fontSize:11,color:'#6b7280',minWidth:38,textAlign:'center',fontFamily:'JetBrains Mono,monospace'}}>{Math.round(zoom*100)}%</button>
-          <button onClick={()=>setZoom(z=>Math.min(3,+(z+.1).toFixed(2)))} style={{background:'none',border:'none',cursor:'pointer',color:'#6b7280',fontSize:18,lineHeight:1,padding:'0 2px'}}>+</button>
+        <div style={{marginLeft:'auto',display:'flex',alignItems:'center',gap:2,background:'rgba(255,255,255,.05)',borderRadius:8,padding:'2px 8px',border:'1px solid rgba(255,255,255,.07)',flexShrink:0}}>
+          <button onClick={()=>setZoom(z=>Math.max(.1,+(z-.1).toFixed(2)))} style={{background:'none',border:'none',cursor:'pointer',color:'rgba(255,255,255,.5)',fontSize:16,lineHeight:1,padding:'0 2px',transition:'color .12s'}}
+            onMouseOver={e=>e.currentTarget.style.color='rgba(255,255,255,.9)'}
+            onMouseOut={e=>e.currentTarget.style.color='rgba(255,255,255,.5)'}>−</button>
+          <button onClick={()=>setZoom(1)} style={{background:'none',border:'none',cursor:'pointer',fontSize:10,color:'rgba(255,255,255,.45)',minWidth:36,textAlign:'center',fontFamily:'JetBrains Mono,monospace',letterSpacing:'.02em'}}>{Math.round(zoom*100)}%</button>
+          <button onClick={()=>setZoom(z=>Math.min(3,+(z+.1).toFixed(2)))} style={{background:'none',border:'none',cursor:'pointer',color:'rgba(255,255,255,.5)',fontSize:16,lineHeight:1,padding:'0 2px',transition:'color .12s'}}
+            onMouseOver={e=>e.currentTarget.style.color='rgba(255,255,255,.9)'}
+            onMouseOut={e=>e.currentTarget.style.color='rgba(255,255,255,.5)'}>+</button>
         </div>
       </div>
 
-      {/* ── BODY ──────────────────────────────────────────────────────────────── */}
+      {/* ══ BODY ════════════════════════════════════════════════════════════════ */}
       <div style={{flex:1,display:'flex',overflow:'hidden'}}>
 
-        {/* ── Left rail ─── */}
-        <div style={{width:56,flexShrink:0,background:'white',borderRight:'1px solid #e5e7eb',display:'flex',flexDirection:'column',alignItems:'center',paddingTop:6,gap:1,zIndex:10}}>
+        {/* ── Left Rail ── */}
+        <div style={{
+          width:56,flexShrink:0,
+          background:'rgba(13,14,18,0.98)',
+          borderRight:'1px solid rgba(255,255,255,.05)',
+          display:'flex',flexDirection:'column',alignItems:'center',
+          paddingTop:6,gap:1,zIndex:10,
+        }}>
           {[
-            {id:'layouts', label:'Layouts',icon:<svg width="19" height="19" viewBox="0 0 19 19" fill="none"><rect x="2" y="2" width="6" height="6" rx="1.5" stroke="currentColor" strokeWidth="1.3"/><rect x="11" y="2" width="6" height="6" rx="1.5" stroke="currentColor" strokeWidth="1.3"/><rect x="2" y="11" width="6" height="6" rx="1.5" stroke="currentColor" strokeWidth="1.3"/><rect x="11" y="11" width="6" height="6" rx="1.5" stroke="currentColor" strokeWidth="1.3"/></svg>},
-            {id:'photos',  label:'Photos', icon:<svg width="19" height="19" viewBox="0 0 19 19" fill="none"><rect x="2" y="4" width="15" height="11" rx="2" stroke="currentColor" strokeWidth="1.3"/><circle cx="6.5" cy="8" r="1.8" stroke="currentColor" strokeWidth="1.1"/><path d="M2 13.5l4.5-4 3 3 2.5-2 5 5" stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round"/></svg>},
-            {id:'shapes',  label:'Shapes', icon:<svg width="19" height="19" viewBox="0 0 19 19" fill="none"><circle cx="6.5" cy="6.5" r="3.5" stroke="currentColor" strokeWidth="1.3"/><rect x="10.5" y="10.5" width="6" height="6" rx="1.5" stroke="currentColor" strokeWidth="1.3"/><path d="M13 2l3 5H10L13 2z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/></svg>},
-            {id:'text',    label:'Text',   icon:<svg width="19" height="19" viewBox="0 0 19 19" fill="none"><path d="M3 5A1.5 1.5 0 014.5 3.5h10A1.5 1.5 0 0116 5v1.5M9.5 3.5v12M6.5 15.5h6" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>},
-            {id:'bg',      label:'BG',     icon:<svg width="19" height="19" viewBox="0 0 19 19" fill="none"><circle cx="9.5" cy="9.5" r="6.5" stroke="currentColor" strokeWidth="1.3"/><path d="M9.5 3A6.5 6.5 0 019.5 16" fill="currentColor" opacity=".15"/></svg>},
-            {id:'props',   label:'Props',  icon:<svg width="19" height="19" viewBox="0 0 19 19" fill="none"><circle cx="9.5" cy="9.5" r="2.5" stroke="currentColor" strokeWidth="1.3"/><path d="M9.5 2v2M9.5 15v2M2 9.5h2M15 9.5h2M4.1 4.1l1.4 1.4M13.5 13.5l1.4 1.4M4.1 14.9l1.4-1.4M13.5 5.5l1.4-1.4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>},
-            {id:'layers',  label:'Layers', icon:<svg width="19" height="19" viewBox="0 0 19 19" fill="none"><path d="M2 6.5l7.5-4 7.5 4-7.5 4L2 6.5z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/><path d="M2 10l7.5 4 7.5-4M2 13.5l7.5 4 7.5-4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>},
+            {id:'layouts', label:'Layouts',icon:<svg width="17" height="17" viewBox="0 0 17 17" fill="none"><rect x="1" y="1" width="5" height="5" rx="1.2" stroke="currentColor" strokeWidth="1.2"/><rect x="9" y="1" width="7" height="5" rx="1.2" stroke="currentColor" strokeWidth="1.2"/><rect x="1" y="9" width="7" height="7" rx="1.2" stroke="currentColor" strokeWidth="1.2"/><rect x="11" y="9" width="5" height="7" rx="1.2" stroke="currentColor" strokeWidth="1.2"/></svg>},
+            {id:'photos',  label:'Photos', icon:<svg width="17" height="17" viewBox="0 0 17 17" fill="none"><rect x="1.5" y="3.5" width="14" height="10" rx="2" stroke="currentColor" strokeWidth="1.2"/><circle cx="5.5" cy="7" r="1.5" stroke="currentColor" strokeWidth="1.1"/><path d="M1.5 12l4-3.5 3 3 2.5-2.5 5 5" stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round"/></svg>},
+            {id:'shapes',  label:'Shapes', icon:<svg width="17" height="17" viewBox="0 0 17 17" fill="none"><circle cx="5.5" cy="5.5" r="3.5" stroke="currentColor" strokeWidth="1.2"/><rect x="9.5" y="9.5" width="6" height="6" rx="1.2" stroke="currentColor" strokeWidth="1.2"/><path d="M12 2l3 5H9L12 2z" stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round"/></svg>},
+            {id:'text',    label:'Text',   icon:<svg width="17" height="17" viewBox="0 0 17 17" fill="none"><path d="M2 5A1.5 1.5 0 013.5 3.5h10A1.5 1.5 0 0115 5v1M8.5 3.5v10M5.5 13.5h6" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/></svg>},
+            {id:'bg',      label:'BG',     icon:<svg width="17" height="17" viewBox="0 0 17 17" fill="none"><circle cx="8.5" cy="8.5" r="6.5" stroke="currentColor" strokeWidth="1.2"/><path d="M8.5 2v13" stroke="currentColor" strokeWidth="1.2" opacity=".4"/><path d="M2 8.5h13" stroke="currentColor" strokeWidth="1.2" opacity=".4"/></svg>},
+            {id:'props',   label:'Props',  icon:<svg width="17" height="17" viewBox="0 0 17 17" fill="none"><circle cx="8.5" cy="8.5" r="2.5" stroke="currentColor" strokeWidth="1.2"/><path d="M8.5 1.5v2M8.5 13.5v2M1.5 8.5h2M13.5 8.5h2M3.6 3.6l1.4 1.4M12 12l1.4 1.4M3.6 13.4l1.4-1.4M12 5l1.4-1.4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/></svg>},
+            {id:'layers',  label:'Layers', icon:<svg width="17" height="17" viewBox="0 0 17 17" fill="none"><path d="M1.5 6l7-3.5 7 3.5-7 3.5L1.5 6z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/><path d="M1.5 9.5l7 3.5 7-3.5M1.5 13l7 3.5 7-3.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/></svg>},
           ].map(item=>(
             <button key={item.id} className={`rail${activePanel===item.id?' on':''}`} onClick={()=>setActivePanel(activePanel===item.id?null:item.id)}>
               {item.icon}<span>{item.label}</span>
@@ -1416,18 +1474,36 @@ export default function DocumentEditorPage({ params }: { params: { id: string } 
           ))}
         </div>
 
-        {/* ── Left panel ─── */}
+        {/* ── Left Panel ── */}
         {activePanel&&activePanel!=='export'&&(
-          <div style={{width:264,flexShrink:0,background:'white',borderRight:'1px solid #e5e7eb',display:'flex',flexDirection:'column',overflow:'hidden'}}>
-            <div style={{flex:1,overflow:'auto',padding:14}}>
+          <div style={{
+            width:272,flexShrink:0,
+            background:'rgba(13,14,18,0.98)',
+            borderRight:'1px solid rgba(255,255,255,.05)',
+            display:'flex',flexDirection:'column',overflow:'hidden',
+          }}>
+            {/* Panel header */}
+            <div style={{padding:'14px 16px 10px',borderBottom:'1px solid rgba(255,255,255,.05)',flexShrink:0}}>
+              <div style={{fontSize:13,fontWeight:700,color:'rgba(255,255,255,.8)',fontFamily:'Jost,sans-serif',letterSpacing:'-.01em'}}>
+                {activePanel==='layouts'&&'Layouts'}
+                {activePanel==='photos'&&'Photos'}
+                {activePanel==='shapes'&&'Shapes'}
+                {activePanel==='text'&&'Typography'}
+                {activePanel==='bg'&&'Background'}
+                {activePanel==='props'&&'Properties'}
+                {activePanel==='layers'&&'Layers'}
+              </div>
+            </div>
+
+            <div style={{flex:1,overflow:'auto',padding:activePanel==='props'||activePanel==='layers'?0:14}}>
 
               {activePanel==='layouts'&&(
                 <div>
-                  <div className="panel-hdr">Layouts</div>
-                  <div style={{display:'flex',gap:5,flexWrap:'wrap',marginBottom:12}}>
+                  {/* Category pills */}
+                  <div style={{display:'flex',gap:5,flexWrap:'wrap',marginBottom:14}}>
                     {LAYOUT_CATS.map(c=>(
                       <button key={c} onClick={()=>setLayoutCat(c)}
-                        style={{padding:'4px 10px',borderRadius:20,border:`1.5px solid ${layoutCat===c?'#4f46e5':'#e5e7eb'}`,background:layoutCat===c?'#4f46e5':'white',color:layoutCat===c?'white':'#374151',cursor:'pointer',fontSize:11,fontWeight:600,fontFamily:'Jost,sans-serif'}}>
+                        style={{padding:'4px 10px',borderRadius:20,border:`1px solid ${layoutCat===c?'rgba(79,70,229,.6)':'rgba(255,255,255,.08)'}`,background:layoutCat===c?'rgba(79,70,229,.2)':'transparent',color:layoutCat===c?'#818cf8':'rgba(255,255,255,.4)',cursor:'pointer',fontSize:10,fontWeight:700,fontFamily:'Jost,sans-serif',transition:'all .14s',letterSpacing:'.02em'}}>
                         {c}
                       </button>
                     ))}
@@ -1435,11 +1511,14 @@ export default function DocumentEditorPage({ params }: { params: { id: string } 
                   <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
                     {filteredLayouts.map(l=>(
                       <div key={l.id} className="card-hover" onClick={()=>applyLayout(l)}
-                        style={{border:'1.5px solid #e5e7eb',borderRadius:10,overflow:'hidden',cursor:'pointer'}}>
-                        <div style={{aspectRatio:'16/9',background:'#f8fafc',display:'flex',alignItems:'center',justifyContent:'center',fontSize:9,color:'#94a3b8',fontFamily:'JetBrains Mono,monospace',padding:4}}>
-                          <div style={{fontSize:8,textAlign:'center',lineHeight:1.3}}>{l.label}</div>
+                        style={{border:'1px solid rgba(255,255,255,.07)',borderRadius:10,overflow:'hidden',cursor:'pointer',background:'rgba(255,255,255,.02)'}}>
+                        <div style={{aspectRatio:'16/9',background:'rgba(255,255,255,.04)',display:'flex',alignItems:'center',justifyContent:'center',padding:6}}>
+                          <div style={{fontSize:8,textAlign:'center',color:'rgba(255,255,255,.3)',fontFamily:'JetBrains Mono,monospace',lineHeight:1.4}}>{l.label}</div>
                         </div>
-                        <div style={{padding:'5px 7px',fontSize:10,fontWeight:600,color:'#374151',fontFamily:'Jost,sans-serif',borderTop:'1px solid #f1f5f9'}}>{l.label}</div>
+                        <div style={{padding:'6px 8px',fontSize:10,fontWeight:600,color:'rgba(255,255,255,.55)',fontFamily:'Jost,sans-serif',borderTop:'1px solid rgba(255,255,255,.05)',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                          <span>{l.label}</span>
+                          <span style={{fontSize:8,color:'rgba(255,255,255,.2)'}}>{l.category}</span>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -1448,26 +1527,31 @@ export default function DocumentEditorPage({ params }: { params: { id: string } 
 
               {activePanel==='photos'&&(
                 <div>
-                  <div className="panel-hdr">Photos</div>
-                  <div style={{display:'flex',gap:6,marginBottom:10}}>
+                  <div style={{display:'flex',gap:6,marginBottom:12}}>
                     <input value={stockQuery} onChange={e=>setStockQuery(e.target.value)} placeholder="Search images…" className="sp-inp"/>
-                    <button onClick={()=>searchStock(stockQuery)} style={{padding:'6px 12px',background:'#4f46e5',color:'white',border:'none',borderRadius:8,fontSize:12,fontWeight:600,fontFamily:'Jost,sans-serif',cursor:'pointer',flexShrink:0}}>Go</button>
+                    <button onClick={()=>searchStock(stockQuery)} style={{padding:'7px 12px',background:'rgba(79,70,229,.7)',color:'white',border:'none',borderRadius:8,fontSize:12,fontWeight:700,fontFamily:'Jost,sans-serif',cursor:'pointer',flexShrink:0,transition:'all .14s'}}
+                      onMouseOver={e=>e.currentTarget.style.background='rgba(79,70,229,.9)'}
+                      onMouseOut={e=>e.currentTarget.style.background='rgba(79,70,229,.7)'}>Go</button>
                   </div>
                   {stockImages.length===0&&(
-                    <button onClick={()=>searchStock(stockQuery)} style={{width:'100%',padding:'10px',background:'#f8fafc',border:'2px dashed #e5e7eb',borderRadius:10,cursor:'pointer',fontSize:12,color:'#94a3b8',fontFamily:'Jost,sans-serif'}}>Load curated photos</button>
+                    <button onClick={()=>searchStock(stockQuery)} style={{width:'100%',padding:'12px',background:'rgba(255,255,255,.03)',border:'1px dashed rgba(255,255,255,.1)',borderRadius:10,cursor:'pointer',fontSize:12,color:'rgba(255,255,255,.3)',fontFamily:'Jost,sans-serif',transition:'all .14s'}}
+                      onMouseOver={e=>{(e.currentTarget as HTMLElement).style.borderColor='rgba(255,255,255,.25)'}}
+                      onMouseOut={e=>{(e.currentTarget as HTMLElement).style.borderColor='rgba(255,255,255,.1)'}}>Load curated photos</button>
                   )}
                   <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:6}}>
                     {stockImages.map((url,i)=>(
                       <div key={i} className="card-hover" onClick={()=>addStockImage(url.replace('w=400','w=1280'))}
-                        style={{aspectRatio:'4/3',borderRadius:9,overflow:'hidden',border:'1.5px solid #e5e7eb',cursor:'pointer'}}>
+                        style={{aspectRatio:'4/3',borderRadius:9,overflow:'hidden',border:'1px solid rgba(255,255,255,.07)',cursor:'pointer'}}>
                         <img src={url} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}} crossOrigin="anonymous"/>
                       </div>
                     ))}
                   </div>
-                  <div style={{marginTop:12,paddingTop:12,borderTop:'1px solid #f1f5f9'}}>
+                  <div style={{marginTop:14,paddingTop:14,borderTop:'1px solid rgba(255,255,255,.05)'}}>
                     <div className="panel-hdr">Upload</div>
-                    <label style={{display:'flex',alignItems:'center',gap:8,padding:'10px',border:'2px dashed #e5e7eb',borderRadius:10,cursor:'pointer',fontSize:12,color:'#94a3b8',fontFamily:'Jost,sans-serif'}}>
-                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 2v10M4 6l4-4 4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M2 14h12" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>
+                    <label style={{display:'flex',alignItems:'center',gap:8,padding:'11px',border:'1px dashed rgba(255,255,255,.1)',borderRadius:10,cursor:'pointer',fontSize:12,color:'rgba(255,255,255,.35)',fontFamily:'Jost,sans-serif',transition:'all .14s'}}
+                      onMouseOver={e=>{(e.currentTarget as HTMLElement).style.borderColor='rgba(255,255,255,.25)'}}
+                      onMouseOut={e=>{(e.currentTarget as HTMLElement).style.borderColor='rgba(255,255,255,.1)'}}>
+                      <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 2v9M4 5l3-3 3 3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/><path d="M2 13h10" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>
                       Upload an image
                       <input type="file" accept="image/*" style={{display:'none'}} onChange={e=>{const f=e.target.files?.[0];if(f)uploadImage(f)}}/>
                     </label>
@@ -1477,8 +1561,8 @@ export default function DocumentEditorPage({ params }: { params: { id: string } 
 
               {activePanel==='shapes'&&(
                 <div>
-                  <div className="panel-hdr">Shapes & Elements</div>
-                  <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:6}}>
+                  <div className="panel-hdr">Basic Shapes</div>
+                  <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:6,marginBottom:16}}>
                     {[
                       {id:'rect',     label:'Rect',     icon:'▭'},
                       {id:'circle',   label:'Circle',   icon:'◯'},
@@ -1488,20 +1572,19 @@ export default function DocumentEditorPage({ params }: { params: { id: string } 
                       {id:'arrow',    label:'Arrow',    icon:'→'},
                     ].map(s=>(
                       <button key={s.id} className="shape-btn" onClick={()=>addShape(s.id)}>
-                        <span style={{fontSize:20}}>{s.icon}</span>{s.label}
+                        <span style={{fontSize:18,lineHeight:1}}>{s.icon}</span>
+                        {s.label}
                       </button>
                     ))}
                   </div>
-                  <div style={{marginTop:12,paddingTop:12,borderTop:'1px solid #f1f5f9'}}>
-                    <div className="panel-hdr">Tables</div>
-                    <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:6}}>
-                      {[[4,3,'4×3'],[3,2,'3×2'],[6,4,'6×4']].map(([r,c,l])=>(
-                        <button key={l as string} className="shape-btn" onClick={()=>addTable(r as number,c as number)} style={{width:'100%',height:44}}>
-                          <svg width="18" height="14" viewBox="0 0 18 14" fill="none"><rect x="1" y="1" width="16" height="12" rx="1.5" stroke="currentColor" strokeWidth="1.1"/><path d="M1 5h16M1 9h16M7 5v7M13 5v7" stroke="currentColor" strokeWidth="1" strokeLinecap="round"/></svg>
-                          {l}
-                        </button>
-                      ))}
-                    </div>
+                  <div className="panel-hdr">Tables</div>
+                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:6}}>
+                    {[[4,3,'4×3 Table'],[3,2,'3×2 Table'],[6,4,'6×4 Table']].map(([r,c,l])=>(
+                      <button key={l as string} className="shape-btn" onClick={()=>addTable(r as number,c as number)} style={{height:52,width:'100%',flexDirection:'row',gap:8}}>
+                        <svg width="16" height="12" viewBox="0 0 16 12" fill="none"><rect x="1" y="1" width="14" height="10" rx="1.2" stroke="currentColor" strokeWidth="1"/><path d="M1 4.5h14M1 8h14M6 4.5v5.5M11 4.5v5.5" stroke="currentColor" strokeWidth=".9" strokeLinecap="round"/></svg>
+                        {l}
+                      </button>
+                    ))}
                   </div>
                 </div>
               )}
@@ -1511,24 +1594,27 @@ export default function DocumentEditorPage({ params }: { params: { id: string } 
                   <div className="panel-hdr">Text Styles</div>
                   <div style={{display:'flex',flexDirection:'column',gap:6}}>
                     {[
-                      {label:'Heading',   fs:48,fw:'800',ff:'Jost'},
-                      {label:'Subheading',fs:28,fw:'700',ff:'Jost'},
-                      {label:'Body text', fs:16,fw:'400',ff:'Jost'},
-                      {label:'Caption',   fs:12,fw:'400',ff:'Jost'},
-                      {label:'MONO LABEL',fs:11,fw:'700',ff:'JetBrains Mono'},
+                      {label:'Heading',    fs:48,fw:'800',ff:'Jost',    preview:'Aa'},
+                      {label:'Subheading', fs:28,fw:'700',ff:'Jost',    preview:'Aa'},
+                      {label:'Body text',  fs:16,fw:'400',ff:'Jost',    preview:'Aa'},
+                      {label:'Caption',    fs:12,fw:'400',ff:'Jost',    preview:'Aa'},
+                      {label:'MONO LABEL', fs:11,fw:'700',ff:'JetBrains Mono', preview:'Aa'},
                     ].map(s=>(
                       <button key={s.label} onClick={()=>addText({text:s.label,fs:s.fs,fw:s.fw,ff:s.ff})}
-                        style={{padding:'10px 14px',border:'1.5px solid #e5e7eb',borderRadius:9,background:'white',cursor:'pointer',textAlign:'left',fontSize:s.fs>28?18:s.fs>16?15:s.fs>12?13:11,fontFamily:`'${s.ff}',sans-serif`,fontWeight:s.fw,color:'#0f172a',transition:'all .1s'}}
-                        onMouseOver={e=>{(e.currentTarget as HTMLElement).style.borderColor='#4f46e5';(e.currentTarget as HTMLElement).style.background='#fafbff'}}
-                        onMouseOut={e=>{(e.currentTarget as HTMLElement).style.borderColor='#e5e7eb';(e.currentTarget as HTMLElement).style.background='white'}}>
-                        {s.label}
+                        style={{padding:'11px 14px',border:'1px solid rgba(255,255,255,.07)',borderRadius:10,background:'rgba(255,255,255,.02)',cursor:'pointer',textAlign:'left',display:'flex',alignItems:'center',justifyContent:'space-between',transition:'all .14s'}}
+                        onMouseOver={e=>{(e.currentTarget as HTMLElement).style.borderColor='rgba(79,70,229,.45)';(e.currentTarget as HTMLElement).style.background='rgba(79,70,229,.06)'}}
+                        onMouseOut={e=>{(e.currentTarget as HTMLElement).style.borderColor='rgba(255,255,255,.07)';(e.currentTarget as HTMLElement).style.background='rgba(255,255,255,.02)'}}>
+                        <span style={{fontSize:s.fs>28?16:s.fs>16?13:s.fs>12?11:10,fontFamily:`'${s.ff}',sans-serif`,fontWeight:s.fw,color:'rgba(255,255,255,.75)'}}>{s.label}</span>
+                        <span style={{fontSize:8,color:'rgba(255,255,255,.2)',fontFamily:'JetBrains Mono,monospace'}}>{s.fs}px</span>
                       </button>
                     ))}
                   </div>
-                  <div style={{marginTop:12,paddingTop:12,borderTop:'1px solid #f1f5f9'}}>
-                    <div className="panel-hdr">Add text box</div>
-                    <button onClick={()=>addText()} style={{width:'100%',padding:'10px',border:'2px dashed #e5e7eb',borderRadius:10,cursor:'pointer',fontSize:13,color:'#94a3b8',fontFamily:'Jost,sans-serif',background:'none',display:'flex',alignItems:'center',justifyContent:'center',gap:6}}>
-                      <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1v12M1 7h12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>Add text
+                  <div style={{marginTop:12,paddingTop:12,borderTop:'1px solid rgba(255,255,255,.05)'}}>
+                    <button onClick={()=>addText()} style={{width:'100%',padding:'11px',border:'1px dashed rgba(255,255,255,.1)',borderRadius:10,cursor:'pointer',fontSize:12,color:'rgba(255,255,255,.35)',fontFamily:'Jost,sans-serif',background:'none',display:'flex',alignItems:'center',justifyContent:'center',gap:7,transition:'all .14s'}}
+                      onMouseOver={e=>{(e.currentTarget as HTMLElement).style.borderColor='rgba(255,255,255,.25)'}}
+                      onMouseOut={e=>{(e.currentTarget as HTMLElement).style.borderColor='rgba(255,255,255,.1)'}}>
+                      <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 1v10M1 6h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+                      Add empty text box
                     </button>
                   </div>
                 </div>
@@ -1536,31 +1622,33 @@ export default function DocumentEditorPage({ params }: { params: { id: string } 
 
               {activePanel==='bg'&&(
                 <div>
-                  <div className="panel-hdr">Background</div>
-                  <div style={{display:'flex',gap:8,alignItems:'center',marginBottom:12}}>
-                    <input type="color" value={bgColor} onChange={e=>{setBgColor(e.target.value);if(fabricRef.current){fabricRef.current.backgroundColor=e.target.value;fabricRef.current.renderAll();scheduleAutoSave()}}}
-                      style={{width:40,height:38,borderRadius:9,border:'2px solid #e5e7eb',cursor:'pointer',padding:0}}/>
-                    <span style={{fontSize:13,color:'#374151',fontFamily:'JetBrains Mono,monospace'}}>{bgColor}</span>
+                  <div className="panel-hdr">Canvas Color</div>
+                  <div style={{display:'flex',gap:10,alignItems:'center',marginBottom:14}}>
+                    <div style={{width:44,height:44,borderRadius:10,overflow:'hidden',border:'1.5px solid rgba(255,255,255,.12)',flexShrink:0}}>
+                      <input type="color" value={bgColor} onChange={e=>{setBgColor(e.target.value);if(fabricRef.current){fabricRef.current.backgroundColor=e.target.value;fabricRef.current.renderAll();scheduleAutoSave()}}}
+                        style={{width:60,height:60,transform:'translate(-8px,-8px)',cursor:'pointer'}}/>
+                    </div>
+                    <span style={{fontSize:12,color:'rgba(255,255,255,.5)',fontFamily:'JetBrains Mono,monospace'}}>{bgColor}</span>
                   </div>
-                  <div className="panel-hdr">Color presets</div>
-                  <div style={{display:'grid',gridTemplateColumns:'repeat(6,1fr)',gap:5,marginBottom:14}}>
+                  <div className="panel-hdr">Color Presets</div>
+                  <div style={{display:'grid',gridTemplateColumns:'repeat(6,1fr)',gap:5,marginBottom:18}}>
                     {['#ffffff','#0f172a','#1e293b','#f8fafc','#eff6ff','#fdf4ff','#ecfdf5','#fff7ed','#fdf2f8','#f0fdf4','#4f46e5','#10b981','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#ec4899','#3b82f6'].map(c=>(
                       <button key={c} onClick={()=>{setBgColor(c);if(fabricRef.current){fabricRef.current.backgroundColor=c;fabricRef.current.renderAll();scheduleAutoSave()}}}
-                        style={{width:32,height:32,borderRadius:7,background:c,border:`2px solid ${bgColor===c?'#4f46e5':'#e5e7eb'}`,cursor:'pointer',transition:'transform .1s'}}
+                        style={{width:32,height:32,borderRadius:7,background:c,border:`2px solid ${bgColor===c?'#4f46e5':'rgba(255,255,255,.1)'}`,cursor:'pointer',transition:'transform .1s,border-color .14s'}}
                         onMouseOver={e=>(e.currentTarget.style.transform='scale(1.15)')}
                         onMouseOut={e=>(e.currentTarget.style.transform='scale(1)')}/>
                     ))}
                   </div>
-                  <div className="panel-hdr">Canvas size</div>
-                  <div style={{display:'flex',flexDirection:'column',gap:6}}>
+                  <div className="panel-hdr">Canvas Size</div>
+                  <div style={{display:'flex',flexDirection:'column',gap:5}}>
                     {CANVAS_SIZES.map(s=>(
                       <button key={s.id} onClick={()=>{
                         setCanvasW(s.w);setCanvasH(s.h);cWRef.current=s.w;cHRef.current=s.h
                         if(fabricRef.current){fabricRef.current.setWidth(s.w);fabricRef.current.setHeight(s.h);fabricRef.current.renderAll()}
                       }}
-                        style={{padding:'8px 12px',border:`1.5px solid ${canvasW===s.w&&canvasH===s.h?'#4f46e5':'#e5e7eb'}`,borderRadius:9,background:canvasW===s.w&&canvasH===s.h?'#eef2ff':'white',cursor:'pointer',display:'flex',justifyContent:'space-between',alignItems:'center',fontSize:12,fontFamily:'Jost,sans-serif',color:canvasW===s.w&&canvasH===s.h?'#4f46e5':'#374151',fontWeight:canvasW===s.w&&canvasH===s.h?700:400}}>
+                        style={{padding:'8px 12px',border:`1px solid ${canvasW===s.w&&canvasH===s.h?'rgba(79,70,229,.5)':'rgba(255,255,255,.07)'}`,borderRadius:8,background:canvasW===s.w&&canvasH===s.h?'rgba(79,70,229,.15)':'rgba(255,255,255,.02)',cursor:'pointer',display:'flex',justifyContent:'space-between',alignItems:'center',fontSize:12,fontFamily:'Jost,sans-serif',color:canvasW===s.w&&canvasH===s.h?'#818cf8':'rgba(255,255,255,.55)',fontWeight:canvasW===s.w&&canvasH===s.h?700:400,transition:'all .14s'}}>
                         <span>{s.label}</span>
-                        <span style={{fontSize:10,color:'#94a3b8',fontFamily:'JetBrains Mono,monospace'}}>{s.dims}</span>
+                        <span style={{fontSize:9,color:'rgba(255,255,255,.25)',fontFamily:'JetBrains Mono,monospace'}}>{s.dims}</span>
                       </button>
                     ))}
                   </div>
@@ -1568,103 +1656,108 @@ export default function DocumentEditorPage({ params }: { params: { id: string } 
               )}
 
               {activePanel==='props'&&(
-                <div style={{display:'flex',flexDirection:'column',height:'100%'}}>
-                  <div className="panel-hdr">Properties</div>
+                <div style={{display:'flex',flexDirection:'column',height:'100%',overflow:'auto'}}>
                   <PropsPanel obj={selectedObj} fabric={{...fabricRef.current,fabric:(window as any).fabric}} onUpdate={scheduleAutoSave}/>
                 </div>
               )}
 
               {activePanel==='layers'&&(
-                <div>
-                  <div className="panel-hdr">Layers</div>
-                  <LayersPanel fabric={fabricRef.current} onSelect={obj=>{setSelectedObj(obj);setActivePanel('props')}}/>
-                </div>
+                <LayersPanel fabric={fabricRef.current} onSelect={obj=>{setSelectedObj(obj);setActivePanel('props')}}/>
               )}
             </div>
           </div>
         )}
 
-        {/* ── Canvas area ── */}
-        <div style={{flex:1,overflow:'auto',display:'flex',flexDirection:'column',alignItems:'center',padding:'24px',background:'#e8e8ea'}}
+        {/* ── Canvas Area ── */}
+        <div className="canvas-dot-bg" style={{flex:1,overflow:'auto',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'flex-start',padding:'32px 28px'}}
           onClick={e=>{if(e.target===e.currentTarget&&activePanel==='export')setActivePanel(null)}}>
-          {/* Canvas shadow wrapper */}
+          {/* Canvas wrapper */}
           <div style={{
-            transform:`scale(${zoom})`,transformOrigin:'top center',
-            boxShadow:'0 4px 40px rgba(0,0,0,.18),0 1px 6px rgba(0,0,0,.1)',
-            borderRadius:2,overflow:'hidden',flexShrink:0,
-            outline:'1px solid rgba(0,0,0,.06)',
+            transform:`scale(${zoom})`,
+            transformOrigin:'top center',
+            boxShadow:'0 0 0 1px rgba(255,255,255,.06), 0 8px 60px rgba(0,0,0,.6), 0 2px 12px rgba(0,0,0,.4)',
+            borderRadius:3,
+            overflow:'hidden',
+            flexShrink:0,
           }}>
             <canvas ref={canvasEl}/>
           </div>
-          {/* Zoom hint */}
-          <div style={{marginTop:12,fontSize:10,color:'#9ca3af',fontFamily:'JetBrains Mono,monospace'}}>
-            {Math.round(zoom*100)}% · {canvasW}×{canvasH}
+          {/* Canvas info */}
+          <div style={{marginTop:16,fontSize:10,color:'rgba(255,255,255,.2)',fontFamily:'JetBrains Mono,monospace',letterSpacing:'.04em'}}>
+            {Math.round(zoom*100)}% · {canvasW}×{canvasH}px
           </div>
         </div>
 
-        {/* ── Pages sidebar ── */}
-        <div style={{width:128,flexShrink:0,background:'white',borderLeft:'1px solid #e5e7eb',display:'flex',flexDirection:'column',overflow:'hidden'}}>
-          <div style={{padding:'10px 8px',borderBottom:'1px solid #f1f5f9',flexShrink:0}}>
-            <div style={{fontSize:9,fontWeight:700,color:'#94a3b8',textTransform:'uppercase',letterSpacing:'.07em',marginBottom:6}}>Pages</div>
+        {/* ── Pages Sidebar ── */}
+        <div style={{
+          width:130,flexShrink:0,
+          background:'rgba(13,14,18,0.98)',
+          borderLeft:'1px solid rgba(255,255,255,.05)',
+          display:'flex',flexDirection:'column',overflow:'hidden',
+        }}>
+          <div style={{padding:'12px 10px 8px',borderBottom:'1px solid rgba(255,255,255,.05)',flexShrink:0}}>
+            <div style={{fontSize:9,fontWeight:800,color:'rgba(255,255,255,.25)',textTransform:'uppercase',letterSpacing:'.1em'}}>Pages</div>
           </div>
           <div style={{flex:1,overflowY:'auto',padding:'8px 8px 0'}}>
             {pages.map((_,i)=>(
               <div key={i} style={{marginBottom:8,position:'relative'}}>
                 <div className={`pthumb${currentPage===i?' on':''}`} onClick={()=>switchPage(i)}
-                  style={{width:'100%',aspectRatio:`${canvasW}/${canvasH}`,background:'#f8fafc',display:'flex',alignItems:'center',justifyContent:'center'}}>
+                  style={{width:'100%',aspectRatio:`${canvasW}/${canvasH}`,display:'flex',alignItems:'center',justifyContent:'center'}}>
                   {thumbnails[i]
                     ?<img src={thumbnails[i]} alt={`Page ${i+1}`} style={{width:'100%',height:'100%',objectFit:'cover'}}/>
-                    :<span style={{fontSize:10,color:'#94a3b8',fontFamily:'JetBrains Mono,monospace'}}>{i+1}</span>}
+                    :<span style={{fontSize:10,color:'rgba(255,255,255,.2)',fontFamily:'JetBrains Mono,monospace'}}>{i+1}</span>}
+                  <div className="page-actions" style={{position:'absolute',top:3,right:3}}>
+                    <button onClick={e=>{e.stopPropagation();duplicatePage(i)}} title="Duplicate" style={{width:18,height:18,background:'rgba(0,0,0,.7)',border:'1px solid rgba(255,255,255,.15)',borderRadius:4,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',color:'rgba(255,255,255,.7)'}}>
+                      <svg width="8" height="8" viewBox="0 0 8 8" fill="none"><rect x=".5" y="2.5" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1"/><path d="M2.5 2.5V1.5A1 1 0 013.5.5H7A1 1 0 018 1.5V5a1 1 0 01-1 1H6.5" stroke="currentColor" strokeWidth="1"/></svg>
+                    </button>
+                    {pages.length>1&&<button onClick={e=>{e.stopPropagation();removePage(i)}} title="Delete" style={{width:18,height:18,background:'rgba(0,0,0,.7)',border:'1px solid rgba(239,68,68,.4)',borderRadius:4,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',color:'#f87171',fontSize:9}}>✕</button>}
+                  </div>
                 </div>
-                {/* Page actions overlay */}
-                <div style={{position:'absolute',top:3,right:3,display:'flex',gap:2,opacity:0}} className="page-actions">
-                  <button onClick={e=>{e.stopPropagation();duplicatePage(i)}} title="Duplicate" style={{width:18,height:18,background:'white',border:'1px solid #e5e7eb',borderRadius:4,cursor:'pointer',fontSize:9,display:'flex',alignItems:'center',justifyContent:'center'}}>
-                    <svg width="9" height="9" viewBox="0 0 9 9" fill="none"><rect x=".5" y="2.5" width="6" height="6" rx="1" stroke="currentColor" strokeWidth="1"/><path d="M2.5 2.5V1.5A1 1 0 013.5.5h5A1 1 0 019.5 1.5v5A1 1 0 018.5 7.5H7.5" stroke="currentColor" strokeWidth="1"/></svg>
-                  </button>
-                  {pages.length>1&&<button onClick={e=>{e.stopPropagation();removePage(i)}} title="Delete" style={{width:18,height:18,background:'white',border:'1px solid #fee2e2',borderRadius:4,cursor:'pointer',fontSize:9,color:'#ef4444',display:'flex',alignItems:'center',justifyContent:'center'}}>✕</button>}
-                </div>
-                <div style={{fontSize:9,color:'#94a3b8',fontFamily:'JetBrains Mono,monospace',textAlign:'center',marginTop:3}}>{i+1}</div>
+                <div style={{fontSize:9,color:'rgba(255,255,255,.2)',fontFamily:'JetBrains Mono,monospace',textAlign:'center',marginTop:3}}>{i+1}</div>
               </div>
             ))}
           </div>
-          <div style={{padding:'8px',borderTop:'1px solid #f1f5f9',flexShrink:0}}>
-            <button onClick={addPage} style={{width:'100%',padding:'8px 0',background:'#f8fafc',border:'1.5px dashed #e5e7eb',borderRadius:9,cursor:'pointer',fontSize:11,color:'#6b7280',fontFamily:'Jost,sans-serif',fontWeight:600,display:'flex',alignItems:'center',justifyContent:'center',gap:5}}>
-              <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 1v10M1 6h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>Add page
+          <div style={{padding:'8px',borderTop:'1px solid rgba(255,255,255,.05)',flexShrink:0}}>
+            <button onClick={addPage} style={{width:'100%',padding:'8px 0',background:'rgba(79,70,229,.1)',border:'1px dashed rgba(79,70,229,.3)',borderRadius:8,cursor:'pointer',fontSize:10,color:'rgba(129,140,248,.7)',fontFamily:'Jost,sans-serif',fontWeight:700,display:'flex',alignItems:'center',justifyContent:'center',gap:5,transition:'all .15s'}}
+              onMouseOver={e=>{(e.currentTarget as HTMLElement).style.background='rgba(79,70,229,.2)';(e.currentTarget as HTMLElement).style.borderColor='rgba(79,70,229,.5)'}}
+              onMouseOut={e=>{(e.currentTarget as HTMLElement).style.background='rgba(79,70,229,.1)';(e.currentTarget as HTMLElement).style.borderColor='rgba(79,70,229,.3)'}}>
+              <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M5 1v8M1 5h8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
+              Add page
             </button>
           </div>
         </div>
       </div>
 
-      {/* ── Template modal ────────────────────────────────────────────────────── */}
+      {/* ══ TEMPLATE MODAL ══════════════════════════════════════════════════════ */}
       {showTplModal&&(
-        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.5)',zIndex:200,display:'flex',alignItems:'center',justifyContent:'center',padding:20}}>
-          <div style={{background:'white',borderRadius:20,width:'min(900px,96vw)',maxHeight:'90vh',display:'flex',flexDirection:'column',boxShadow:'0 20px 60px rgba(0,0,0,.2)'}}>
-            <div style={{padding:'24px 28px 16px',borderBottom:'1px solid #e5e7eb',display:'flex',alignItems:'center',justifyContent:'space-between',flexShrink:0}}>
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.75)',zIndex:200,display:'flex',alignItems:'center',justifyContent:'center',padding:24,backdropFilter:'blur(8px)'}}>
+          <div style={{background:'#0f1117',borderRadius:20,width:'min(920px,96vw)',maxHeight:'90vh',display:'flex',flexDirection:'column',boxShadow:'0 30px 80px rgba(0,0,0,.7)',border:'1px solid rgba(255,255,255,.08)'}}>
+            <div style={{padding:'28px 32px 18px',borderBottom:'1px solid rgba(255,255,255,.07)',display:'flex',alignItems:'center',justifyContent:'space-between',flexShrink:0}}>
               <div>
-                <h2 style={{margin:0,fontSize:20,fontWeight:800,color:'#0f172a',fontFamily:'Jost,sans-serif'}}>Start your design</h2>
-                <p style={{margin:'4px 0 0',fontSize:13,color:'#64748b',fontFamily:'Jost,sans-serif'}}>Choose a template or start with a blank canvas</p>
+                <h2 style={{margin:'0 0 5px',fontSize:22,fontWeight:900,color:'#fff',fontFamily:'Jost,sans-serif',letterSpacing:'-.02em'}}>Start designing</h2>
+                <p style={{margin:0,fontSize:13,color:'rgba(255,255,255,.4)',fontFamily:'Jost,sans-serif'}}>Pick a canvas size or jump in with a layout</p>
               </div>
-              {pages.length>0&&<button onClick={()=>setShowTplModal(false)} style={{background:'#f3f4f6',border:'none',cursor:'pointer',color:'#6b7280',padding:8,borderRadius:8}}>
-                <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M3 3l8 8M11 3l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+              {pages.length>0&&<button onClick={()=>setShowTplModal(false)} style={{background:'rgba(255,255,255,.07)',border:'none',cursor:'pointer',color:'rgba(255,255,255,.5)',padding:9,borderRadius:10,display:'flex',alignItems:'center',justifyContent:'center'}}
+                onMouseOver={e=>(e.currentTarget.style.background='rgba(255,255,255,.12)')}
+                onMouseOut={e=>(e.currentTarget.style.background='rgba(255,255,255,.07)')}>
+                <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M2 2l9 9M11 2L2 11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
               </button>}
             </div>
-            <div style={{overflow:'auto',padding:'20px 28px',flex:1}}>
-              {/* Blank options */}
-              <div style={{fontSize:11,fontWeight:700,color:'#94a3b8',textTransform:'uppercase',letterSpacing:'.07em',marginBottom:10}}>Quick start</div>
-              <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(140px,1fr))',gap:8,marginBottom:24}}>
+            <div style={{overflow:'auto',padding:'22px 32px',flex:1}}>
+              <div style={{fontSize:9,fontWeight:800,color:'rgba(255,255,255,.25)',textTransform:'uppercase',letterSpacing:'.1em',marginBottom:12}}>Quick start — blank canvas</div>
+              <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(130px,1fr))',gap:7,marginBottom:28}}>
                 {CANVAS_SIZES.map(s=>(
                   <button key={s.id} onClick={()=>startBlank(s.id)}
-                    style={{padding:'12px 10px',border:'1.5px solid #e5e7eb',borderRadius:12,background:'white',cursor:'pointer',textAlign:'center',fontFamily:'Jost,sans-serif',transition:'all .12s'}}
-                    onMouseOver={e=>{(e.currentTarget as HTMLElement).style.borderColor='#4f46e5';(e.currentTarget as HTMLElement).style.background='#fafbff'}}
-                    onMouseOut={e=>{(e.currentTarget as HTMLElement).style.borderColor='#e5e7eb';(e.currentTarget as HTMLElement).style.background='white'}}>
-                    <div style={{fontSize:11,fontWeight:700,color:'#0f172a',marginBottom:4}}>{s.label}</div>
-                    <div style={{fontSize:9,color:'#94a3b8',fontFamily:'JetBrains Mono,monospace'}}>{s.dims}</div>
+                    style={{padding:'13px 10px',border:'1px solid rgba(255,255,255,.07)',borderRadius:11,background:'rgba(255,255,255,.03)',cursor:'pointer',textAlign:'center',fontFamily:'Jost,sans-serif',transition:'all .15s'}}
+                    onMouseOver={e=>{(e.currentTarget as HTMLElement).style.borderColor='rgba(79,70,229,.5)';(e.currentTarget as HTMLElement).style.background='rgba(79,70,229,.08)'}}
+                    onMouseOut={e=>{(e.currentTarget as HTMLElement).style.borderColor='rgba(255,255,255,.07)';(e.currentTarget as HTMLElement).style.background='rgba(255,255,255,.03)'}}>
+                    <div style={{fontSize:11,fontWeight:700,color:'rgba(255,255,255,.75)',marginBottom:4,letterSpacing:'-.01em'}}>{s.label}</div>
+                    <div style={{fontSize:9,color:'rgba(255,255,255,.25)',fontFamily:'JetBrains Mono,monospace'}}>{s.dims}</div>
                   </button>
                 ))}
               </div>
-              {/* Template layouts */}
-              <div style={{fontSize:11,fontWeight:700,color:'#94a3b8',textTransform:'uppercase',letterSpacing:'.07em',marginBottom:10}}>Layouts to apply</div>
-              <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(160px,1fr))',gap:10}}>
+              <div style={{fontSize:9,fontWeight:800,color:'rgba(255,255,255,.25)',textTransform:'uppercase',letterSpacing:'.1em',marginBottom:12}}>Start with a layout</div>
+              <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(155px,1fr))',gap:9}}>
                 {LAYOUTS.map(l=>(
                   <div key={l.id} className="card-hover" onClick={()=>{
                     const size=CANVAS_SIZES[0]
@@ -1674,12 +1767,13 @@ export default function DocumentEditorPage({ params }: { params: { id: string } 
                     setShowTplModal(false);setThumbnails({})
                     waitForFabricThenLoad(built,size.w,size.h)
                   }}
-                    style={{border:'1.5px solid #e5e7eb',borderRadius:12,overflow:'hidden',cursor:'pointer'}}>
-                    <div style={{aspectRatio:'16/9',background:'#f0f4f8',display:'flex',alignItems:'center',justifyContent:'center',fontSize:11,color:'#94a3b8',fontFamily:'JetBrains Mono,monospace',padding:8}}>
-                      <span>{l.label}</span>
+                    style={{border:'1px solid rgba(255,255,255,.07)',borderRadius:12,overflow:'hidden',cursor:'pointer',background:'rgba(255,255,255,.02)'}}>
+                    <div style={{aspectRatio:'16/9',background:'rgba(255,255,255,.04)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:10,color:'rgba(255,255,255,.25)',fontFamily:'JetBrains Mono,monospace',padding:8}}>
+                      <span style={{textAlign:'center',lineHeight:1.4}}>{l.label}</span>
                     </div>
-                    <div style={{padding:'8px 10px',fontSize:11,fontWeight:600,color:'#374151',fontFamily:'Jost,sans-serif',borderTop:'1px solid #f1f5f9'}}>
-                      {l.label}<span style={{marginLeft:5,fontSize:9,color:'#94a3b8'}}>{l.category}</span>
+                    <div style={{padding:'8px 10px',fontSize:11,fontWeight:600,color:'rgba(255,255,255,.5)',fontFamily:'Jost,sans-serif',borderTop:'1px solid rgba(255,255,255,.05)',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                      {l.label}
+                      <span style={{fontSize:8,color:'rgba(255,255,255,.2)',background:'rgba(255,255,255,.05)',padding:'2px 6px',borderRadius:10}}>{l.category}</span>
                     </div>
                   </div>
                 ))}
@@ -1689,25 +1783,35 @@ export default function DocumentEditorPage({ params }: { params: { id: string } 
         </div>
       )}
 
-      {/* ── Share, Delete, Drafter ─────────────────────────────────────────── */}
+      {/* ══ SHARE MODAL ═════════════════════════════════════════════════════════ */}
       {showShare&&(
         <ShareModal documentId={params.id} links={shareLinks} onClose={()=>setShowShare(false)}
           onRefresh={loadShareLinks} isActive={isActive} onPublish={publishDocument}/>
       )}
+
+      {/* ══ DELETE CONFIRM ══════════════════════════════════════════════════════ */}
       {showDeleteConfirm&&(
-        <div style={{position:'fixed',inset:0,zIndex:200,background:'rgba(0,0,0,.5)',display:'flex',alignItems:'center',justifyContent:'center'}}>
-          <div style={{background:'white',borderRadius:16,padding:'28px 32px',width:380,boxShadow:'0 20px 60px rgba(0,0,0,.2)'}}>
-            <h3 style={{fontSize:18,fontWeight:700,color:'#0f172a',margin:'0 0 8px',fontFamily:'Jost,sans-serif'}}>Delete document?</h3>
-            <p style={{fontSize:13,color:'#6b7280',margin:'0 0 20px',lineHeight:1.6,fontFamily:'Jost,sans-serif'}}>This permanently deletes this document and all its share links. This cannot be undone.</p>
-            <div style={{display:'flex',gap:10,justifyContent:'flex-end'}}>
-              <button onClick={()=>setShowDeleteConfirm(false)} style={sBtn}>Cancel</button>
-              <button onClick={deleteDocument} disabled={deleting} style={{padding:'8px 18px',borderRadius:9,border:'none',background:'#ef4444',color:'white',cursor:'pointer',fontSize:13,fontWeight:700,fontFamily:'Jost,sans-serif',opacity:deleting?.6:1}}>
+        <div style={{position:'fixed',inset:0,zIndex:200,background:'rgba(0,0,0,.7)',display:'flex',alignItems:'center',justifyContent:'center',backdropFilter:'blur(8px)'}}>
+          <div style={{background:'#0f1117',borderRadius:16,padding:'32px 36px',width:400,boxShadow:'0 24px 70px rgba(0,0,0,.6)',border:'1px solid rgba(255,255,255,.08)'}}>
+            <div style={{width:44,height:44,borderRadius:12,background:'rgba(239,68,68,.12)',border:'1px solid rgba(239,68,68,.2)',display:'flex',alignItems:'center',justifyContent:'center',marginBottom:16}}>
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M9 3v8M9 13.5v.5" stroke="#ef4444" strokeWidth="1.8" strokeLinecap="round"/></svg>
+            </div>
+            <h3 style={{fontSize:18,fontWeight:800,color:'#fff',margin:'0 0 8px',fontFamily:'Jost,sans-serif',letterSpacing:'-.01em'}}>Delete document?</h3>
+            <p style={{fontSize:13,color:'rgba(255,255,255,.45)',margin:'0 0 24px',lineHeight:1.6,fontFamily:'Jost,sans-serif'}}>This permanently deletes this document and all its share links. This cannot be undone.</p>
+            <div style={{display:'flex',gap:8,justifyContent:'flex-end'}}>
+              <button onClick={()=>setShowDeleteConfirm(false)} className="sec-btn">Cancel</button>
+              <button onClick={deleteDocument} disabled={deleting}
+                style={{padding:'7px 18px',borderRadius:8,border:'none',background:'#ef4444',color:'white',cursor:'pointer',fontSize:12,fontWeight:700,fontFamily:'Jost,sans-serif',opacity:deleting?.6:1,transition:'all .14s'}}
+                onMouseOver={e=>!deleting&&(e.currentTarget.style.background='#dc2626')}
+                onMouseOut={e=>(e.currentTarget.style.background='#ef4444')}>
                 {deleting?'Deleting…':'Delete permanently'}
               </button>
             </div>
           </div>
         </div>
       )}
+
+      {/* ══ AI DRAFTER ══════════════════════════════════════════════════════════ */}
       {showDrafter&&(
         <AIDrafter documentType={doc?.type??'document'}
           onDraftComplete={(html:string)=>{
@@ -1720,9 +1824,6 @@ export default function DocumentEditorPage({ params }: { params: { id: string } 
           }}
           onClose={()=>setShowDrafter(false)}/>
       )}
-
-      {/* page-actions hover reveal */}
-      <style>{`.pthumb:hover .page-actions{opacity:1!important}`}</style>
     </div>
   )
 }
