@@ -4,6 +4,11 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase/client'
 import { buildShareUrl, generateToken } from '@/lib/utils'
 import AIDrafter from '@/components/editor/AIDrafter'
+import SignModal from '@/components/editor/SignModal'
+import ExportModal from '@/components/editor/ExportModal'
+import ChartBuilder from '@/components/editor/ChartBuilder'
+import { LAYOUTS, LAYOUT_CATS } from '@/lib/layouts'
+import { ICON_LIB, ICON_CATS } from '@/lib/icons'
 import type { Database } from '@/lib/supabase/client'
 
 type Doc       = Database['public']['Tables']['documents']['Row']
@@ -188,199 +193,8 @@ function bx(o:any={}):any {
     fill:o.fill??'#5B50E8', rx:o.rx??0, ry:o.rx??0, selectable:true, opacity:o.op??1 }
 }
 
-// ─── Layouts ──────────────────────────────────────────────────────────────────
-const LAYOUTS = [
-  { id:'hero-dark', label:'Hero Dark', cat:'Hero',
-    build:(W:number,H:number)=>pg('#080D1A',[
-      bx({l:0,t:0,w:W,h:H,fill:'#080D1A'}),
-      bx({l:0,t:H-3,w:W,h:3,fill:'#5B50E8'}),
-      bx({l:Math.round(W*.07),t:Math.round(H*.34),w:3,h:Math.round(H*.27),fill:'#5B50E8'}),
-      tx('Your Headline Goes Here',{l:Math.round(W*.08),t:Math.round(H*.35),w:Math.round(W*.58),fs:sc(52,W),fw:'800',fill:'#FFFFFF',ff:'Inter',lh:.98}),
-      tx('Supporting text that draws the reader deeper into your story.',{l:Math.round(W*.08),t:Math.round(H*.35)+sc(52,W)+24,w:Math.round(W*.5),fs:sc(16,W),fill:'rgba(255,255,255,.52)',lh:1.7}),
-    ]),
-  },
-  { id:'hero-light', label:'Hero Light', cat:'Hero',
-    build:(W:number,H:number)=>pg('#F8FAFC',[
-      tx('CATEGORY · LABEL',{l:Math.round(W*.1),t:Math.round(H*.22),w:Math.round(W*.8),fs:sc(10,W),fw:'700',fill:'#5B50E8',ta:'center',ff:'JetBrains Mono'}),
-      tx('Centered Impact\nHeadline Here',{l:Math.round(W*.06),t:Math.round(H*.22)+24,w:Math.round(W*.88),fs:sc(52,W),fw:'800',fill:'#0F172A',ta:'center',ff:'Inter',lh:.98}),
-      tx('A clear, compelling line that expands on the headline and draws the reader in.',{l:Math.round(W*.14),t:Math.round(H*.22)+24+sc(52,W)*2+24,w:Math.round(W*.72),fs:sc(15,W),fill:'#64748B',ta:'center',lh:1.7}),
-    ]),
-  },
-  { id:'hero-gradient', label:'Gradient Hero', cat:'Hero',
-    build:(W:number,H:number)=>pg('#5B50E8',[
-      bx({l:0,t:0,w:W,h:H,fill:'#5B50E8'}),
-      bx({l:Math.round(W*.06),t:Math.round(H*.16),w:52,h:3,fill:'rgba(255,255,255,.38)',rx:2}),
-      tx('Bold Gradient\nSlide',{l:Math.round(W*.06),t:Math.round(H*.24),w:Math.round(W*.62),fs:sc(58,W),fw:'900',fill:'#FFFFFF',ff:'Inter',lh:.96}),
-      tx('For launches, announcements and key moments that demand attention.',{l:Math.round(W*.06),t:Math.round(H*.24)+sc(58,W)*2+28,w:Math.round(W*.5),fs:sc(15,W),fill:'rgba(255,255,255,.65)',lh:1.65}),
-    ]),
-  },
-  { id:'hero-split', label:'Split Accent', cat:'Hero',
-    build:(W:number,H:number)=>pg('#FFFFFF',[
-      bx({l:Math.round(W*.56),t:0,w:Math.round(W*.44),h:H,fill:'#5B50E8'}),
-      tx('Headline\nLeft Side',{l:Math.round(W*.06),t:Math.round(H*.28),w:Math.round(W*.45),fs:sc(46,W),fw:'800',fill:'#0F172A',ff:'Inter',lh:.98}),
-      tx('Supporting description with your key message on the left.',{l:Math.round(W*.06),t:Math.round(H*.28)+sc(46,W)*2+22,w:Math.round(W*.43),fs:sc(14,W),fill:'#64748B',lh:1.65}),
-      tx('Feature\nRight',{l:Math.round(W*.62),t:Math.round(H*.32),w:Math.round(W*.3),fs:sc(38,W),fw:'700',fill:'#FFFFFF',ff:'Inter',lh:.98}),
-    ]),
-  },
-  { id:'pitch-problem', label:'Problem', cat:'Pitch',
-    build:(W:number,H:number)=>pg('#FFFFFF',[
-      bx({l:0,t:0,w:W,h:4,fill:'#DC2626'}),
-      bx({l:Math.round(W*.06),t:Math.round(H*.14),w:52,h:4,fill:'#DC2626',rx:2}),
-      tx('The Problem',{l:Math.round(W*.06),t:Math.round(H*.14)+18,w:Math.round(W*.68),fs:sc(40,W),fw:'900',fill:'#0F172A',ff:'Inter',lh:1.0}),
-      tx('Describe the real pain your customer experiences every single day.',{l:Math.round(W*.06),t:Math.round(H*.14)+18+sc(40,W)+16,w:Math.round(W*.54),fs:sc(16,W),fill:'#374151',lh:1.7}),
-      ...(['Wasted time','Lost revenue','Broken workflows'].map((item,i)=>{
-        const x=Math.round(W*.06)+i*Math.round(W*.31)
-        return [bx({l:x,t:Math.round(H*.62),w:Math.round(W*.28),h:Math.round(H*.22),fill:['#FEF2F2','#FFF7ED','#FFFBEB'][i],rx:14}),tx(item,{l:x+18,t:Math.round(H*.62)+18,w:Math.round(W*.25),fs:sc(14,W),fw:'600',fill:['#991B1B','#92400E','#78350F'][i]})]
-      })).flat(),
-    ]),
-  },
-  { id:'pitch-solution', label:'Solution', cat:'Pitch',
-    build:(W:number,H:number)=>pg('#FFFFFF',[
-      bx({l:0,t:0,w:W,h:4,fill:'#16A34A'}),
-      bx({l:Math.round(W*.06),t:Math.round(H*.14),w:52,h:4,fill:'#16A34A',rx:2}),
-      tx('The Solution',{l:Math.round(W*.06),t:Math.round(H*.14)+18,w:Math.round(W*.68),fs:sc(40,W),fw:'900',fill:'#0F172A',ff:'Inter',lh:1.0}),
-      tx('Explain exactly how you solve the problem. Be specific.',{l:Math.round(W*.06),t:Math.round(H*.14)+18+sc(40,W)+16,w:Math.round(W*.54),fs:sc(16,W),fill:'#374151',lh:1.7}),
-      ...([['01','Core Feature','What it does and why it matters.','#16A34A'],['02','Unique Edge','What makes this impossible to copy.','#5B50E8'],['03','Outcome','The measurable result for customers.','#D97706']].map(([n,title,body,col],i)=>{
-        const x=Math.round(W*.06)+i*Math.round(W*.3)
-        return [bx({l:x,t:Math.round(H*.6),w:Math.round(W*.27),h:Math.round(H*.28),fill:'#F9FAFB',rx:14}),bx({l:x+18,t:Math.round(H*.6)+18,w:30,h:30,fill:col,rx:9}),tx(n,{l:x+28,t:Math.round(H*.6)+23,w:22,fs:10,fw:'800',fill:'#fff',ta:'center',ff:'JetBrains Mono'}),tx(title,{l:x+14,t:Math.round(H*.6)+64,w:Math.round(W*.24),fs:sc(14,W),fw:'700',fill:'#0F172A'}),tx(body,{l:x+14,t:Math.round(H*.6)+64+sc(14,W)+8,w:Math.round(W*.24),fs:sc(12,W),fill:'#6B7280',lh:1.55})]
-      })).flat(),
-    ]),
-  },
-  { id:'pitch-metrics', label:'Traction', cat:'Pitch',
-    build:(W:number,H:number)=>pg('#080D1A',[
-      bx({l:0,t:0,w:W,h:H,fill:'#080D1A'}),
-      tx('Traction',{l:Math.round(W*.06),t:Math.round(H*.1),w:Math.round(W*.6),fs:sc(34,W),fw:'900',fill:'#FFFFFF',ff:'Inter'}),
-      ...([['$0M','ARR','#16A34A'],['0K','Customers','#5B50E8'],['0%','MoM Growth','#D97706'],['0','NPS Score','#EC4899']].map(([val,lbl,col],i)=>{
-        const cw=Math.round((W-130)/4), cx=50+i*(cw+13)
-        return [bx({l:cx,t:Math.round(H*.28),w:cw,h:Math.round(H*.52),fill:'rgba(255,255,255,.04)',rx:16}),bx({l:cx,t:Math.round(H*.28),w:cw,h:4,fill:col,rx:2}),tx(val,{l:cx+18,t:Math.round(H*.28)+28,w:cw-36,fs:sc(36,W),fw:'800',fill:col,ff:'Inter'}),tx(lbl,{l:cx+18,t:Math.round(H*.28)+28+sc(36,W)+8,w:cw-36,fs:sc(13,W),fw:'500',fill:'rgba(255,255,255,.55)'})]
-      })).flat(),
-    ]),
-  },
-  { id:'pitch-team', label:'Team', cat:'Pitch',
-    build:(W:number,H:number)=>pg('#FAFAFA',[
-      bx({l:0,t:0,w:W,h:4,fill:'#0F172A'}),
-      tx('The Team',{l:Math.round(W*.06),t:44,w:Math.round(W*.68),fs:sc(36,W),fw:'900',fill:'#0F172A',ff:'Inter'}),
-      ...(['CEO / Founder','CTO / Co-Founder','Head of Growth'].map((role,i)=>{
-        const cw=Math.round((W-130)/3), cx=50+i*(cw+13)
-        return [bx({l:cx,t:Math.round(H*.4),w:cw,h:Math.round(H*.44),fill:'#FFFFFF',rx:16}),bx({l:cx+Math.round(cw/2)-28,t:Math.round(H*.4)+20,w:56,h:56,fill:'#EEF2FF',rx:28}),tx('Name',{l:cx+12,t:Math.round(H*.4)+90,w:cw-24,fs:sc(15,W),fw:'700',fill:'#0F172A',ta:'center'}),tx(role,{l:cx+12,t:Math.round(H*.4)+90+sc(15,W)+6,w:cw-24,fs:sc(10,W),fill:'#5B50E8',ta:'center',ff:'JetBrains Mono',fw:'600'})]
-      })).flat(),
-    ]),
-  },
-  { id:'pitch-ask', label:'The Ask', cat:'Pitch',
-    build:(W:number,H:number)=>pg('#5B50E8',[
-      bx({l:0,t:0,w:W,h:H,fill:'#5B50E8'}),
-      tx('We are raising',{l:Math.round(W*.1),t:Math.round(H*.2),w:Math.round(W*.8),fs:sc(20,W),fill:'rgba(255,255,255,.6)',ta:'center',ff:'Inter'}),
-      tx('$2M Seed Round',{l:Math.round(W*.06),t:Math.round(H*.2)+sc(20,W)+18,w:Math.round(W*.88),fs:sc(62,W),fw:'900',fill:'#FFFFFF',ta:'center',ff:'Inter',lh:.95}),
-      bx({l:Math.round(W*.5)-44,t:Math.round(H*.67),w:88,h:4,fill:'rgba(255,255,255,.38)',rx:2}),
-      tx('hello@yourcompany.com',{l:Math.round(W*.12),t:Math.round(H*.73),w:Math.round(W*.76),fs:sc(15,W),fill:'rgba(255,255,255,.7)',ta:'center'}),
-    ]),
-  },
-  { id:'prop-cover', label:'Proposal Cover', cat:'Proposal',
-    build:(W:number,H:number)=>pg('#FAFAF8',[
-      bx({l:0,t:0,w:W,h:6,fill:'#0F172A'}),
-      bx({l:Math.round(W*.06),t:Math.round(H*.16),w:Math.round(W*.06),h:4,fill:'#5B50E8',rx:2}),
-      tx('BUSINESS PROPOSAL',{l:Math.round(W*.14),t:Math.round(H*.16)+4,w:280,fs:sc(9,W),fw:'700',fill:'#5B50E8',ff:'JetBrains Mono'}),
-      tx('Proposal for\nClient Company',{l:Math.round(W*.06),t:Math.round(H*.25),w:Math.round(W*.58),fs:sc(54,W),fw:'900',fill:'#0F172A',ff:'Cormorant Garamond',lh:.9}),
-      bx({l:Math.round(W*.06),t:Math.round(H*.65),w:Math.round(W*.28),h:1,fill:'#E2E8F0'}),
-      tx('Prepared by Your Company · hello@company.com',{l:Math.round(W*.06),t:Math.round(H*.67),w:Math.round(W*.5),fs:sc(12,W),fill:'#64748B',lh:1.65}),
-      tx(new Date().toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'}),{l:Math.round(W*.06),t:Math.round(H*.82),w:240,fs:sc(11,W),fill:'#94A3B8',ff:'JetBrains Mono'}),
-    ]),
-  },
-  { id:'prop-pricing', label:'Pricing Table', cat:'Proposal',
-    build:(W:number,H:number)=>pg('#FFFFFF',[
-      bx({l:0,t:0,w:W,h:4,fill:'#16A34A'}),
-      tx('Investment',{l:Math.round(W*.06),t:38,w:Math.round(W*.68),fs:sc(34,W),fw:'900',fill:'#0F172A',ff:'Inter'}),
-      bx({l:Math.round(W*.06),t:Math.round(H*.26),w:Math.round(W*.88),h:1,fill:'#E2E8F0'}),
-      ...([['Discovery & Strategy','$2,500'],['Design & Prototyping','$5,000'],['Development','$12,000'],['Testing & Launch','$2,500']].map(([item,price],i)=>{
-        const y=Math.round(H*.28)+i*Math.round(H*.11)
-        return [bx({l:Math.round(W*.06),t:y,w:Math.round(W*.88),h:Math.round(H*.09),fill:i%2===0?'#F9FAFB':'#FFFFFF'}),tx(item,{l:Math.round(W*.08),t:y+Math.round(H*.03),w:Math.round(W*.6),fs:sc(13,W),fw:'500',fill:'#0F172A'}),tx(price,{l:Math.round(W*.77),t:y+Math.round(H*.03),w:Math.round(W*.15),fs:sc(13,W),fw:'700',fill:'#16A34A',ta:'right',ff:'JetBrains Mono'})]
-      })).flat(),
-      bx({l:Math.round(W*.06),t:Math.round(H*.72),w:Math.round(W*.88),h:1,fill:'#0F172A'}),
-      tx('Total Investment',{l:Math.round(W*.08),t:Math.round(H*.74),w:Math.round(W*.5),fs:sc(15,W),fw:'700',fill:'#0F172A'}),
-      tx('$22,000',{l:Math.round(W*.77),t:Math.round(H*.74),w:Math.round(W*.15),fs:sc(17,W),fw:'800',fill:'#0F172A',ta:'right',ff:'JetBrains Mono'}),
-    ]),
-  },
-  { id:'editorial', label:'Editorial Cover', cat:'Editorial',
-    build:(W:number,H:number)=>pg('#FAFAF8',[
-      bx({l:0,t:0,w:W,h:5,fill:'#0F172A'}),bx({l:0,t:H-5,w:W,h:5,fill:'#0F172A'}),
-      tx('VOL. 01 · ISSUE 04 · 2025',{l:Math.round(W*.06),t:24,w:Math.round(W*.5),fs:sc(9,W),fw:'600',fill:'#5B50E8',ff:'JetBrains Mono'}),
-      tx('The Future\nof Design',{l:Math.round(W*.06),t:Math.round(H*.14),w:Math.round(W*.54),fs:sc(70,W),fw:'900',fill:'#0F172A',ff:'Cormorant Garamond',lh:.88}),
-      bx({l:Math.round(W*.06),t:Math.round(H*.63),w:Math.round(W*.22),h:2,fill:'#0F172A'}),
-      tx('A deep dive into visual systems that shape how the world works.',{l:Math.round(W*.06),t:Math.round(H*.65),w:Math.round(W*.46),fs:sc(13,W),fill:'#475569',lh:1.7}),
-      bx({l:Math.round(W*.62),t:0,w:Math.round(W*.38),h:H,fill:'#0F172A'}),
-    ]),
-  },
-  { id:'pull-quote', label:'Pull Quote', cat:'Editorial',
-    build:(W:number,H:number)=>pg('#0F172A',[
-      tx('"',{l:Math.round(W*.07),t:Math.round(H*.04),w:100,fs:sc(160,W),fw:'900',fill:'#5B50E8',ff:'Inter',lh:1}),
-      tx('The best designs solve real problems elegantly, not just look good.',{l:Math.round(W*.07),t:Math.round(H*.28),w:Math.round(W*.78),fs:sc(32,W),fw:'600',fill:'#FFFFFF',ff:'Cormorant Garamond',lh:1.22}),
-      bx({l:Math.round(W*.07),t:Math.round(H*.72),w:40,h:3,fill:'#5B50E8',rx:2}),
-      tx('— Author Name, Title at Company',{l:Math.round(W*.07),t:Math.round(H*.72)+18,w:Math.round(W*.58),fs:sc(13,W),fill:'rgba(255,255,255,.38)'}),
-    ]),
-  },
-  { id:'minimal-dark', label:'Dark Minimal', cat:'Minimal',
-    build:(W:number,H:number)=>pg('#09090B',[
-      bx({l:Math.round(W*.07),t:Math.round(H*.44),w:Math.round(W*.86),h:1,fill:'rgba(255,255,255,.07)'}),
-      tx('Minimal.',{l:Math.round(W*.07),t:Math.round(H*.2),w:W-80,fs:sc(78,W),fw:'800',fill:'#FFFFFF',ff:'Inter'}),
-      tx('Sometimes restraint is everything.',{l:Math.round(W*.07),t:Math.round(H*.2)+sc(78,W)+20,w:Math.round(W*.58),fs:sc(18,W),fill:'rgba(255,255,255,.32)'}),
-    ]),
-  },
-  { id:'minimal-light', label:'Light Minimal', cat:'Minimal',
-    build:(W:number,H:number)=>pg('#FAFAF8',[
-      tx('Elegant\n& Simple',{l:Math.round(W*.08),t:Math.round(H*.3),w:Math.round(W*.84),fs:sc(62,W),fw:'300',fill:'#0F172A',ff:'Cormorant Garamond',ta:'center',lh:.98}),
-      bx({l:Math.round(W*.5)-22,t:Math.round(H*.66),w:44,h:2,fill:'#CBD5E1',rx:1}),
-      tx('Restraint is a design decision, not a limitation.',{l:Math.round(W*.16),t:Math.round(H*.66)+14,w:Math.round(W*.68),fs:sc(13,W),fill:'#94A3B8',ta:'center',lh:1.7}),
-    ]),
-  },
-  { id:'three-col', label:'3 Columns', cat:'Feature',
-    build:(W:number,H:number)=>pg('#FFFFFF',[
-      bx({l:0,t:0,w:W,h:4,fill:'#5B50E8'}),
-      tx('Three Column Layout',{l:50,t:38,w:W-100,fs:sc(27,W),fw:'700',fill:'#0F172A',ff:'Inter'}),
-      bx({l:50,t:38+sc(27,W)+12,w:W-100,h:1,fill:'#E2E8F0'}),
-      ...([['Feature One','#5B50E8','#EEEDFB'],['Feature Two','#16A34A','#F0FDF4'],['Feature Three','#D97706','#FFFBEB']].map(([title,col,bg],i)=>{
-        const cw=Math.round((W-140)/3), cx=50+i*(cw+20)
-        return [bx({l:cx,t:Math.round(H*.34),w:cw,h:Math.round(H*.5),fill:bg,rx:16}),bx({l:cx+18,t:Math.round(H*.34)+18,w:44,h:44,fill:col,rx:12}),tx(title,{l:cx+16,t:Math.round(H*.34)+78,w:cw-32,fs:sc(16,W),fw:'700',fill:'#0F172A'}),tx('Benefit-focused description of this feature.',{l:cx+16,t:Math.round(H*.34)+78+sc(16,W)+8,w:cw-32,fs:sc(12,W),fill:'#6B7280',lh:1.6})]
-      })).flat(),
-    ]),
-  },
-  { id:'kpi-dark', label:'KPI Dark', cat:'Feature',
-    build:(W:number,H:number)=>pg('#090C14',[
-      bx({l:0,t:0,w:W,h:H,fill:'#090C14'}),
-      tx('Performance Overview',{l:Math.round(W*.05),t:38,w:Math.round(W*.68),fs:sc(25,W),fw:'700',fill:'#FFFFFF',ff:'Inter'}),
-      ...([['↑ 47%','Revenue','#16A34A'],['↑ 23K','Users','#5B50E8'],['94%','Retention','#D97706'],['4.8★','Rating','#EC4899']].map(([val,lbl,col],i)=>{
-        const cw=Math.round((W-120)/4), cx=50+i*(cw+13)
-        return [bx({l:cx,t:Math.round(H*.28),w:cw,h:Math.round(H*.55),fill:'rgba(255,255,255,.04)',rx:14}),bx({l:cx,t:Math.round(H*.28),w:cw,h:3,fill:col,rx:2}),tx(val,{l:cx+16,t:Math.round(H*.28)+24,w:cw-32,fs:sc(32,W),fw:'800',fill:col,ff:'Inter'}),tx(lbl,{l:cx+16,t:Math.round(H*.28)+24+sc(32,W)+8,w:cw-32,fs:sc(13,W),fw:'600',fill:'rgba(255,255,255,.68)'})]
-      })).flat(),
-    ]),
-  },
-  { id:'agenda', label:'Agenda', cat:'Feature',
-    build:(W:number,H:number)=>pg('#FFFFFF',[
-      bx({l:0,t:0,w:W,h:4,fill:'#5B50E8'}),
-      tx("Today's Agenda",{l:Math.round(W*.06),t:36,w:Math.round(W*.68),fs:sc(34,W),fw:'900',fill:'#0F172A',ff:'Inter'}),
-      ...([['01','Opening & Welcome','10 min'],['02','Product Deep Dive','25 min'],['03','Live Demo','15 min'],['04','Q&A','15 min'],['05','Next Steps','5 min']].map(([num,item,time],i)=>{
-        const y=Math.round(H*.22)+i*Math.round(H*.13)
-        return [bx({l:Math.round(W*.06),t:y,w:Math.round(W*.88),h:Math.round(H*.11),fill:i%2===0?'#F9FAFB':'#FFFFFF',rx:12}),tx(num,{l:Math.round(W*.06)+18,t:y+Math.round(H*.03),w:28,fs:sc(11,W),fw:'800',fill:'#5B50E8',ff:'JetBrains Mono'}),tx(item,{l:Math.round(W*.06)+60,t:y+Math.round(H*.03),w:Math.round(W*.6),fs:sc(14,W),fw:'600',fill:'#0F172A'}),tx(time,{l:Math.round(W*.76),t:y+Math.round(H*.03),w:120,fs:sc(11,W),fill:'#94A3B8',ta:'right',ff:'JetBrains Mono'})]
-      })).flat(),
-    ]),
-  },
-  { id:'testimonial', label:'Testimonial', cat:'Closing',
-    build:(W:number,H:number)=>pg('#FAFAFA',[
-      bx({l:Math.round(W*.5)-44,t:Math.round(H*.2),w:88,h:2,fill:'#5B50E8',rx:1}),
-      tx('"Working with this team transformed our business in ways we never imagined possible."',{l:Math.round(W*.08),t:Math.round(H*.28),w:Math.round(W*.84),fs:sc(25,W),fw:'500',fill:'#0F172A',ff:'Cormorant Garamond',ta:'center',lh:1.35}),
-      bx({l:Math.round(W*.5)-22,t:Math.round(H*.7),w:44,h:44,fill:'#E2E8F0',rx:22}),
-      tx('Sarah Chen · Head of Product, Acme Corp',{l:Math.round(W*.08),t:Math.round(H*.7)+54,w:Math.round(W*.84),fs:sc(12,W),fill:'#64748B',ta:'center'}),
-    ]),
-  },
-  { id:'thank-you', label:'Thank You', cat:'Closing',
-    build:(W:number,H:number)=>pg('#FFFFFF',[
-      bx({l:0,t:H-5,w:W,h:5,fill:'#5B50E8'}),
-      tx('Thank\nYou.',{l:Math.round(W*.08),t:Math.round(H*.24),w:Math.round(W*.84),fs:sc(78,W),fw:'900',fill:'#0F172A',ta:'center',ff:'Inter',lh:.93}),
-      bx({l:Math.round(W*.5)-38,t:Math.round(H*.7),w:76,h:3,fill:'#5B50E8',rx:2}),
-      tx('hello@yourcompany.com · yourwebsite.com',{l:Math.round(W*.1),t:Math.round(H*.72),w:Math.round(W*.8),fs:sc(14,W),fill:'#64748B',ta:'center'}),
-    ]),
-  },
-]
-const LAYOUT_CATS = ['All','Hero','Pitch','Proposal','Editorial','Minimal','Feature','Closing']
+// Layouts imported from @/lib/layouts above
+
 
 // ─── Reusable controls ─────────────────────────────────────────────────────────
 const UI:React.CSSProperties = { fontFamily:Fui }
@@ -520,6 +334,10 @@ export default function DocumentEditorPage({ params }: { params: { id: string } 
   const [showDrafter, setShowDrafter]       = useState(false)
   const [showExportMenu, setShowExportMenu] = useState(false)
   const [showSizeMenu, setShowSizeMenu]     = useState(false)
+  const [showSignModal, setShowSignModal]   = useState(false)
+  const [showExportModal, setShowExportModal] = useState(false)
+  const [showChartBuilder, setShowChartBuilder] = useState(false)
+  const [isExporting, setIsExporting]       = useState(false)
 
   // Panel collapse
   const [leftOpen, setLeftOpen]   = useState(true)
@@ -535,7 +353,9 @@ export default function DocumentEditorPage({ params }: { params: { id: string } 
   const [pages, setPages]             = useState<any[]>([])
   const [currentPage, setCurrentPage] = useState(0)
   const [thumbnails, setThumbs]       = useState<Record<number,string>>({})
-  const [leftTab, setLeftTab]         = useState<'layouts'|'elements'|'text'|'media'|'layers'>('layouts')
+  const [leftTab, setLeftTab]         = useState<'layouts'|'elements'|'text'|'media'|'icons'|'layers'>('layouts')
+  const [iconSearch, setIconSearch]     = useState('')
+  const [iconCat, setIconCat]           = useState('All')
   const [layoutCat, setLayoutCat]     = useState('All')
 
   // Canvas settings
@@ -547,6 +367,7 @@ export default function DocumentEditorPage({ params }: { params: { id: string } 
   // Tool state
   const [activeTool, setActiveTool] = useState('select')
   const [selectedObj, setSelectedObj] = useState<any>(null)
+  const [brushSize, setBrushSize]     = useState(3)
 
   // Style state (synced from selected object)
   const [fontColor, setFontColor]   = useState('#0F0F0F')
@@ -831,12 +652,59 @@ export default function DocumentEditorPage({ params }: { params: { id: string } 
   // ── Tools ─────────────────────────────────────────────────────────────────────
   function setTool(t:string) {
     setActiveTool(t); const fc=fabricRef.current; if(!fc) return
-    fc.isDrawingMode = t==='draw'
-    if(t==='draw' && fc.freeDrawingBrush) { fc.freeDrawingBrush.color=fontColor; fc.freeDrawingBrush.width=3 }
-    if(t==='text') {
-      const fab=fabricLib.current||(window as any).fabric; if(!fab) return
-      const tb = new fab.Textbox('Click to edit', { left:100, top:100, width:360, fontSize:24, fontFamily, fill:fontColor, fontWeight:'400', editable:true, lineHeight:1.35 })
-      fc.add(tb); fc.setActiveObject(tb); fc.renderAll(); pushHist(); setActiveTool('select'); fc.isDrawingMode=false
+    const fab=fabricLib.current||(window as any).fabric
+    // Reset drawing mode
+    fc.isDrawingMode = false
+    fc.off('mouse:down.line'); fc.off('mouse:move.line'); fc.off('mouse:up.line')
+
+    if (t === 'draw') {
+      fc.isDrawingMode = true
+      if (fc.freeDrawingBrush) { fc.freeDrawingBrush.color = fontColor; fc.freeDrawingBrush.width = brushSize }
+    }
+    if (t === 'erase') {
+      fc.isDrawingMode = true
+      if (fc.freeDrawingBrush) {
+        fc.freeDrawingBrush.color = '#ffffff'
+        fc.freeDrawingBrush.width = 24
+      }
+    }
+    if (t === 'line') {
+      if (!fab) return
+      let isDown = false; let line: any = null; let origX = 0; let origY = 0
+      const onDown = (o: any) => {
+        isDown = true
+        const p = fc.getPointer(o.e)
+        origX = p.x; origY = p.y
+        line = new fab.Line([origX, origY, origX, origY], { stroke: fillColor, strokeWidth: 2, selectable: true, originX: 'center', originY: 'center' })
+        fc.add(line)
+      }
+      const onMove = (o: any) => {
+        if (!isDown || !line) return
+        const p = fc.getPointer(o.e)
+        if (o.e.shiftKey) {
+          // Snap to 45° increments
+          const dx = p.x - origX; const dy = p.y - origY
+          const angle = Math.round(Math.atan2(dy, dx) / (Math.PI/4)) * (Math.PI/4)
+          const len = Math.sqrt(dx*dx + dy*dy)
+          line.set({ x2: origX + len*Math.cos(angle), y2: origY + len*Math.sin(angle) })
+        } else {
+          line.set({ x2: p.x, y2: p.y })
+        }
+        fc.renderAll()
+      }
+      const onUp = () => { isDown = false; line = null; pushHist(); scheduleSave(); setActiveTool('select'); fc.isDrawingMode=false }
+      fc.on('mouse:down', onDown); fc.on('mouse:move', onMove); fc.on('mouse:up', onUp)
+      // Clean up on next tool change
+      ;(fc as any).__lineHandlers = { onDown, onMove, onUp }
+    } else if ((fc as any).__lineHandlers) {
+      const h = (fc as any).__lineHandlers
+      fc.off('mouse:down', h.onDown); fc.off('mouse:move', h.onMove); fc.off('mouse:up', h.onUp)
+      ;(fc as any).__lineHandlers = null
+    }
+    if (t === 'text') {
+      if (!fab) return
+      const tb = new fab.Textbox('Click to edit', { left: 100, top: 100, width: 360, fontSize: 24, fontFamily, fill: fontColor, fontWeight: '400', editable: true, lineHeight: 1.35 })
+      fc.add(tb); fc.setActiveObject(tb); fc.renderAll(); pushHist(); setActiveTool('select')
     }
   }
 
@@ -909,11 +777,38 @@ export default function DocumentEditorPage({ params }: { params: { id: string } 
 
   function addTable(rows=4, cols=3) {
     const fab=fabricLib.current||(window as any).fabric; const fc=fabricRef.current; if(!fc||!fab) return
-    const cw=160, rh=44, x=100, y=100
-    for(let i=0;i<rows;i++) for(let j=0;j<cols;j++){
-      fc.add(new fab.Rect({left:x+j*cw,top:y+i*rh,width:cw,height:rh,fill:i===0?'#0F172A':i%2===0?'#F9FAFB':'#FFFFFF',stroke:'#E2E8F0',strokeWidth:1,selectable:true}))
-      fc.add(new fab.IText(i===0?`Column ${j+1}`:`Cell`,{left:x+j*cw+10,top:y+i*rh+13,width:cw-20,fontSize:12,fontFamily:'Inter',fill:i===0?'#fff':'#374151',fontWeight:i===0?'600':'400',editable:true,selectable:true}))
+    // Scale table to ~60% of canvas width
+    const totalW = Math.round(cWRef.current * 0.62)
+    const cw = Math.round(totalW / cols)
+    const rh = 42
+    const startX = Math.round(cWRef.current * 0.19)
+    const startY = Math.round(cHRef.current * 0.22)
+    const allObjs: any[] = []
+
+    for (let i = 0; i < rows; i++) {
+      for (let j = 0; j < cols; j++) {
+        const x = startX + j * cw; const y = startY + i * rh
+        const isHeader = i === 0; const isAlt = !isHeader && i % 2 === 0
+        allObjs.push(new fab.Rect({
+          left: x, top: y, width: cw, height: rh,
+          fill: isHeader ? '#0F172A' : isAlt ? '#F8FAFC' : '#FFFFFF',
+          stroke: '#E2E8F0', strokeWidth: 1,
+          selectable: false, evented: false,
+        }))
+        allObjs.push(new fab.Textbox(isHeader ? `Column ${j+1}` : j === 0 ? `Row ${i}` : `Cell`, {
+          left: x + 12, top: y + (rh - 14) / 2,
+          width: cw - 24,
+          fontSize: isHeader ? 12 : 12,
+          fontFamily: 'Inter',
+          fill: isHeader ? '#FFFFFF' : '#374151',
+          fontWeight: isHeader ? '700' : '400',
+          editable: true, selectable: true,
+          lineHeight: 1,
+        }))
+      }
     }
+    // Group background rects, keep texts individually selectable
+    allObjs.forEach(o => fc.add(o))
     fc.renderAll(); pushHist()
   }
 
@@ -957,26 +852,68 @@ export default function DocumentEditorPage({ params }: { params: { id: string } 
   function grpSel() { const fc=fabricRef.current; if(!fc||fc.getActiveObject()?.type!=='activeSelection') return; fc.getActiveObject().toGroup(); fc.renderAll(); pushHist() }
 
   // ── Export — full resolution independent of editor zoom ──────────────────────
-  async function exportPDF() {
-    const fc=fabricRef.current; if(!fc||(window as any).jspdf===undefined) return
-    const {jsPDF}=(window as any).jspdf
-    const saved=[...pagesRef.current]; saved[cpRef.current]=fc.toJSON()
-    const pdf=new jsPDF({orientation:cWRef.current>cHRef.current?'landscape':'portrait',unit:'px',format:[cWRef.current,cHRef.current]})
-    for(let i=0;i<saved.length;i++){
-      if(i>0) pdf.addPage()
-      await new Promise<void>(res=>{
-        const tmp=document.createElement('canvas'); tmp.width=cWRef.current; tmp.height=cHRef.current
-        const tfc=new (window as any).fabric.StaticCanvas(tmp,{width:cWRef.current,height:cHRef.current,enableRetinaScaling:false})
-        tfc.loadFromJSON(saved[i],()=>{tfc.setZoom(1);tfc.renderAll();pdf.addImage(tfc.toDataURL({format:'jpeg',quality:.94,multiplier:1}),'JPEG',0,0,cWRef.current,cHRef.current);tfc.dispose();res()})
-      })
-    }
-    pdf.save(`${title||'document'}.pdf`)
+  // ── Export with full DPI quality control ─────────────────────────────────────
+  async function handleExport(opts: any) {
+    setIsExporting(true)
+    const fc = fabricRef.current; if(!fc) return
+    const saved = [...pagesRef.current]; saved[cpRef.current] = fc.toJSON()
+    const pagesToExport = opts.pages === 'current' ? [saved[cpRef.current]] : saved
+    const mult = opts.multiplier ?? 1
+    const W = cWRef.current, H = cHRef.current
+
+    try {
+      if (opts.format === 'pdf') {
+        if (!(window as any).jspdf) {
+          await new Promise<void>(res => {
+            const s=document.createElement('script'); s.src='https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'
+            s.onload=()=>res(); document.head.appendChild(s)
+          })
+        }
+        const {jsPDF}=(window as any).jspdf
+        const pdf=new jsPDF({orientation:W>H?'landscape':'portrait',unit:'px',format:[W,H]})
+        for(let i=0;i<pagesToExport.length;i++){
+          if(i>0) pdf.addPage()
+          await new Promise<void>(res=>{
+            const tmp=document.createElement('canvas'); tmp.width=Math.round(W*mult); tmp.height=Math.round(H*mult)
+            const tfc=new (window as any).fabric.StaticCanvas(tmp,{width:Math.round(W*mult),height:Math.round(H*mult),enableRetinaScaling:false})
+            tfc.loadFromJSON(pagesToExport[i],()=>{
+              tfc.setZoom(mult); tfc.renderAll()
+              const dataUrl=tfc.toDataURL({format:'jpeg',quality:opts.jpegQuality??0.95,multiplier:1})
+              pdf.addImage(dataUrl,'JPEG',0,0,W,H); tfc.dispose(); res()
+            })
+          })
+        }
+        pdf.save(`${title||'document'}.pdf`)
+      } else {
+        // Image formats
+        for(let i=0;i<pagesToExport.length;i++){
+          await new Promise<void>(res=>{
+            const tmp=document.createElement('canvas'); tmp.width=Math.round(W*mult); tmp.height=Math.round(H*mult)
+            const tfc=new (window as any).fabric.StaticCanvas(tmp,{width:Math.round(W*mult),height:Math.round(H*mult),enableRetinaScaling:false})
+            tfc.loadFromJSON(pagesToExport[i],()=>{
+              tfc.setZoom(mult); tfc.renderAll()
+              const fmt=opts.format==='jpeg'?'jpeg':opts.format==='webp'?'webp':'png'
+              const q=opts.jpegQuality??0.95
+              const dataUrl=tfc.toDataURL({format:fmt,quality:q,multiplier:1})
+              const a=document.createElement('a'); a.href=dataUrl
+              a.download=`${title||'slide'}${pagesToExport.length>1?`-${i+1}`:''}.${opts.format}`
+              a.click(); tfc.dispose(); res()
+            })
+          })
+        }
+      }
+    } catch(e) { console.error('Export error', e) }
+    setIsExporting(false); setShowExportModal(false)
   }
-  async function exportPNG() {
-    const fc=fabricRef.current; if(!fc) return
-    const cur=fc.toJSON(); const tmp=document.createElement('canvas'); tmp.width=cWRef.current; tmp.height=cHRef.current
-    const tfc=new (window as any).fabric.StaticCanvas(tmp,{width:cWRef.current,height:cHRef.current,enableRetinaScaling:false})
-    tfc.loadFromJSON(cur,()=>{tfc.setZoom(1);tfc.renderAll();const a=document.createElement('a');a.href=tfc.toDataURL({format:'png',multiplier:1});a.download=`${title||'slide'}.png`;a.click();tfc.dispose()})
+
+  function addChartToCanvas(dataUrl: string) {
+    const fab=fabricLib.current||(window as any).fabric; const fc=fabricRef.current; if(!fc||!fab) return
+    fab.Image.fromURL(dataUrl, (img: any) => {
+      const s=Math.min(cWRef.current*.7/img.width, cHRef.current*.7/img.height, 1)
+      img.set({left:Math.round(cWRef.current*.15),top:Math.round(cHRef.current*.15),scaleX:s,scaleY:s})
+      fc.add(img); fc.setActiveObject(img); fc.renderAll(); pushHist()
+    })
+    setShowChartBuilder(false)
   }
 
   // ── Keyboard ──────────────────────────────────────────────────────────────────
@@ -1059,6 +996,27 @@ export default function DocumentEditorPage({ params }: { params: { id: string } 
             <Icon name="chevR" size={14} color={C.textSm}/>
           </button>
         </div>
+        {(activeTool==='draw'||activeTool==='erase') && (
+          <Sec label={activeTool==='erase'?'Eraser':'Brush'} defaultOpen={true}>
+            <div style={{display:'flex',flexDirection:'column',gap:10}}>
+              <RangeInput label="Size" value={brushSize} min={1} max={50} onChange={v=>{setBrushSize(v);const fc=fabricRef.current;if(fc?.freeDrawingBrush)fc.freeDrawingBrush.width=v}}/>
+              {activeTool==='draw' && <ColorInput label="Color" value={fontColor} onChange={v=>{setFontColor(v);const fc=fabricRef.current;if(fc?.freeDrawingBrush)fc.freeDrawingBrush.color=v}}/>}
+              {activeTool==='draw' && (
+                <div>
+                  <div style={{fontSize:11,fontWeight:600,color:C.textMd,marginBottom:7,fontFamily:Fui}}>Brush Style</div>
+                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:5}}>
+                    {[{l:'Pencil',v:1},{l:'Marker',v:8},{l:'Brush',v:14},{l:'Chalk',v:20}].map(b=>(
+                      <button key={b.l} onClick={()=>{setBrushSize(b.v);const fc=fabricRef.current;if(fc?.freeDrawingBrush)fc.freeDrawingBrush.width=b.v}}
+                        style={{...UI,padding:'6px',border:`1.5px solid ${brushSize===b.v?C.accent:C.border}`,borderRadius:7,background:brushSize===b.v?C.accentLt:'#fff',cursor:'pointer',fontSize:11,fontWeight:600,color:brushSize===b.v?C.accent:C.textMd}}>
+                        {b.l}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </Sec>
+        )}
         <Sec label="Background"><ColorInput label="" value={bgColor} onChange={v=>{setBgColor(v);if(fabricRef.current){fabricRef.current.backgroundColor=v;fabricRef.current.renderAll();scheduleSave()}}}/></Sec>
         <Sec label="Canvas Size">
           <div style={{display:'flex',flexDirection:'column',gap:4}}>
@@ -1302,13 +1260,19 @@ export default function DocumentEditorPage({ params }: { params: { id: string } 
 
         {/* Tool buttons */}
         <div style={{display:'flex',alignItems:'center',gap:1,background:C.panelSub,borderRadius:9,padding:3,border:`1px solid ${C.border}`}}>
-          {[
-            {id:'select',tip:'Select  V',icon:'cursor'},
-            {id:'text',  tip:'Text  T',  icon:'text'},
-            {id:'draw',  tip:'Draw  P',  icon:'pencil'},
-          ].map(t=>(
+          {([
+            {id:'select',  tip:'Select  V',         icon:'cursor'},
+            {id:'text',    tip:'Text  T',            icon:'text'},
+            {id:'draw',    tip:'Pencil  P',          icon:'pencil'},
+            {id:'line',    tip:'Line',               icon:'minus'},
+            {id:'erase',   tip:'Eraser',             icon:'close'},
+          ] as const).map(t=>(
             <IBtn key={t.id} icon={t.icon as keyof typeof ICO} label={t.tip} active={activeTool===t.id} onClick={()=>setTool(t.id)} size={15}/>
           ))}
+          <div style={{width:1,height:18,background:C.border,margin:'0 2px'}}/>
+          <IBtn icon="grid"   label="Add Table"       onClick={()=>addTable(4,3)} size={14}/>
+          <IBtn icon="image"  label="Media"           onClick={()=>setLeftTab('media')} size={14}/>
+          <IBtn icon="sparkle" label="Icon Library"   onClick={()=>setLeftTab('icons')} size={14}/>
         </div>
 
         <div style={{width:1,height:22,background:C.border,margin:'0 3px',flexShrink:0}}/>
@@ -1326,17 +1290,9 @@ export default function DocumentEditorPage({ params }: { params: { id: string } 
 
         {/* Export */}
         <div style={{position:'relative'}}>
-          <button onClick={()=>setShowExportMenu(!showExportMenu)} className="topbtn">
+          <button onClick={()=>setShowExportModal(true)} className="topbtn">
             <Icon name="download" size={14} color={C.textSd}/>Export
-            <Icon name="chevD" size={11} color={C.textSm}/>
           </button>
-          {showExportMenu && (
-            <div style={{position:'absolute',top:'110%',right:0,background:C.panel,border:`1px solid ${C.border}`,borderRadius:10,boxShadow:C.shadowLg,zIndex:400,minWidth:156,padding:4}}>
-              {[{l:'Export PDF',f:()=>{exportPDF();setShowExportMenu(false)}},{l:'Export PNG',f:()=>{exportPNG();setShowExportMenu(false)}}].map(b=>(
-                <button key={b.l} onClick={b.f} style={{...UI,display:'flex',width:'100%',padding:'8px 12px',border:'none',background:'none',cursor:'pointer',fontSize:13,fontWeight:500,color:C.text,borderRadius:7,textAlign:'left'}} onMouseOver={e=>(e.currentTarget.style.background=C.hover)} onMouseOut={e=>(e.currentTarget.style.background='none')}>{b.l}</button>
-              ))}
-            </div>
-          )}
         </div>
 
         {/* Publish / Share */}
@@ -1357,7 +1313,7 @@ export default function DocumentEditorPage({ params }: { params: { id: string } 
                 <Icon name="chevR" size={14} color={C.textMd}/>
               </button>
               {(['layouts','elements','text','media','layers'] as const).map(t=>{
-                const icons:Record<string,keyof typeof ICO>={layouts:'layout',elements:'grid',text:'type',media:'image',layers:'layers'}
+                const icons:Record<string,keyof typeof ICO>={layouts:'layout',elements:'grid',text:'type',media:'image',icons:'sparkle',layers:'layers'}
                 return (
                   <button key={t} title={t.charAt(0).toUpperCase()+t.slice(1)} onClick={()=>{setLeftTab(t);setLeftOpen(true);try{localStorage.setItem('folio_left','1')}catch(e){}}}
                     style={{width:36,height:36,border:'none',background:leftTab===t?C.accentLt:'none',cursor:'pointer',color:leftTab===t?C.accent:C.textMd,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',borderRadius:8,transition:'all .13s'}} onMouseOver={e=>{if(leftTab!==t)(e.currentTarget.style.background=C.hover)}} onMouseOut={e=>{if(leftTab!==t)(e.currentTarget.style.background='transparent')}}>
@@ -1370,7 +1326,7 @@ export default function DocumentEditorPage({ params }: { params: { id: string } 
             <>
               {/* Tabs bar */}
               <div style={{display:'flex',borderBottom:`1px solid ${C.border}`,padding:'0 4px',flexShrink:0,alignItems:'center'}}>
-                {(['layouts','elements','text','media','layers'] as const).map(t=>(
+                {(['layouts','elements','text','media','icons','layers'] as const).map(t=>(
                   <button key={t} className={`lt${leftTab===t?' on':''}`} onClick={()=>setLeftTab(t)} style={{textTransform:'capitalize'}}>{t}</button>
                 ))}
                 <button onClick={toggleLeft} title="Collapse" style={{marginLeft:'auto',width:28,height:28,border:'none',background:'none',cursor:'pointer',color:C.textSm,display:'flex',alignItems:'center',justifyContent:'center',borderRadius:5,flexShrink:0,transition:'all .13s'}} onMouseOver={e=>(e.currentTarget.style.background=C.hover)} onMouseOut={e=>(e.currentTarget.style.background='none')}>
@@ -1436,6 +1392,14 @@ export default function DocumentEditorPage({ params }: { params: { id: string } 
                       </div>
                     </div>
 
+                    {/* Charts */}
+                    <div>
+                      <p style={{fontSize:10,fontWeight:700,color:C.textMd,textTransform:'uppercase',letterSpacing:'.09em',marginBottom:8,fontFamily:Fui}}>Charts & Data</p>
+                      <button onClick={()=>setShowChartBuilder(true)} style={{...UI,width:'100%',padding:'12px 14px',border:`2px dashed #D97706`,borderRadius:12,background:'#FFFBEB',cursor:'pointer',display:'flex',alignItems:'center',gap:10,fontSize:13,fontWeight:700,color:'#92400E',transition:'all .14s'}} onMouseOver={e=>{(e.currentTarget as HTMLElement).style.background='#FEF3C7'}} onMouseOut={e=>{(e.currentTarget as HTMLElement).style.background='#FFFBEB'}}>
+                        📊 Open Chart Builder
+                      </button>
+                    </div>
+
                     {/* Signature block */}
                     {supSign && (
                       <div>
@@ -1444,7 +1408,10 @@ export default function DocumentEditorPage({ params }: { params: { id: string } 
                           <Icon name="sign" size={18} color={C.accent} w={1.8}/>
                           Add Signature Block
                         </button>
-                        <p style={{fontSize:11,color:C.textSm,marginTop:7,lineHeight:1.55,fontFamily:Fui}}>Adds a signed-by zone with Folio's digital stamp of authenticity and public verification link.</p>
+                        <button onClick={()=>setShowSignModal(true)} style={{...UI,width:'100%',marginTop:7,padding:'10px 14px',border:`1.5px solid ${C.border}`,borderRadius:10,background:'#fff',cursor:'pointer',display:'flex',alignItems:'center',gap:10,fontSize:13,fontWeight:600,color:C.textSd,transition:'all .14s'}} onMouseOver={e=>{(e.currentTarget as HTMLElement).style.borderColor=C.accent;(e.currentTarget as HTMLElement).style.color=C.accent}} onMouseOut={e=>{(e.currentTarget as HTMLElement).style.borderColor=C.border;(e.currentTarget as HTMLElement).style.color=C.textSd}}>
+                          ✍ Preview Signature Styles
+                        </button>
+                        <p style={{fontSize:11,color:C.textSm,marginTop:7,lineHeight:1.55,fontFamily:Fui}}>Adds a signed-by zone with Folio's digital stamp. Recipients sign via the shared link.</p>
                       </div>
                     )}
 
@@ -1532,6 +1499,55 @@ export default function DocumentEditorPage({ params }: { params: { id: string } 
                         <button onClick={()=>{const np=photoPage+1;setPhotoPage(np);loadPhotos('',np)}} style={{...UI,width:'100%',marginTop:8,padding:'8px',border:`1.5px solid ${C.border}`,borderRadius:9,background:C.panelSub,cursor:'pointer',fontSize:12,color:C.textMd,fontWeight:600,transition:'all .13s'}} onMouseOver={e=>(e.currentTarget.style.borderColor=C.accent)} onMouseOut={e=>(e.currentTarget.style.borderColor=C.border)}>Load more</button>
                       )}
                     </div>
+                  </div>
+                )}
+
+                {/* ICONS LIBRARY */}
+                {leftTab==='icons' && (
+                  <div>
+                    <input value={iconSearch} onChange={e=>setIconSearch(e.target.value)} placeholder="Search icons…"
+                      style={{...UI,width:'100%',padding:'7px 10px',border:`1.5px solid ${C.border}`,borderRadius:8,fontSize:12,color:C.text,background:'#fff',outline:'none',marginBottom:9}}
+                      onFocus={e=>e.target.style.borderColor=C.accent} onBlur={e=>e.target.style.borderColor=C.border}/>
+                    <div style={{display:'flex',gap:4,flexWrap:'wrap',marginBottom:10}}>
+                      {['All',...ICON_CATS].map(c=>(
+                        <button key={c} className={`cpill${iconCat===c?' on':''}`} onClick={()=>setIconCat(c)} style={{fontSize:10,padding:'3px 8px'}}>{c}</button>
+                      ))}
+                    </div>
+                    {(() => {
+                      const filtered = ICON_LIB.filter(ic =>
+                        (iconCat==='All'||ic.cat===iconCat) &&
+                        (ic.label.toLowerCase().includes(iconSearch.toLowerCase())||ic.id.includes(iconSearch.toLowerCase()))
+                      )
+                      return (
+                        <div style={{display:'grid',gridTemplateColumns:'repeat(5,1fr)',gap:4}}>
+                          {filtered.slice(0,100).map(ic=>(
+                            <button key={ic.id} title={ic.label}
+                              onClick={()=>{
+                                const fab=fabricLib.current||(window as any).fabric
+                                const fc=fabricRef.current
+                                if(!fc||!fab) return
+                                const svg=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="${fillColor}" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="${ic.d}"/></svg>`
+                                const blob=new Blob([svg],{type:'image/svg+xml'})
+                                const url=URL.createObjectURL(blob)
+                                fab.Image.fromURL(url,(img:any)=>{
+                                  img.set({left:Math.round(cWRef.current*.4),top:Math.round(cHRef.current*.4),scaleX:3,scaleY:3})
+                                  fc.add(img);fc.setActiveObject(img);fc.renderAll();pushHist()
+                                  URL.revokeObjectURL(url)
+                                })
+                              }}
+                              style={{padding:'7px 3px',border:`1px solid ${C.border}`,borderRadius:8,background:'#fff',cursor:'pointer',display:'flex',flexDirection:'column',alignItems:'center',gap:3,transition:'all .12s'}}
+                              onMouseOver={e=>{(e.currentTarget as HTMLElement).style.borderColor=C.accent;(e.currentTarget as HTMLElement).style.background=C.accentLt}}
+                              onMouseOut={e=>{(e.currentTarget as HTMLElement).style.borderColor=C.border;(e.currentTarget as HTMLElement).style.background='#fff'}}>
+                              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={C.textMd} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                                <path d={ic.d}/>
+                              </svg>
+                              <span style={{fontSize:7,color:C.textSm,fontFamily:Fui,textAlign:'center',lineHeight:1.2,overflow:'hidden',width:'100%',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{ic.label}</span>
+                            </button>
+                          ))}
+                        </div>
+                      )
+                    })()}
+                    {iconSearch===''&&iconCat==='All'&&<p style={{fontSize:10,color:C.textSm,marginTop:10,fontFamily:Fui,textAlign:'center'}}>Showing 100 of {ICON_LIB.length}+ icons. Search or filter by category.</p>}
                   </div>
                 )}
 
@@ -1678,6 +1694,42 @@ export default function DocumentEditorPage({ params }: { params: { id: string } 
           const ni=upd2.length-1; setCurrentPage(ni); cpRef.current=ni
           loadIntoFabric(newPage,cWRef.current,cHRef.current); scheduleSave()
         }} onClose={()=>setShowDrafter(false)}/>
+      )}
+
+      {/* ══ SIGN MODAL ═════════════════════════════════════════════════════ */}
+      {showSignModal && (
+        <SignModal
+          signerName=""
+          onSign={(dataUrl: string, name: string) => {
+            const fab=fabricLib.current||(window as any).fabric; const fc=fabricRef.current; if(!fc||!fab) return
+            fab.Image.fromURL(dataUrl, (img: any) => {
+              const s=Math.min(cWRef.current*.36/img.width, cHRef.current*.22/img.height, 1)
+              img.set({left:Math.round(cWRef.current*.32),top:Math.round(cHRef.current*.66),scaleX:s,scaleY:s})
+              fc.add(img); fc.setActiveObject(img); fc.renderAll(); pushHist(); scheduleSave()
+            })
+            setShowSignModal(false)
+          }}
+          onClose={() => setShowSignModal(false)}
+        />
+      )}
+
+      {/* ══ EXPORT MODAL ═══════════════════════════════════════════════════ */}
+      {showExportModal && (
+        <ExportModal
+          pageCount={pages.length}
+          docTitle={title || 'Document'}
+          onExport={handleExport}
+          onClose={() => setShowExportModal(false)}
+          isExporting={isExporting}
+        />
+      )}
+
+      {/* ══ CHART BUILDER ══════════════════════════════════════════════════ */}
+      {showChartBuilder && (
+        <ChartBuilder
+          onAdd={addChartToCanvas}
+          onClose={() => setShowChartBuilder(false)}
+        />
       )}
     </div>
   )
