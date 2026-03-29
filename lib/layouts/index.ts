@@ -651,9 +651,7 @@ export const LAYOUTS: Layout[] = [
   { id: 'hero-serif', label: 'Serif Hero', cat: 'Hero', preview: '#FAF7F2',
     build: (W: number, H: number) => pg('#FAF7F2', [
       LN(Math.round(W*.08), Math.round(H*.14), Math.round(W*.08), Math.round(H*.86), '#D4B896', 2),
-      TX('Classic
-Serif
-Headline', { l:Math.round(W*.14), t:Math.round(H*.14), w:Math.round(W*.72), fs:sc(58,W), fw:'300', fill:'#1C0A00', ff:'Cormorant Garamond', lh:.93 }),
+      TX('Classic\nSerif\nHeadline', { l:Math.round(W*.14), t:Math.round(H*.14), w:Math.round(W*.72), fs:sc(58,W), fw:'300', fill:'#1C0A00', ff:'Cormorant Garamond', lh:.93 }),
       TX('For premium brands that speak softly and carry big ideas.', { l:Math.round(W*.14), t:Math.round(H*.68), w:Math.round(W*.55), fs:sc(14,W), fill:'#6B4C3B', lh:1.7 }),
     ])
   },
@@ -669,8 +667,7 @@ Headline', { l:Math.round(W*.14), t:Math.round(H*.14), w:Math.round(W*.72), fs:s
     build: (W: number, H: number) => pg('#FFFFFF', [
       BX({ l:0, t:0, w:W, h:Math.round(H*.48), fill:'#0F172A' }),
       TX('EDITION', { l:Math.round(W*.06), t:Math.round(H*.06), w:200, fs:sc(9,W), fw:'700', fill:'#5B50E8', ff:'JetBrains Mono', cs:300 }),
-      TX('The Annual
-Design Report', { l:Math.round(W*.06), t:Math.round(H*.1), w:Math.round(W*.6), fs:sc(48,W), fw:'900', fill:'#FFFFFF', lh:.93 }),
+      TX('The Annual\nDesign Report', { l:Math.round(W*.06), t:Math.round(H*.1), w:Math.round(W*.6), fs:sc(48,W), fw:'900', fill:'#FFFFFF', lh:.93 }),
       TX('Issue 12 · Winter 2025', { l:Math.round(W*.06), t:Math.round(H*.52), w:W*.5, fs:sc(11,W), fill:'#64748B', ff:'JetBrains Mono' }),
       TX('Bold ideas. Sharp thinking. Visual excellence.', { l:Math.round(W*.06), t:Math.round(H*.57), w:Math.round(W*.55), fs:sc(15,W), fill:'#374151', fw:'500', lh:1.6 }),
     ])
@@ -788,10 +785,8 @@ Hiring!', { l:Math.round(W*.06), t:Math.round(H*.26), w:W*.88, fs:sc(58,W), fw:'
     build: (W: number, H: number) => pg('#FAF5EF', [
       BX({ l:0, t:0, w:W, h:Math.round(H*.44), fill:'#0F172A' }),
       TX('🗓', { l:Math.round(W*.08), t:Math.round(H*.08), w:60, fs:36, lh:1 }),
-      TX('APR
-24', { l:Math.round(W*.22), t:Math.round(H*.06), w:120, fs:sc(32,W), fw:'900', fill:'#FFFFFF', lh:.92, ff:'JetBrains Mono' }),
-      TX('Product
-Launch Event', { l:Math.round(W*.08), t:Math.round(H*.2), w:Math.round(W*.84), fs:sc(38,W), fw:'900', fill:'#FFFFFF', lh:.93 }),
+      TX('APR\n24', { l:Math.round(W*.22), t:Math.round(H*.06), w:120, fs:sc(32,W), fw:'900', fill:'#FFFFFF', lh:.92, ff:'JetBrains Mono' }),
+      TX('Product\nLaunch Event', { l:Math.round(W*.08), t:Math.round(H*.2), w:Math.round(W*.84), fs:sc(38,W), fw:'900', fill:'#FFFFFF', lh:.93 }),
       TX('Main Event Title', { l:Math.round(W*.08), t:Math.round(H*.52), w:Math.round(W*.84), fs:sc(22,W), fw:'700', fill:'#0F172A' }),
       TX('6:00 PM · San Francisco, CA · Tickets from $99', { l:Math.round(W*.08), t:Math.round(H*.52)+sc(22,W)+10, w:Math.round(W*.84), fs:sc(13,W), fill:'#64748B', lh:1.55 }),
     ])
@@ -857,8 +852,7 @@ Launch Event', { l:Math.round(W*.08), t:Math.round(H*.2), w:Math.round(W*.84), f
       BX({ l:0, t:0, w:W, h:Math.round(H*.36), fill:'#0F172A' }),
       TX('THE WEEKLY BRIEF', { l:50, t:Math.round(H*.06), w:W-100, fs:sc(10,W), fw:'700', fill:'rgba(255,255,255,.38)', ta:'center', ff:'JetBrains Mono', cs:300 }),
       TX('Issue #42 · March 2025', { l:50, t:Math.round(H*.06)+sc(10,W)+6, w:W-100, fs:sc(12,W), fill:'rgba(255,255,255,.55)', ta:'center' }),
-      TX('Big Ideas.
-Bigger Results.', { l:Math.round(W*.08), t:Math.round(H*.14), w:W*.84, fs:sc(38,W), fw:'900', fill:'#FFFFFF', ta:'center', lh:.94 }),
+      TX('Big Ideas.\nBigger Results.', { l:Math.round(W*.08), t:Math.round(H*.14), w:W*.84, fs:sc(38,W), fw:'900', fill:'#FFFFFF', ta:'center', lh:.94 }),
       TX('IN THIS ISSUE', { l:Math.round(W*.08), t:Math.round(H*.44), w:Math.round(W*.25), fs:sc(9,W), fw:'700', fill:'#5B50E8', ff:'JetBrains Mono', cs:200 }),
       ...['→ The future of AI in design', '→ 5 tools you need this week', '→ Interview: Design at scale'].map((item, i) => TX(item, { l:Math.round(W*.08), t:Math.round(H*.50)+i*sc(17,W), w:Math.round(W*.6), fs:sc(13,W), fill:'#374151', fw:'500', lh:1.5 })),
     ])
@@ -867,12 +861,10 @@ Bigger Results.', { l:Math.round(W*.08), t:Math.round(H*.14), w:W*.84, fs:sc(38,
     build: (W: number, H: number) => pg('#FAFAFA', [
       BX({ l:0, t:0, w:W, h:5, fill:'#5B50E8' }),
       TX('FEATURE STORY', { l:Math.round(W*.06), t:26, w:240, fs:sc(9,W), fw:'700', fill:'#5B50E8', ff:'JetBrains Mono', cs:200 }),
-      TX('The Big Story
-You Can't Miss', { l:Math.round(W*.06), t:Math.round(H*.1), w:Math.round(W*.58), fs:sc(34,W), fw:'900', fill:'#0F172A', lh:.95 }),
+      TX('The Big Story\nYou Can't Miss', { l:Math.round(W*.06), t:Math.round(H*.1), w:Math.round(W*.58), fs:sc(34,W), fw:'900', fill:'#0F172A', lh:.95 }),
       TX('A compelling three-sentence lead that gives context and draws the reader into the full story below.', { l:Math.round(W*.06), t:Math.round(H*.1)+sc(34,W)*2+16, w:Math.round(W*.55), fs:sc(14,W), fill:'#374151', lh:1.7, fw:'500' }),
       BX({ l:Math.round(W*.68), t:Math.round(H*.08), w:Math.round(W*.26), h:Math.round(H*.46), fill:'#E2E8F0', rx:12 }),
-      TX('Add
-image', { l:Math.round(W*.68)+20, t:Math.round(H*.08)+Math.round(H*.2), w:Math.round(W*.22), fs:sc(11,W), fill:'#94A3B8', ta:'center', ff:'JetBrains Mono' }),
+      TX('Add\nimage', { l:Math.round(W*.68)+20, t:Math.round(H*.08)+Math.round(H*.2), w:Math.round(W*.22), fs:sc(11,W), fill:'#94A3B8', ta:'center', ff:'JetBrains Mono' }),
       LN(Math.round(W*.06), Math.round(H*.64), Math.round(W*.94), Math.round(H*.64), '#E2E8F0'),
       TX('Continue body text here. Share the full details of your story in a clear, reader-friendly format with enough space to breathe.', { l:Math.round(W*.06), t:Math.round(H*.66), w:Math.round(W*.88), fs:sc(12,W), fill:'#475569', lh:1.75 }),
     ])
@@ -967,8 +959,7 @@ image', { l:Math.round(W*.68)+20, t:Math.round(H*.08)+Math.round(H*.2), w:Math.r
       BX({ l:0, t:0, w:W, h:H, fill:'#1E293B' }),
       BX({ l:Math.round(W*.08), t:Math.round(H*.12), w:Math.round(W*.84), h:Math.round(H*.44), fill:'rgba(255,255,255,.06)', rx:16 }),
       TX('New Feature', { l:50, t:Math.round(H*.12)+Math.round(H*.2), w:W-100, fs:sc(11,W), fw:'700', fill:'#5B50E8', ta:'center', ff:'JetBrains Mono' }),
-      TX('🚀 Announcing
-Instant Insights', { l:50, t:Math.round(H*.6), w:W-100, fs:sc(28,W), fw:'900', fill:'#FFFFFF', ta:'center', lh:.95 }),
+      TX('🚀 Announcing\nInstant Insights', { l:50, t:Math.round(H*.6), w:W-100, fs:sc(28,W), fw:'900', fill:'#FFFFFF', ta:'center', lh:.95 }),
       TX('Real-time AI analysis of every document view, automatically.', { l:50, t:Math.round(H*.6)+sc(28,W)*2+14, w:W-100, fs:sc(13,W), fill:'rgba(255,255,255,.55)', ta:'center', lh:1.6 }),
     ])
   },
@@ -977,8 +968,7 @@ Instant Insights', { l:50, t:Math.round(H*.6), w:W-100, fs:sc(28,W), fw:'900', f
       BX({ l:0, t:0, w:W, h:H, fill:'#2D1B69' }),
       BX({ l:Math.round(W*.5), t:0, w:Math.round(W*.5), h:H, fill:'#EC4899', op:.18 }),
       CL({ l:Math.round(W*.3), t:Math.round(H*.1), r:Math.round(H*.3), fill:'rgba(236,72,153,.14)' }),
-      TX('Duotone
-Statement', { l:Math.round(W*.06), t:Math.round(H*.22), w:W*.88, fs:sc(58,W), fw:'900', fill:'#FFFFFF', lh:.93 }),
+      TX('Duotone\nStatement', { l:Math.round(W*.06), t:Math.round(H*.22), w:W*.88, fs:sc(58,W), fw:'900', fill:'#FFFFFF', lh:.93 }),
       TX('Bold color. Bold message.', { l:Math.round(W*.06), t:Math.round(H*.22)+sc(58,W)*2+18, w:Math.round(W*.55), fs:sc(16,W), fill:'rgba(255,255,255,.5)', lh:1.6 }),
     ])
   },
@@ -1015,8 +1005,7 @@ Statement', { l:Math.round(W*.06), t:Math.round(H*.22), w:W*.88, fs:sc(58,W), fw
     build: (W: number, H: number) => pg('#F97316', [
       BX({ l:0, t:0, w:W, h:H, fill:'#F97316' }),
       TX('🏆', { l:50, t:Math.round(H*.1), w:W-100, fs:48, ta:'center', lh:1 }),
-      TX('#1 Product of
-the Day', { l:50, t:Math.round(H*.24), w:W-100, fs:sc(44,W), fw:'900', fill:'#FFFFFF', ta:'center', lh:.95 }),
+      TX('#1 Product of\nthe Day', { l:50, t:Math.round(H*.24), w:W-100, fs:sc(44,W), fw:'900', fill:'#FFFFFF', ta:'center', lh:.95 }),
       TX('Thank you for your incredible support!', { l:50, t:Math.round(H*.64), w:W-100, fs:sc(14,W), fill:'rgba(255,255,255,.75)', ta:'center', lh:1.6 }),
       TX('folio.app  ·  🍊 Product Hunt', { l:50, t:Math.round(H*.78), w:W-100, fs:sc(11,W), fill:'rgba(255,255,255,.55)', ta:'center', ff:'JetBrains Mono' }),
     ])
@@ -1027,8 +1016,7 @@ the Day', { l:50, t:Math.round(H*.24), w:W-100, fs:sc(44,W), fw:'900', fill:'#FF
       BX({ l:0, t:0, w:5, h:H, fill:'#5B50E8' }),
       BX({ l:0, t:H-5, w:W, h:5, fill:'#5B50E8' }),
       TX('CONFIDENTIAL PROPOSAL', { l:Math.round(W*.08), t:Math.round(H*.1), w:320, fs:sc(9,W), fw:'700', fill:'rgba(91,80,232,.6)', ff:'JetBrains Mono', cs:200 }),
-      TX('Prepared for
-Client Name', { l:Math.round(W*.08), t:Math.round(H*.2), w:Math.round(W*.7), fs:sc(52,W), fw:'800', fill:'#FFFFFF', lh:.93 }),
+      TX('Prepared for\nClient Name', { l:Math.round(W*.08), t:Math.round(H*.2), w:Math.round(W*.7), fs:sc(52,W), fw:'800', fill:'#FFFFFF', lh:.93 }),
       TX('Prepared by Your Company', { l:Math.round(W*.08), t:Math.round(H*.7), w:Math.round(W*.55), fs:sc(14,W), fill:'rgba(255,255,255,.55)' }),
       TX(new Date().toLocaleDateString('en-US',{month:'long',year:'numeric'}), { l:Math.round(W*.08), t:Math.round(H*.76), w:200, fs:sc(11,W), fill:'rgba(255,255,255,.28)', ff:'JetBrains Mono' }),
     ])
@@ -1045,8 +1033,7 @@ Client Name', { l:Math.round(W*.08), t:Math.round(H*.2), w:Math.round(W*.7), fs:
   { id: 'editorial-photo-caption', label: 'Photo Caption', cat: 'Editorial', preview: '#0F172A',
     build: (W: number, H: number) => pg('#0F172A', [
       BX({ l:0, t:0, w:W, h:Math.round(H*.72), fill:'#1E293B' }),
-      TX('Insert
-Image Here', { l:Math.round(W*.38), t:Math.round(H*.3), w:Math.round(W*.24), fs:sc(12,W), fill:'rgba(255,255,255,.18)', ta:'center', ff:'JetBrains Mono' }),
+      TX('Insert\nImage Here', { l:Math.round(W*.38), t:Math.round(H*.3), w:Math.round(W*.24), fs:sc(12,W), fill:'rgba(255,255,255,.18)', ta:'center', ff:'JetBrains Mono' }),
       LN(Math.round(W*.06), Math.round(H*.74), Math.round(W*.22), Math.round(H*.74), '#5B50E8', 2),
       TX('Photo caption and credit line goes here. Location · Year.', { l:Math.round(W*.06), t:Math.round(H*.76), w:Math.round(W*.6), fs:sc(13,W), fill:'rgba(255,255,255,.45)', lh:1.65 }),
       TX('PHOTO ESSAY', { l:Math.round(W*.7), t:Math.round(H*.76), w:Math.round(W*.24), fs:sc(9,W), fw:'700', fill:'rgba(255,255,255,.2)', ta:'right', ff:'JetBrains Mono', cs:200 }),
@@ -1092,8 +1079,7 @@ Image Here', { l:Math.round(W*.38), t:Math.round(H*.3), w:Math.round(W*.24), fs:
     build: (W: number, H: number) => pg('#1A1200', [
       BX({ l:0, t:0, w:W, h:H, fill:'#1A1200' }),
       TX('🏆', { l:50, t:Math.round(H*.08), w:W-100, fs:56, ta:'center', lh:1 }),
-      TX('Award
-Winner', { l:50, t:Math.round(H*.22), w:W-100, fs:sc(58,W), fw:'900', fill:'#FCD34D', ta:'center', lh:.93 }),
+      TX('Award\nWinner', { l:50, t:Math.round(H*.22), w:W-100, fs:sc(58,W), fw:'900', fill:'#FCD34D', ta:'center', lh:.93 }),
       LN(Math.round(W*.3), Math.round(H*.68), Math.round(W*.7), Math.round(H*.68), 'rgba(252,211,77,.35)', 2),
       TX('Best Product 2025 · Category Name', { l:50, t:Math.round(H*.71), w:W-100, fs:sc(12,W), fill:'rgba(252,211,77,.6)', ta:'center', ff:'JetBrains Mono' }),
     ])
