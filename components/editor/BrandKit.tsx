@@ -20,7 +20,7 @@ const FM = "'JetBrains Mono',monospace"
 interface BrandColor { id:string; hex:string; name:string; group?:string }
 interface BrandFont  { id:string; name:string; family:string; source:'google'|'upload'; url?:string; variants?:string[] }
 interface BrandLogo  { id:string; url:string; name:string; type:'primary'|'secondary'|'mark'|'wordmark'|'dark'|'light' }
-interface BrandKit   {
+interface BrandKitData   {
   id?:string; userId?:string; name:string; tagline?:string
   colors:BrandColor[]; fonts:BrandFont[]; logos:BrandLogo[]
   updatedAt?:string
@@ -170,7 +170,7 @@ function FontCard({ f, onApply, onRemove }: { f:BrandFont; onApply:()=>void; onR
 
 // ── MAIN COMPONENT ─────────────────────────────────────────────────────────────
 export default function BrandKit({ onApplyColor, onApplyFont, onAddLogo }: Props) {
-  const [kit, setKit]         = useState<BrandKit>(DEFAULT_KIT)
+  const [kit, setKit]         = useState<BrandKitData>(DEFAULT_KIT)
   const [saving, setSaving]   = useState(false)
   const [saved, setSaved]     = useState(false)
   const [loading, setLoading] = useState(true)
