@@ -644,6 +644,471 @@ export const LAYOUTS: Layout[] = [
       }).flat(),
     ])
   },
+
+  // ══ ADDITIONAL LAYOUTS — expanding to 100+ ═══════════════════════════════
+
+  // ── More Hero layouts ─────────────────────────────────────────────────────
+  { id: 'hero-serif', label: 'Serif Hero', cat: 'Hero', preview: '#FAF7F2',
+    build: (W: number, H: number) => pg('#FAF7F2', [
+      LN(Math.round(W*.08), Math.round(H*.14), Math.round(W*.08), Math.round(H*.86), '#D4B896', 2),
+      TX('Classic
+Serif
+Headline', { l:Math.round(W*.14), t:Math.round(H*.14), w:Math.round(W*.72), fs:sc(58,W), fw:'300', fill:'#1C0A00', ff:'Cormorant Garamond', lh:.93 }),
+      TX('For premium brands that speak softly and carry big ideas.', { l:Math.round(W*.14), t:Math.round(H*.68), w:Math.round(W*.55), fs:sc(14,W), fill:'#6B4C3B', lh:1.7 }),
+    ])
+  },
+  { id: 'hero-neon', label: 'Neon Dark', cat: 'Hero', preview: '#050510',
+    build: (W: number, H: number) => pg('#050510', [
+      BX({ l:0, t:0, w:W, h:H, fill:'#050510' }),
+      TX('ELECTRIC', { l:Math.round(W*.04), t:Math.round(H*.25), w:W*.92, fs:sc(78,W), fw:'900', fill:'transparent', lh:.9 }),
+      TX('ELECTRIC', { l:Math.round(W*.04)+2, t:Math.round(H*.25)+2, w:W*.92, fs:sc(78,W), fw:'900', fill:'#00FFB2', lh:.9, cs:-20 }),
+      TX('IDEAS LIVE HERE', { l:Math.round(W*.06), t:Math.round(H*.25)+sc(78,W)+16, w:W*.88, fs:sc(14,W), fw:'700', fill:'rgba(0,255,178,.38)', ff:'JetBrains Mono', cs:300 }),
+    ])
+  },
+  { id: 'hero-magazine', label: 'Magazine', cat: 'Hero', preview: '#FFFFFF',
+    build: (W: number, H: number) => pg('#FFFFFF', [
+      BX({ l:0, t:0, w:W, h:Math.round(H*.48), fill:'#0F172A' }),
+      TX('EDITION', { l:Math.round(W*.06), t:Math.round(H*.06), w:200, fs:sc(9,W), fw:'700', fill:'#5B50E8', ff:'JetBrains Mono', cs:300 }),
+      TX('The Annual
+Design Report', { l:Math.round(W*.06), t:Math.round(H*.1), w:Math.round(W*.6), fs:sc(48,W), fw:'900', fill:'#FFFFFF', lh:.93 }),
+      TX('Issue 12 · Winter 2025', { l:Math.round(W*.06), t:Math.round(H*.52), w:W*.5, fs:sc(11,W), fill:'#64748B', ff:'JetBrains Mono' }),
+      TX('Bold ideas. Sharp thinking. Visual excellence.', { l:Math.round(W*.06), t:Math.round(H*.57), w:Math.round(W*.55), fs:sc(15,W), fill:'#374151', fw:'500', lh:1.6 }),
+    ])
+  },
+  { id: 'hero-mono-grid', label: 'Grid Lines', cat: 'Hero', preview: '#FAFAFA',
+    build: (W: number, H: number) => pg('#FAFAFA', [
+      ...[...Array(6)].map((_,i) => LN(Math.round(W/6*i), 0, Math.round(W/6*i), H, '#E2E8F0', 1)),
+      ...[...Array(5)].map((_,i) => LN(0, Math.round(H/5*(i+1)), W, Math.round(H/5*(i+1)), '#E2E8F0', 1)),
+      TX('Clean.', { l:Math.round(W*.06), t:Math.round(H*.18), w:W*.88, fs:sc(90,W), fw:'900', fill:'#0F172A', lh:.88 }),
+      TX('Precise.', { l:Math.round(W*.06), t:Math.round(H*.18)+sc(90,W)+8, w:W*.88, fs:sc(90,W), fw:'300', fill:'#E2E8F0', lh:.88 }),
+    ])
+  },
+
+  // ── More Pitch layouts ────────────────────────────────────────────────────
+  { id: 'pitch-financials', label: 'Financials', cat: 'Pitch', preview: '#F8FAFC',
+    build: (W: number, H: number) => pg('#F8FAFC', [
+      BX({ l:0, t:0, w:W, h:5, fill:'#16A34A' }),
+      TX('Financial Overview', { l:Math.round(W*.06), t:36, w:Math.round(W*.7), fs:sc(28,W), fw:'800', fill:'#0F172A' }),
+      ...[['Revenue', '$1.2M', '$2.8M', '$6.5M', '#16A34A'], ['Gross Margin', '42%', '58%', '71%', '#5B50E8'], ['Burn Rate', '$180K/mo', '$240K/mo', '$190K/mo', '#D97706'], ['Runway', '14 mo', '18 mo', '24 mo', '#0369A1']].map(([label, y1, y2, y3, col], i) => {
+        const y = Math.round(H*.28)+i*Math.round(H*.15)
+        return [BX({ l:Math.round(W*.06), t:y, w:Math.round(W*.88), h:Math.round(H*.12), fill:i%2===0?'#FFFFFF':'#F8FAFC', rx:8 }), TX(label as string, { l:Math.round(W*.09), t:y+Math.round(H*.04), w:Math.round(W*.28), fs:sc(13,W), fw:'600', fill:'#374151' }), TX(y1 as string, { l:Math.round(W*.42), t:y+Math.round(H*.04), w:100, fs:sc(13,W), fw:'700', fill:col, ta:'center', ff:'JetBrains Mono' }), TX(y2 as string, { l:Math.round(W*.58), t:y+Math.round(H*.04), w:100, fs:sc(13,W), fw:'700', fill:col, ta:'center', ff:'JetBrains Mono' }), TX(y3 as string, { l:Math.round(W*.74), t:y+Math.round(H*.04), w:100, fs:sc(13,W), fw:'700', fill:col, ta:'center', ff:'JetBrains Mono' })]
+      }).flat(),
+      ...[['FY2023','#94A3B8'],['FY2024','#94A3B8'],['FY2025E','#16A34A']].map(([yr,col],i) => TX(yr as string, { l:Math.round(W*.42)+i*Math.round(W*.16), t:Math.round(H*.24), w:100, fs:sc(10,W), fw:'700', fill:col, ta:'center', ff:'JetBrains Mono' })),
+    ])
+  },
+  { id: 'pitch-gtm', label: 'Go-to-Market', cat: 'Pitch', preview: '#FAFAFA',
+    build: (W: number, H: number) => pg('#FAFAFA', [
+      BX({ l:0, t:0, w:W, h:5, fill:'#0F172A' }),
+      TX('Go-to-Market Strategy', { l:Math.round(W*.06), t:34, w:Math.round(W*.7), fs:sc(28,W), fw:'800', fill:'#0F172A' }),
+      ...[['Phase 1', 'Direct Sales', 'Target 50 enterprise logos in first 6 months', '0–6 mo', '#5B50E8'], ['Phase 2', 'Channel Partners', 'Build partner network for 10× distribution', '6–18 mo', '#16A34A'], ['Phase 3', 'Product-Led', 'PLG motion with freemium tier + viral loop', '18 mo+', '#D97706']].map(([phase, title, body, time, col], i) => {
+        const y = Math.round(H*.28)+i*Math.round(H*.22)
+        return [BX({ l:Math.round(W*.06), t:y, w:Math.round(W*.88), h:Math.round(H*.18), fill:'#FFFFFF', rx:12 }), BX({ l:Math.round(W*.06), t:y, w:5, h:Math.round(H*.18), fill:col, rx:3 }), TX(phase as string, { l:Math.round(W*.09), t:y+10, w:80, fs:sc(10,W), fw:'700', fill:col, ff:'JetBrains Mono' }), TX(title as string, { l:Math.round(W*.09), t:y+10+sc(10,W)+6, w:Math.round(W*.52), fs:sc(15,W), fw:'700', fill:'#0F172A' }), TX(body as string, { l:Math.round(W*.09), t:y+10+sc(10,W)+6+sc(15,W)+6, w:Math.round(W*.54), fs:sc(12,W), fill:'#64748B', lh:1.5 }), TX(time as string, { l:Math.round(W*.77), t:y+Math.round(H*.07), w:Math.round(W*.15), fs:sc(11,W), fw:'700', fill:col, ta:'right', ff:'JetBrains Mono' })]
+      }).flat(),
+    ])
+  },
+
+  // ── Report / Document layouts ─────────────────────────────────────────────
+  { id: 'report-cover', label: 'Report Cover', cat: 'Report', preview: '#1E293B',
+    build: (W: number, H: number) => pg('#1E293B', [
+      BX({ l:0, t:0, w:W, h:H, fill:'#1E293B' }),
+      BX({ l:0, t:0, w:Math.round(W*.06), h:H, fill:'#5B50E8' }),
+      BX({ l:Math.round(W*.06), t:Math.round(H*.7), w:W-Math.round(W*.06), h:1, fill:'rgba(255,255,255,.12)' }),
+      TX('ANNUAL REPORT', { l:Math.round(W*.1), t:Math.round(H*.08), w:320, fs:sc(10,W), fw:'700', fill:'rgba(255,255,255,.38)', ff:'JetBrains Mono', cs:300 }),
+      TX('2025', { l:Math.round(W*.1), t:Math.round(H*.08)+sc(10,W)+10, w:W*.7, fs:sc(88,W), fw:'900', fill:'#FFFFFF', lh:.85 }),
+      TX('Company Name', { l:Math.round(W*.1), t:Math.round(H*.72), w:Math.round(W*.6), fs:sc(22,W), fw:'700', fill:'#FFFFFF' }),
+      TX('Building the future, one year at a time.', { l:Math.round(W*.1), t:Math.round(H*.72)+sc(22,W)+8, w:Math.round(W*.55), fs:sc(12,W), fill:'rgba(255,255,255,.45)', lh:1.6 }),
+    ])
+  },
+  { id: 'report-section', label: 'Section Divider', cat: 'Report', preview: '#5B50E8',
+    build: (W: number, H: number) => pg('#5B50E8', [
+      BX({ l:0, t:0, w:W, h:H, fill:'#5B50E8' }),
+      TX('02', { l:Math.round(W*.06), t:Math.round(H*.1), w:W*.3, fs:sc(120,W), fw:'900', fill:'rgba(255,255,255,.12)', lh:1, ff:'JetBrains Mono' }),
+      TX('Product & Technology', { l:Math.round(W*.06), t:Math.round(H*.5), w:Math.round(W*.75), fs:sc(42,W), fw:'800', fill:'#FFFFFF', lh:.96 }),
+      TX('What we built, how we scaled, and where we're heading next.', { l:Math.round(W*.06), t:Math.round(H*.5)+sc(42,W)+18, w:Math.round(W*.6), fs:sc(14,W), fill:'rgba(255,255,255,.58)', lh:1.65 }),
+    ])
+  },
+  { id: 'report-data', label: 'Data Page', cat: 'Report', preview: '#F8FAFC',
+    build: (W: number, H: number) => pg('#F8FAFC', [
+      BX({ l:0, t:0, w:W, h:5, fill:'#5B50E8' }),
+      TX('Key Metrics', { l:Math.round(W*.06), t:32, w:Math.round(W*.5), fs:sc(20,W), fw:'800', fill:'#0F172A' }),
+      TX('Q4 2025 · Confidential', { l:Math.round(W*.7), t:34, w:Math.round(W*.22), fs:sc(10,W), fill:'#94A3B8', ta:'right', ff:'JetBrains Mono' }),
+      LN(Math.round(W*.06), Math.round(H*.2), Math.round(W*.94), Math.round(H*.2), '#E2E8F0'),
+      BX({ l:Math.round(W*.06), t:Math.round(H*.22), w:Math.round(W*.56), h:Math.round(H*.62), fill:'#FFFFFF', rx:12 }),
+      TX('Chart Area', { l:Math.round(W*.06)+Math.round(W*.18), t:Math.round(H*.22)+Math.round(H*.28), w:200, fs:sc(12,W), fill:'#94A3B8', ta:'center', ff:'JetBrains Mono' }),
+      BX({ l:Math.round(W*.66), t:Math.round(H*.22), w:Math.round(W*.28), h:Math.round(H*.28), fill:'#EEF2FF', rx:12 }),
+      BX({ l:Math.round(W*.66), t:Math.round(H*.22)+Math.round(H*.32), w:Math.round(W*.28), h:Math.round(H*.28), fill:'#F0FDF4', rx:12 }),
+    ])
+  },
+  { id: 'report-summary', label: 'Exec Summary', cat: 'Report', preview: '#FFFFFF',
+    build: (W: number, H: number) => pg('#FFFFFF', [
+      BX({ l:0, t:0, w:W, h:5, fill:'#0F172A' }),
+      BX({ l:Math.round(W*.06), t:Math.round(H*.08), w:5, h:Math.round(H*.08), fill:'#5B50E8', rx:3 }),
+      TX('Executive Summary', { l:Math.round(W*.1), t:Math.round(H*.08), w:Math.round(W*.65), fs:sc(26,W), fw:'800', fill:'#0F172A' }),
+      TX('Overview', { l:Math.round(W*.06), t:Math.round(H*.22), w:Math.round(W*.3), fs:sc(10,W), fw:'700', fill:'#5B50E8', ff:'JetBrains Mono', cs:200 }),
+      TX('Insert your executive summary text here. This layout is designed for professional business reports, board decks, and strategic documents requiring clear structure.', { l:Math.round(W*.06), t:Math.round(H*.26), w:Math.round(W*.88), fs:sc(13,W), fill:'#374151', lh:1.75 }),
+      LN(Math.round(W*.06), Math.round(H*.52), Math.round(W*.94), Math.round(H*.52), '#E2E8F0'),
+      TX('Key Highlights', { l:Math.round(W*.06), t:Math.round(H*.54), w:Math.round(W*.3), fs:sc(10,W), fw:'700', fill:'#5B50E8', ff:'JetBrains Mono', cs:200 }),
+      ...['Revenue grew 47% year-over-year', 'Expanded to 3 new markets', 'Achieved profitability in Q3'].map((item, i) => TX(`→  ${item}`, { l:Math.round(W*.06), t:Math.round(H*.58)+i*sc(20,W), w:Math.round(W*.84), fs:sc(13,W), fill:'#374151', lh:1.55 })),
+    ])
+  },
+
+  // ── Social / Content layouts ──────────────────────────────────────────────
+  { id: 'social-quote', label: 'Quote Card', cat: 'Social', preview: '#1A1A2E',
+    build: (W: number, H: number) => pg('#1A1A2E', [
+      BX({ l:0, t:0, w:W, h:H, fill:'#1A1A2E' }),
+      TX('"', { l:Math.round(W*.08), t:Math.round(H*.04), w:80, fs:sc(80,W), fw:'900', fill:'#5B50E8', lh:1 }),
+      TX('The only way to do great work is to love what you do.', { l:Math.round(W*.08), t:Math.round(H*.28), w:Math.round(W*.84), fs:sc(26,W), fw:'600', fill:'#FFFFFF', ff:'Cormorant Garamond', lh:1.22 }),
+      LN(Math.round(W*.08), Math.round(H*.72), Math.round(W*.2), Math.round(H*.72), '#5B50E8', 2),
+      TX('— Steve Jobs', { l:Math.round(W*.08), t:Math.round(H*.74), w:Math.round(W*.5), fs:sc(12,W), fill:'rgba(255,255,255,.38)' }),
+    ])
+  },
+  { id: 'social-announcement', label: 'Announcement', cat: 'Social', preview: '#5B50E8',
+    build: (W: number, H: number) => pg('#5B50E8', [
+      BX({ l:0, t:0, w:W, h:H, fill:'#5B50E8' }),
+      TX('🎉', { l:Math.round(W*.5)-30, t:Math.round(H*.1), w:60, fs:48, ta:'center', lh:1 }),
+      TX('We're
+Hiring!', { l:Math.round(W*.06), t:Math.round(H*.26), w:W*.88, fs:sc(58,W), fw:'900', fill:'#FFFFFF', ta:'center', lh:.93 }),
+      TX('Join our team and help build the future of document intelligence.', { l:Math.round(W*.12), t:Math.round(H*.62), w:W*.76, fs:sc(14,W), fill:'rgba(255,255,255,.7)', ta:'center', lh:1.6 }),
+      BX({ l:Math.round(W*.3), t:Math.round(H*.78), w:Math.round(W*.4), h:44, fill:'#FFFFFF', rx:22 }),
+      TX('Apply Now →', { l:Math.round(W*.3), t:Math.round(H*.78)+13, w:Math.round(W*.4), fs:sc(14,W), fw:'700', fill:'#5B50E8', ta:'center' }),
+    ])
+  },
+  { id: 'social-stats', label: 'Stats Card', cat: 'Social', preview: '#0F172A',
+    build: (W: number, H: number) => pg('#0F172A', [
+      BX({ l:0, t:0, w:W, h:H, fill:'#0F172A' }),
+      TX('This week's', { l:Math.round(W*.08), t:Math.round(H*.1), w:W*.84, fs:sc(16,W), fill:'rgba(255,255,255,.45)', ta:'center' }),
+      TX('Highlights', { l:Math.round(W*.08), t:Math.round(H*.1)+sc(16,W)+8, w:W*.84, fs:sc(38,W), fw:'900', fill:'#FFFFFF', ta:'center' }),
+      ...[['2,847', 'New Users', '#16A34A'], ['$48K', 'Revenue', '#5B50E8'], ['94%', 'Retention', '#D97706']].map(([val, lbl, col], i) => {
+        const cw = Math.round((W-80)/3); const cx = 40+i*(cw+20)
+        return [BX({ l:cx, t:Math.round(H*.48), w:cw, h:Math.round(H*.38), fill:'rgba(255,255,255,.06)', rx:14 }), TX(val as string, { l:cx+8, t:Math.round(H*.52), w:cw-16, fs:sc(30,W), fw:'800', fill:col, ta:'center', ff:'JetBrains Mono' }), TX(lbl as string, { l:cx+8, t:Math.round(H*.52)+sc(30,W)+8, w:cw-16, fs:sc(11,W), fill:'rgba(255,255,255,.45)', ta:'center' })]
+      }).flat(),
+    ])
+  },
+  { id: 'social-event', label: 'Event Card', cat: 'Social', preview: '#FAF5EF',
+    build: (W: number, H: number) => pg('#FAF5EF', [
+      BX({ l:0, t:0, w:W, h:Math.round(H*.44), fill:'#0F172A' }),
+      TX('🗓', { l:Math.round(W*.08), t:Math.round(H*.08), w:60, fs:36, lh:1 }),
+      TX('APR
+24', { l:Math.round(W*.22), t:Math.round(H*.06), w:120, fs:sc(32,W), fw:'900', fill:'#FFFFFF', lh:.92, ff:'JetBrains Mono' }),
+      TX('Product
+Launch Event', { l:Math.round(W*.08), t:Math.round(H*.2), w:Math.round(W*.84), fs:sc(38,W), fw:'900', fill:'#FFFFFF', lh:.93 }),
+      TX('Main Event Title', { l:Math.round(W*.08), t:Math.round(H*.52), w:Math.round(W*.84), fs:sc(22,W), fw:'700', fill:'#0F172A' }),
+      TX('6:00 PM · San Francisco, CA · Tickets from $99', { l:Math.round(W*.08), t:Math.round(H*.52)+sc(22,W)+10, w:Math.round(W*.84), fs:sc(13,W), fill:'#64748B', lh:1.55 }),
+    ])
+  },
+
+  // ── Infographic layouts ───────────────────────────────────────────────────
+  { id: 'infographic-steps', label: 'Process Steps', cat: 'Infographic', preview: '#F8FAFC',
+    build: (W: number, H: number) => pg('#F8FAFC', [
+      BX({ l:0, t:0, w:W, h:5, fill:'#5B50E8' }),
+      TX('How It Works', { l:50, t:36, w:W-100, fs:sc(26,W), fw:'800', fill:'#0F172A', ta:'center' }),
+      LN(Math.round(W*.14), Math.round(H*.45), Math.round(W*.86), Math.round(H*.45), '#5B50E8', 2),
+      ...([1,2,3,4].map((n, i) => {
+        const x = Math.round(W*.1) + i * Math.round(W*.22)
+        return [CL({ l:x, t:Math.round(H*.4), r:22, fill:'#5B50E8' }), TX(String(n), { l:x, t:Math.round(H*.4)+8, w:44, fs:sc(14,W), fw:'800', fill:'#FFFFFF', ta:'center', ff:'JetBrains Mono' }), TX(['Connect', 'Configure', 'Launch', 'Scale'][i], { l:x-40, t:Math.round(H*.5)+18, w:124, fs:sc(12,W), fw:'700', fill:'#0F172A', ta:'center' }), TX(['Link your tools', 'Set up workspace', 'Go live today', 'Grow fast'][i], { l:x-44, t:Math.round(H*.5)+18+sc(12,W)+6, w:132, fs:sc(10,W), fill:'#64748B', ta:'center', lh:1.5 })]
+      })).flat(),
+    ])
+  },
+  { id: 'infographic-comparison', label: 'Feature Compare', cat: 'Infographic', preview: '#FFFFFF',
+    build: (W: number, H: number) => pg('#FFFFFF', [
+      BX({ l:0, t:0, w:W, h:5, fill:'#0F172A' }),
+      TX('Feature Comparison', { l:50, t:34, w:W-100, fs:sc(24,W), fw:'800', fill:'#0F172A', ta:'center' }),
+      BX({ l:Math.round(W*.3), t:Math.round(H*.2), w:Math.round(W*.22), h:Math.round(H*.7), fill:'#EEF2FF', rx:14 }),
+      BX({ l:Math.round(W*.55), t:Math.round(H*.2), w:Math.round(W*.22), h:Math.round(H*.7), fill:'#F0FDF4', rx:14 }),
+      TX('Basic', { l:Math.round(W*.3), t:Math.round(H*.22), w:Math.round(W*.22), fs:sc(14,W), fw:'700', fill:'#3730A3', ta:'center' }),
+      TX('Pro', { l:Math.round(W*.55), t:Math.round(H*.22), w:Math.round(W*.22), fs:sc(14,W), fw:'700', fill:'#166534', ta:'center' }),
+      ...['Feature A', 'Feature B', 'Feature C', 'Feature D', 'Priority Support'].map((feat, i) => {
+        const y = Math.round(H*.32)+i*Math.round(H*.1)
+        return [TX(feat, { l:Math.round(W*.06), t:y, w:Math.round(W*.22), fs:sc(12,W), fill:'#374151', fw:'500' }), TX('✓', { l:Math.round(W*.3), t:y, w:Math.round(W*.22), fs:sc(13,W), fill:'#3730A3', ta:'center', fw:'700' }), TX('✓', { l:Math.round(W*.55), t:y, w:Math.round(W*.22), fs:sc(13,W), fill:'#166534', ta:'center', fw:'700' })]
+      }).flat(),
+    ])
+  },
+  { id: 'infographic-timeline', label: 'Milestone Timeline', cat: 'Infographic', preview: '#F8FAFC',
+    build: (W: number, H: number) => pg('#F8FAFC', [
+      BX({ l:0, t:0, w:W, h:5, fill:'#0F172A' }),
+      TX('Company Timeline', { l:50, t:34, w:W-100, fs:sc(24,W), fw:'800', fill:'#0F172A', ta:'center' }),
+      LN(Math.round(W*.08), Math.round(H*.5), Math.round(W*.92), Math.round(H*.5), '#E2E8F0', 3),
+      ...[['2021', 'Founded', '#5B50E8'], ['2022', 'Seed Round', '#16A34A'], ['2023', 'Product Launch', '#D97706'], ['2024', 'Series A', '#DC2626'], ['2025', 'Global Expansion', '#0369A1']].map(([year, event, col], i) => {
+        const x = Math.round(W*.1)+i*Math.round(W*.2)
+        const above = i%2===0
+        return [CL({ l:x-16, t:Math.round(H*.5)-16, r:16, fill:col }), TX(year as string, { l:x-40, t:above?Math.round(H*.5)-60:Math.round(H*.5)+28, w:80, fs:sc(10,W), fw:'700', fill:col, ta:'center', ff:'JetBrains Mono' }), TX(event as string, { l:x-50, t:above?Math.round(H*.5)-86:Math.round(H*.5)+52, w:100, fs:sc(11,W), fill:'#374151', ta:'center', fw:'600', lh:1.3 })]
+      }).flat(),
+    ])
+  },
+
+  // ── Awards / Recognition layouts ──────────────────────────────────────────
+  { id: 'award-certificate', label: 'Certificate', cat: 'Award', preview: '#FDFAF5',
+    build: (W: number, H: number) => pg('#FDFAF5', [
+      BX({ l:8, t:8, w:W-16, h:H-16, fill:'transparent', stroke:'#D4B896', sw:2, rx:8 }),
+      BX({ l:18, t:18, w:W-36, h:H-36, fill:'transparent', stroke:'#E8D5A0', sw:1, rx:6 }),
+      TX('CERTIFICATE', { l:50, t:Math.round(H*.1), w:W-100, fs:sc(11,W), fw:'700', fill:'#B8892A', ta:'center', ff:'JetBrains Mono', cs:400 }),
+      TX('of Achievement', { l:50, t:Math.round(H*.1)+sc(11,W)+8, w:W-100, fs:sc(10,W), fw:'400', fill:'#8B6914', ta:'center', ff:'Cormorant Garamond' }),
+      TX('This is awarded to', { l:50, t:Math.round(H*.3), w:W-100, fs:sc(13,W), fill:'#6B5A2E', ta:'center', ff:'Cormorant Garamond' }),
+      TX('Recipient Name', { l:50, t:Math.round(H*.38), w:W-100, fs:sc(34,W), fw:'400', fill:'#2C1810', ta:'center', ff:'Cormorant Garamond' }),
+      LN(Math.round(W*.2), Math.round(H*.56), Math.round(W*.8), Math.round(H*.56), '#D4B896', 1),
+      TX('In recognition of outstanding achievement and excellence.', { l:50, t:Math.round(H*.58), w:W-100, fs:sc(12,W), fill:'#6B5A2E', ta:'center', ff:'Cormorant Garamond', lh:1.6 }),
+      TX('⭐ FOLIO VERIFIED ⭐', { l:50, t:Math.round(H*.8), w:W-100, fs:sc(9,W), fw:'700', fill:'#B8892A', ta:'center', ff:'JetBrains Mono', cs:200 }),
+    ])
+  },
+
+  // ── Newsletter layouts ────────────────────────────────────────────────────
+  { id: 'newsletter-header', label: 'Newsletter Header', cat: 'Newsletter', preview: '#FFFFFF',
+    build: (W: number, H: number) => pg('#FFFFFF', [
+      BX({ l:0, t:0, w:W, h:Math.round(H*.36), fill:'#0F172A' }),
+      TX('THE WEEKLY BRIEF', { l:50, t:Math.round(H*.06), w:W-100, fs:sc(10,W), fw:'700', fill:'rgba(255,255,255,.38)', ta:'center', ff:'JetBrains Mono', cs:300 }),
+      TX('Issue #42 · March 2025', { l:50, t:Math.round(H*.06)+sc(10,W)+6, w:W-100, fs:sc(12,W), fill:'rgba(255,255,255,.55)', ta:'center' }),
+      TX('Big Ideas.
+Bigger Results.', { l:Math.round(W*.08), t:Math.round(H*.14), w:W*.84, fs:sc(38,W), fw:'900', fill:'#FFFFFF', ta:'center', lh:.94 }),
+      TX('IN THIS ISSUE', { l:Math.round(W*.08), t:Math.round(H*.44), w:Math.round(W*.25), fs:sc(9,W), fw:'700', fill:'#5B50E8', ff:'JetBrains Mono', cs:200 }),
+      ...['→ The future of AI in design', '→ 5 tools you need this week', '→ Interview: Design at scale'].map((item, i) => TX(item, { l:Math.round(W*.08), t:Math.round(H*.50)+i*sc(17,W), w:Math.round(W*.6), fs:sc(13,W), fill:'#374151', fw:'500', lh:1.5 })),
+    ])
+  },
+  { id: 'newsletter-story', label: 'Newsletter Story', cat: 'Newsletter', preview: '#FAFAFA',
+    build: (W: number, H: number) => pg('#FAFAFA', [
+      BX({ l:0, t:0, w:W, h:5, fill:'#5B50E8' }),
+      TX('FEATURE STORY', { l:Math.round(W*.06), t:26, w:240, fs:sc(9,W), fw:'700', fill:'#5B50E8', ff:'JetBrains Mono', cs:200 }),
+      TX('The Big Story
+You Can't Miss', { l:Math.round(W*.06), t:Math.round(H*.1), w:Math.round(W*.58), fs:sc(34,W), fw:'900', fill:'#0F172A', lh:.95 }),
+      TX('A compelling three-sentence lead that gives context and draws the reader into the full story below.', { l:Math.round(W*.06), t:Math.round(H*.1)+sc(34,W)*2+16, w:Math.round(W*.55), fs:sc(14,W), fill:'#374151', lh:1.7, fw:'500' }),
+      BX({ l:Math.round(W*.68), t:Math.round(H*.08), w:Math.round(W*.26), h:Math.round(H*.46), fill:'#E2E8F0', rx:12 }),
+      TX('Add
+image', { l:Math.round(W*.68)+20, t:Math.round(H*.08)+Math.round(H*.2), w:Math.round(W*.22), fs:sc(11,W), fill:'#94A3B8', ta:'center', ff:'JetBrains Mono' }),
+      LN(Math.round(W*.06), Math.round(H*.64), Math.round(W*.94), Math.round(H*.64), '#E2E8F0'),
+      TX('Continue body text here. Share the full details of your story in a clear, reader-friendly format with enough space to breathe.', { l:Math.round(W*.06), t:Math.round(H*.66), w:Math.round(W*.88), fs:sc(12,W), fill:'#475569', lh:1.75 }),
+    ])
+  },
+
+  // ── Pitch extra ───────────────────────────────────────────────────────────
+  { id: 'pitch-problem2', label: 'Pain Points', cat: 'Pitch', preview: '#0F172A',
+    build: (W: number, H: number) => pg('#0F172A', [
+      BX({ l:0, t:0, w:W, h:H, fill:'#0F172A' }),
+      TX('Before us, teams had to…', { l:Math.round(W*.06), t:36, w:Math.round(W*.7), fs:sc(24,W), fw:'800', fill:'rgba(255,255,255,.8)' }),
+      ...[['😤 Waste 8 hours/week', 'Manually compiling reports from 6 different tools.', '#EF4444'], ['🤷 Guess at results', 'No visibility into whether anyone read their documents.', '#F59E0B'], ['💸 Lose deals', 'Following up too late, missing the window of engagement.', '#D97706'], ['🔄 Repeat mistakes', 'No data to improve their document strategy over time.', '#94A3B8']].map(([title, body, col], i) => {
+        const y = Math.round(H*.28)+i*Math.round(H*.16)
+        return [BX({ l:Math.round(W*.06), t:y, w:Math.round(W*.88), h:Math.round(H*.13), fill:'rgba(255,255,255,.04)', rx:10 }), TX(title as string, { l:Math.round(W*.09), t:y+Math.round(H*.03), w:Math.round(W*.44), fs:sc(14,W), fw:'700', fill:col }), TX(body as string, { l:Math.round(W*.09), t:y+Math.round(H*.03)+sc(14,W)+6, w:Math.round(W*.54), fs:sc(12,W), fill:'rgba(255,255,255,.45)', lh:1.5 })]
+      }).flat(),
+    ])
+  },
+  { id: 'pitch-social-proof', label: 'Social Proof', cat: 'Pitch', preview: '#FAFAFA',
+    build: (W: number, H: number) => pg('#FAFAFA', [
+      BX({ l:0, t:0, w:W, h:5, fill:'#0F172A' }),
+      TX('What Our Customers Say', { l:50, t:34, w:W-100, fs:sc(26,W), fw:'800', fill:'#0F172A', ta:'center' }),
+      TX('★★★★★  4.9/5 from 847 reviews', { l:50, t:34+sc(26,W)+12, w:W-100, fs:sc(12,W), fill:'#F59E0B', ta:'center', fw:'600', ff:'JetBrains Mono' }),
+      ...['"Game changer for our sales team."', '"We closed 40% more deals this quarter."', '"Analytics gave us insights we never had."'].map((quote, i) => {
+        const cw = Math.round((W-140)/3); const cx = 50+i*(cw+20)
+        return [BX({ l:cx, t:Math.round(H*.34), w:cw, h:Math.round(H*.48), fill:'#FFFFFF', rx:14 }), TX('"', { l:cx+12, t:Math.round(H*.34)+10, w:30, fs:32, fw:'900', fill:'#5B50E8', lh:1 }), TX(quote as string, { l:cx+14, t:Math.round(H*.34)+44, w:cw-28, fs:sc(13,W), fill:'#0F172A', ff:'Cormorant Garamond', lh:1.5, fw:'500' }), TX(['Head of Sales, Acme', 'CEO, TechCorp', 'VP Marketing, Brand Co.'][i], { l:cx+14, t:Math.round(H*.34)+Math.round(H*.34), w:cw-28, fs:sc(10,W), fill:'#64748B' })]
+      }).flat(),
+    ])
+  },
+  { id: 'pitch-investors', label: 'Our Investors', cat: 'Pitch', preview: '#F8FAFC',
+    build: (W: number, H: number) => pg('#F8FAFC', [
+      BX({ l:0, t:0, w:W, h:5, fill:'#0F172A' }),
+      TX('Backed By the Best', { l:50, t:34, w:W-100, fs:sc(26,W), fw:'800', fill:'#0F172A', ta:'center' }),
+      TX('We're proud to have the support of world-class investors.', { l:50, t:34+sc(26,W)+10, w:W-100, fs:sc(14,W), fill:'#64748B', ta:'center' }),
+      ...Array.from({length:6}).map((_, i) => {
+        const cw = Math.round((W-180)/3); const cx = 60+(i%3)*(cw+30); const cy = Math.round(H*.38)+Math.floor(i/3)*Math.round(H*.28)
+        return [BX({ l:cx, t:cy, w:cw, h:54, fill:'#FFFFFF', rx:10, stroke:'#E2E8F0', sw:1 }), TX(['Sequoia', 'Andreessen', 'Y Combinator', 'Founders Fund', 'Tiger Global', 'Index Ventures'][i], { l:cx, t:cy+16, w:cw, fs:sc(13,W), fw:'800', fill:'#0F172A', ta:'center' })]
+      }).flat(),
+      TX('$12M raised to date  ·  18 months runway', { l:50, t:Math.round(H*.84), w:W-100, fs:sc(11,W), fill:'#94A3B8', ta:'center', ff:'JetBrains Mono' }),
+    ])
+  },
+
+  // ── More Minimal ──────────────────────────────────────────────────────────
+  { id: 'minimal-bold-type', label: 'Bold Word', cat: 'Minimal', preview: '#FFFFFF',
+    build: (W: number, H: number) => pg('#FFFFFF', [
+      BX({ l:0, t:0, w:W, h:H, fill:'#FFFFFF' }),
+      TX('Future.', { l:Math.round(W*.04), t:Math.round(H*.3), w:W*.92, fs:sc(90,W), fw:'900', fill:'#0F172A', lh:.88 }),
+      BX({ l:0, t:Math.round(H*.78), w:Math.round(W*.3), h:Math.round(H*.22), fill:'#5B50E8' }),
+      TX('Your Company · 2025', { l:10, t:Math.round(H*.84), w:Math.round(W*.27), fs:sc(10,W), fw:'700', fill:'rgba(255,255,255,.7)', ta:'center', ff:'JetBrains Mono' }),
+    ])
+  },
+  { id: 'minimal-split-color', label: 'Color Split', cat: 'Minimal', preview: '#F8FAFC',
+    build: (W: number, H: number) => pg('#F8FAFC', [
+      BX({ l:0, t:0, w:Math.round(W*.5), h:H, fill:'#5B50E8' }),
+      TX('Left', { l:Math.round(W*.04), t:Math.round(H*.42), w:Math.round(W*.44), fs:sc(60,W), fw:'900', fill:'#FFFFFF', ta:'center' }),
+      TX('Right', { l:Math.round(W*.52), t:Math.round(H*.42), w:Math.round(W*.44), fs:sc(60,W), fw:'900', fill:'#0F172A', ta:'center' }),
+    ])
+  },
+]
+
+
+  { id: 'minimal-frame', label: 'Frame', cat: 'Minimal', preview: '#FAFAFA',
+    build: (W: number, H: number) => pg('#FAFAFA', [
+      LN(32,32,W-32,32,'#0F172A',2),LN(32,H-32,W-32,H-32,'#0F172A',2),
+      LN(32,32,32,H-32,'#0F172A',2),LN(W-32,32,W-32,H-32,'#0F172A',2),
+      TX('Framed.', { l:50, t:Math.round(H*.38), w:W-100, fs:sc(64,W), fw:'900', fill:'#0F172A', ta:'center' }),
+    ])
+  },
+  { id: 'pitch-use-cases', label: 'Use Cases', cat: 'Pitch', preview: '#F8FAFC',
+    build: (W: number, H: number) => pg('#F8FAFC', [
+      BX({ l:0, t:0, w:W, h:5, fill:'#5B50E8' }),
+      TX('Who Uses Folio?', { l:50, t:34, w:W-100, fs:sc(26,W), fw:'800', fill:'#0F172A', ta:'center' }),
+      ...[['💼','Sales Teams','Close deals faster with tracking'],['🏗','Agencies','Impress clients with proposals'],['⚖','Legal','Sign contracts with confidence'],['🚀','Startups','Send pitch decks that convert']].map(([icon,title,body],i) => {
+        const cw=Math.round((W-160)/4); const cx=50+i*(cw+20)
+        return [BX({l:cx,t:Math.round(H*.32),w:cw,h:Math.round(H*.52),fill:'#FFFFFF',rx:14,stroke:'#E2E8F0',sw:1}),TX(icon as string,{l:cx,t:Math.round(H*.36),w:cw,fs:28,ta:'center',lh:1}),TX(title as string,{l:cx+10,t:Math.round(H*.5),w:cw-20,fs:sc(13,W),fw:'700',fill:'#0F172A',ta:'center'}),TX(body as string,{l:cx+10,t:Math.round(H*.5)+sc(13,W)+7,w:cw-20,fs:sc(10,W),fill:'#64748B',ta:'center',lh:1.5})]
+      }).flat(),
+    ])
+  },
+  { id: 'report-kpi-page', label: 'KPI Report Page', cat: 'Report', preview: '#FFFFFF',
+    build: (W: number, H: number) => pg('#FFFFFF', [
+      BX({ l:0, t:0, w:W, h:5, fill:'#5B50E8' }),
+      TX('Performance Dashboard', { l:Math.round(W*.06), t:32, w:Math.round(W*.6), fs:sc(20,W), fw:'800', fill:'#0F172A' }),
+      TX('Q4 2025', { l:Math.round(W*.8), t:34, w:120, fs:sc(12,W), fw:'700', fill:'#5B50E8', ta:'right', ff:'JetBrains Mono' }),
+      ...[['$4.8M','Revenue','+47%','#16A34A'],['8,421','Users','+23%','#5B50E8'],['94%','Retention','+2pts','#D97706'],['4.8','NPS','+0.3','#EC4899']].map(([val,lbl,chg,col],i) => {
+        const cw=Math.round((W-140)/4); const cx=50+i*(cw+13)
+        return [BX({l:cx,t:Math.round(H*.2),w:cw,h:Math.round(H*.22),fill:'#F8FAFC',rx:12,stroke:'#E2E8F0',sw:1}),TX(val as string,{l:cx+10,t:Math.round(H*.22),w:cw-20,fs:sc(26,W),fw:'900',fill:col,ff:'JetBrains Mono'}),TX(lbl as string,{l:cx+10,t:Math.round(H*.22)+sc(26,W)+6,w:cw-20,fs:sc(11,W),fill:'#374151',fw:'600'}),TX(chg as string,{l:cx+10,t:Math.round(H*.22)+sc(26,W)+22,w:cw-20,fs:sc(10,W),fill:col,fw:'700',ff:'JetBrains Mono'})]
+      }).flat(),
+      BX({ l:Math.round(W*.06), t:Math.round(H*.48), w:Math.round(W*.88), h:Math.round(H*.42), fill:'#F8FAFC', rx:12 }),
+      TX('Chart / Graph Area', { l:Math.round(W*.06)+Math.round(W*.3), t:Math.round(H*.48)+Math.round(H*.18), w:200, fs:sc(12,W), fill:'#94A3B8', ta:'center', ff:'JetBrains Mono' }),
+    ])
+  },
+  { id: 'social-product', label: 'Product Feature', cat: 'Social', preview: '#1E293B',
+    build: (W: number, H: number) => pg('#1E293B', [
+      BX({ l:0, t:0, w:W, h:H, fill:'#1E293B' }),
+      BX({ l:Math.round(W*.08), t:Math.round(H*.12), w:Math.round(W*.84), h:Math.round(H*.44), fill:'rgba(255,255,255,.06)', rx:16 }),
+      TX('New Feature', { l:50, t:Math.round(H*.12)+Math.round(H*.2), w:W-100, fs:sc(11,W), fw:'700', fill:'#5B50E8', ta:'center', ff:'JetBrains Mono' }),
+      TX('🚀 Announcing
+Instant Insights', { l:50, t:Math.round(H*.6), w:W-100, fs:sc(28,W), fw:'900', fill:'#FFFFFF', ta:'center', lh:.95 }),
+      TX('Real-time AI analysis of every document view, automatically.', { l:50, t:Math.round(H*.6)+sc(28,W)*2+14, w:W-100, fs:sc(13,W), fill:'rgba(255,255,255,.55)', ta:'center', lh:1.6 }),
+    ])
+  },
+  { id: 'hero-duotone', label: 'Duotone', cat: 'Hero', preview: '#2D1B69',
+    build: (W: number, H: number) => pg('#2D1B69', [
+      BX({ l:0, t:0, w:W, h:H, fill:'#2D1B69' }),
+      BX({ l:Math.round(W*.5), t:0, w:Math.round(W*.5), h:H, fill:'#EC4899', op:.18 }),
+      CL({ l:Math.round(W*.3), t:Math.round(H*.1), r:Math.round(H*.3), fill:'rgba(236,72,153,.14)' }),
+      TX('Duotone
+Statement', { l:Math.round(W*.06), t:Math.round(H*.22), w:W*.88, fs:sc(58,W), fw:'900', fill:'#FFFFFF', lh:.93 }),
+      TX('Bold color. Bold message.', { l:Math.round(W*.06), t:Math.round(H*.22)+sc(58,W)*2+18, w:Math.round(W*.55), fs:sc(16,W), fill:'rgba(255,255,255,.5)', lh:1.6 }),
+    ])
+  },
+  { id: 'infographic-funnel', label: 'Conversion Funnel', cat: 'Infographic', preview: '#F8FAFC',
+    build: (W: number, H: number) => pg('#F8FAFC', [
+      BX({ l:0, t:0, w:W, h:5, fill:'#5B50E8' }),
+      TX('Conversion Funnel', { l:50, t:34, w:W-100, fs:sc(22,W), fw:'800', fill:'#0F172A', ta:'center' }),
+      ...[['Visitors','10,000','#EEF2FF','#5B50E8',W*.7],['Leads','3,200','#F0FDF4','#16A34A',W*.55],['Prospects','960','#FFFBEB','#D97706',W*.42],['Customers','240','#FEF2F2','#DC2626',W*.3]].map(([stage,n,bg,col,wPct],i) => {
+        const stageW = Math.round(wPct as number); const cx = Math.round((W-stageW)/2)
+        const y = Math.round(H*.24)+i*Math.round(H*.16)
+        return [BX({ l:cx, t:y, w:stageW, h:Math.round(H*.13), fill:bg, rx:8 }), TX(stage as string, { l:cx+16, t:y+Math.round(H*.04), w:Math.round(W*.3), fs:sc(13,W), fw:'700', fill:col }), TX(n as string, { l:cx+stageW-90, t:y+Math.round(H*.04), w:80, fs:sc(13,W), fw:'800', fill:col, ta:'right', ff:'JetBrains Mono' })]
+      }).flat(),
+    ])
+  },
+  { id: 'pitch-why-now', label: 'Why Now?', cat: 'Pitch', preview: '#020817',
+    build: (W: number, H: number) => pg('#020817', [
+      BX({ l:0, t:0, w:W, h:H, fill:'#020817' }),
+      TX('Why Now?', { l:Math.round(W*.06), t:36, w:Math.round(W*.7), fs:sc(34,W), fw:'900', fill:'#FFFFFF' }),
+      ...[['The window is open — for now.','Three major tailwinds have created a rare moment of opportunity that closes within 18 months.','#5B50E8'],['AI became accessible in 2024.','LLMs dropped the cost of document intelligence by 95%. What cost $400K now costs $400.','#16A34A'],['Remote work made docs the default.','3.2B professionals now share critical information via digital documents daily.','#D97706'],['Incumbents are asleep.','The category leader hasn't shipped a meaningful update in 4 years. We move fast.','#EC4899']].map(([title,body,col],i) => {
+        const y = Math.round(H*.22)+i*Math.round(H*.18)
+        return [BX({l:Math.round(W*.06),t:y+4,w:4,h:sc(14,W),fill:col,rx:2}),TX(title as string,{l:Math.round(W*.1),t:y,w:Math.round(W*.8),fs:sc(14,W),fw:'700',fill:'#FFFFFF'}),TX(body as string,{l:Math.round(W*.1),t:y+sc(14,W)+6,w:Math.round(W*.8),fs:sc(12,W),fill:'rgba(255,255,255,.42)',lh:1.5})]
+      }).flat(),
+    ])
+  },
+  { id: 'hero-stat-focus', label: 'Stat Focus', cat: 'Hero', preview: '#FAFAFA',
+    build: (W: number, H: number) => pg('#FAFAFA', [
+      TX('47%', { l:50, t:Math.round(H*.1), w:W-100, fs:sc(130,W), fw:'900', fill:'#5B50E8', ta:'center', lh:.82, ff:'JetBrains Mono' }),
+      LN(Math.round(W*.2), Math.round(H*.68), Math.round(W*.8), Math.round(H*.68), '#E2E8F0', 2),
+      TX('Of enterprise teams waste at least 8 hours per week on document inefficiency.', { l:50, t:Math.round(H*.7), w:W-100, fs:sc(14,W), fill:'#374151', ta:'center', lh:1.65, fw:'500' }),
+      TX('Source: McKinsey Global Institute, 2024', { l:50, t:Math.round(H*.84), w:W-100, fs:sc(10,W), fill:'#94A3B8', ta:'center', ff:'JetBrains Mono' }),
+    ])
+  },
+  { id: 'content-product-hunt', label: 'Product Hunt', cat: 'Content', preview: '#F97316',
+    build: (W: number, H: number) => pg('#F97316', [
+      BX({ l:0, t:0, w:W, h:H, fill:'#F97316' }),
+      TX('🏆', { l:50, t:Math.round(H*.1), w:W-100, fs:48, ta:'center', lh:1 }),
+      TX('#1 Product of
+the Day', { l:50, t:Math.round(H*.24), w:W-100, fs:sc(44,W), fw:'900', fill:'#FFFFFF', ta:'center', lh:.95 }),
+      TX('Thank you for your incredible support!', { l:50, t:Math.round(H*.64), w:W-100, fs:sc(14,W), fill:'rgba(255,255,255,.75)', ta:'center', lh:1.6 }),
+      TX('folio.app  ·  🍊 Product Hunt', { l:50, t:Math.round(H*.78), w:W-100, fs:sc(11,W), fill:'rgba(255,255,255,.55)', ta:'center', ff:'JetBrains Mono' }),
+    ])
+  },
+  { id: 'proposal-cover-dark', label: 'Dark Proposal', cat: 'Proposal', preview: '#0A0F1E',
+    build: (W: number, H: number) => pg('#0A0F1E', [
+      BX({ l:0, t:0, w:W, h:H, fill:'#0A0F1E' }),
+      BX({ l:0, t:0, w:5, h:H, fill:'#5B50E8' }),
+      BX({ l:0, t:H-5, w:W, h:5, fill:'#5B50E8' }),
+      TX('CONFIDENTIAL PROPOSAL', { l:Math.round(W*.08), t:Math.round(H*.1), w:320, fs:sc(9,W), fw:'700', fill:'rgba(91,80,232,.6)', ff:'JetBrains Mono', cs:200 }),
+      TX('Prepared for
+Client Name', { l:Math.round(W*.08), t:Math.round(H*.2), w:Math.round(W*.7), fs:sc(52,W), fw:'800', fill:'#FFFFFF', lh:.93 }),
+      TX('Prepared by Your Company', { l:Math.round(W*.08), t:Math.round(H*.7), w:Math.round(W*.55), fs:sc(14,W), fill:'rgba(255,255,255,.55)' }),
+      TX(new Date().toLocaleDateString('en-US',{month:'long',year:'numeric'}), { l:Math.round(W*.08), t:Math.round(H*.76), w:200, fs:sc(11,W), fill:'rgba(255,255,255,.28)', ff:'JetBrains Mono' }),
+    ])
+  },
+  { id: 'hero-kinetic', label: 'Kinetic Type', cat: 'Hero', preview: '#111111',
+    build: (W: number, H: number) => pg('#111111', [
+      TX('MAKE', { l:Math.round(W*.04), t:Math.round(H*.08), w:W*.9, fs:sc(70,W), fw:'900', fill:'#FFFFFF', lh:.88 }),
+      TX('SOMETHING', { l:Math.round(W*.04), t:Math.round(H*.08)+sc(70,W), w:W*.9, fs:sc(70,W), fw:'900', fill:'transparent', lh:.88 }),
+      TX('SOMETHING', { l:Math.round(W*.04)+2, t:Math.round(H*.08)+sc(70,W)+2, w:W*.9, fs:sc(70,W), fw:'900', fill:'#5B50E8', lh:.88 }),
+      TX('GREAT', { l:Math.round(W*.04), t:Math.round(H*.08)+sc(70,W)*2, w:W*.9, fs:sc(70,W), fw:'900', fill:'#FFFFFF', lh:.88 }),
+      TX('with Folio', { l:W-Math.round(W*.34), t:Math.round(H*.08)+sc(70,W)*3+14, w:Math.round(W*.3), fs:sc(13,W), fill:'rgba(255,255,255,.38)', ta:'right' }),
+    ])
+  },
+  { id: 'editorial-photo-caption', label: 'Photo Caption', cat: 'Editorial', preview: '#0F172A',
+    build: (W: number, H: number) => pg('#0F172A', [
+      BX({ l:0, t:0, w:W, h:Math.round(H*.72), fill:'#1E293B' }),
+      TX('Insert
+Image Here', { l:Math.round(W*.38), t:Math.round(H*.3), w:Math.round(W*.24), fs:sc(12,W), fill:'rgba(255,255,255,.18)', ta:'center', ff:'JetBrains Mono' }),
+      LN(Math.round(W*.06), Math.round(H*.74), Math.round(W*.22), Math.round(H*.74), '#5B50E8', 2),
+      TX('Photo caption and credit line goes here. Location · Year.', { l:Math.round(W*.06), t:Math.round(H*.76), w:Math.round(W*.6), fs:sc(13,W), fill:'rgba(255,255,255,.45)', lh:1.65 }),
+      TX('PHOTO ESSAY', { l:Math.round(W*.7), t:Math.round(H*.76), w:Math.round(W*.24), fs:sc(9,W), fw:'700', fill:'rgba(255,255,255,.2)', ta:'right', ff:'JetBrains Mono', cs:200 }),
+    ])
+  },
+  { id: 'team-org-chart', label: 'Org Chart', cat: 'Team', preview: '#F8FAFC',
+    build: (W: number, H: number) => pg('#F8FAFC', [
+      BX({ l:0, t:0, w:W, h:5, fill:'#0F172A' }),
+      TX('Organisation Chart', { l:50, t:34, w:W-100, fs:sc(22,W), fw:'800', fill:'#0F172A', ta:'center' }),
+      BX({ l:Math.round(W*.5)-70, t:Math.round(H*.2), w:140, h:44, fill:'#0F172A', rx:8 }),
+      TX('CEO', { l:Math.round(W*.5)-70, t:Math.round(H*.2)+14, w:140, fs:sc(13,W), fw:'700', fill:'#FFFFFF', ta:'center' }),
+      ...[Math.round(W*.2),Math.round(W*.5),Math.round(W*.8)].map((cx,i) => [
+        LN(Math.round(W*.5), Math.round(H*.2)+44, cx, Math.round(H*.48), 'rgba(0,0,0,.12)', 1),
+        BX({ l:cx-56, t:Math.round(H*.48), w:112, h:40, fill:'#EEF2FF', rx:7 }),
+        TX(['CTO','COO','CFO'][i], { l:cx-56, t:Math.round(H*.48)+12, w:112, fs:sc(12,W), fw:'700', fill:'#3730A3', ta:'center' }),
+      ]).flat(),
+    ])
+  },
+  { id: 'content-faq', label: 'FAQ', cat: 'Content', preview: '#FAFAFA',
+    build: (W: number, H: number) => pg('#FAFAFA', [
+      BX({ l:0, t:0, w:W, h:5, fill:'#5B50E8' }),
+      TX('Frequently Asked Questions', { l:50, t:34, w:W-100, fs:sc(24,W), fw:'800', fill:'#0F172A', ta:'center' }),
+      ...[['How does document tracking work?','When you share a link, Folio records every view, page dwell time, and engagement signal in real time.'],['Is my data secure?','All data is encrypted at rest and in transit. We're SOC 2 Type II certified.'],['Can I sign documents?','Yes — Folio includes legally valid digital signatures with SHA-256 verification.']].map(([q,a],i) => {
+        const y = Math.round(H*.26)+i*Math.round(H*.24)
+        return [BX({l:Math.round(W*.06),t:y,w:Math.round(W*.88),h:Math.round(H*.2),fill:'#FFFFFF',rx:12,stroke:'#E2E8F0',sw:1}),TX(`Q: ${q}`,{l:Math.round(W*.09),t:y+14,w:Math.round(W*.8),fs:sc(13,W),fw:'700',fill:'#0F172A'}),TX(`A: ${a}`,{l:Math.round(W*.09),t:y+14+sc(13,W)+8,w:Math.round(W*.8),fs:sc(12,W),fill:'#64748B',lh:1.55})]
+      }).flat(),
+    ])
+  },
+  { id: 'content-pricing', label: 'Pricing Page', cat: 'Content', preview: '#F8FAFC',
+    build: (W: number, H: number) => pg('#F8FAFC', [
+      BX({ l:0, t:0, w:W, h:5, fill:'#5B50E8' }),
+      TX('Simple, Transparent Pricing', { l:50, t:34, w:W-100, fs:sc(24,W), fw:'800', fill:'#0F172A', ta:'center' }),
+      TX('Start free. Upgrade when you're ready.', { l:50, t:34+sc(24,W)+10, w:W-100, fs:sc(13,W), fill:'#64748B', ta:'center' }),
+      ...[['Free','$0/mo','Up to 5 docs','Basic tracking','#F8FAFC','#94A3B8'],['Pro','$49/mo','Unlimited docs','AI insights + signing','#EEF2FF','#5B50E8'],['Enterprise','Custom','Unlimited everything','SSO + dedicated support','#F0FDF4','#16A34A']].map(([tier,price,feat1,feat2,bg,col],i) => {
+        const cw=Math.round((W-160)/3); const cx=50+i*(cw+20); const isMain=i===1
+        return [BX({l:cx,t:Math.round(H*.3),w:cw,h:Math.round(H*.55),fill:bg,rx:14,stroke:isMain?col:'#E2E8F0',sw:isMain?2:1}),TX(tier as string,{l:cx+14,t:Math.round(H*.34),w:cw-28,fs:sc(13,W),fw:'800',fill:col,ta:isMain?'center':'left'}),TX(price as string,{l:cx+14,t:Math.round(H*.34)+sc(13,W)+8,w:cw-28,fs:sc(22,W),fw:'900',fill:'#0F172A',ff:'JetBrains Mono',ta:isMain?'center':'left'}),TX(feat1 as string,{l:cx+14,t:Math.round(H*.58),w:cw-28,fs:sc(12,W),fill:'#374151'}),TX(feat2 as string,{l:cx+14,t:Math.round(H*.58)+sc(12,W)+6,w:cw-28,fs:sc(12,W),fill:'#374151'})]
+      }).flat(),
+    ])
+  },
+
+
+  { id: 'hero-award-winner', label: 'Award Winner', cat: 'Hero', preview: '#1A1200',
+    build: (W: number, H: number) => pg('#1A1200', [
+      BX({ l:0, t:0, w:W, h:H, fill:'#1A1200' }),
+      TX('🏆', { l:50, t:Math.round(H*.08), w:W-100, fs:56, ta:'center', lh:1 }),
+      TX('Award
+Winner', { l:50, t:Math.round(H*.22), w:W-100, fs:sc(58,W), fw:'900', fill:'#FCD34D', ta:'center', lh:.93 }),
+      LN(Math.round(W*.3), Math.round(H*.68), Math.round(W*.7), Math.round(H*.68), 'rgba(252,211,77,.35)', 2),
+      TX('Best Product 2025 · Category Name', { l:50, t:Math.round(H*.71), w:W-100, fs:sc(12,W), fill:'rgba(252,211,77,.6)', ta:'center', ff:'JetBrains Mono' }),
+    ])
+  },
+  { id: 'editorial-long-read', label: 'Long Read', cat: 'Editorial', preview: '#FAFAF8',
+    build: (W: number, H: number) => pg('#FAFAF8', [
+      BX({ l:0, t:0, w:W, h:5, fill:'#0F172A' }),
+      TX('LONG READ', { l:Math.round(W*.06), t:22, w:180, fs:sc(9,W), fw:'700', fill:'#5B50E8', ff:'JetBrains Mono', cs:300 }),
+      TX('The headline that spans the full width of the page and sets up a long-form piece.', { l:Math.round(W*.06), t:Math.round(H*.1), w:Math.round(W*.78), fs:sc(32,W), fw:'800', fill:'#0F172A', ff:'Cormorant Garamond', lh:1.15 }),
+      TX('15 min read · By Author Name', { l:Math.round(W*.06), t:Math.round(H*.44), w:300, fs:sc(11,W), fill:'#94A3B8', ff:'JetBrains Mono' }),
+      LN(Math.round(W*.06), Math.round(H*.48), Math.round(W*.94), Math.round(H*.48), '#E2E8F0'),
+      TX('Lead paragraph. The opening sentences that hook the reader and frame the story ahead. Write something that makes them lean in.', { l:Math.round(W*.06), t:Math.round(H*.5), w:Math.round(W*.88), fs:sc(14,W), fill:'#374151', lh:1.75, fw:'500' }),
+    ])
+  },
+
 ]
 
 export const LAYOUT_CATS = ['All', ...Array.from(new Set(LAYOUTS.map(l => l.cat)))]
