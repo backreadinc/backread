@@ -91,7 +91,7 @@ const LETTERS:Record<string,LetterFn> = {
     // Entry: pen approaches from below-left
     s1.push([ox-w*.08, bl+h*.18])
     s1.push([ox,       bl+h*.04])
-    ...cPack(ox+w*.04, bl,       2,rng)  // baseline touch - slow
+    s1.push(...cPack(ox+w*.04, bl,       2,rng))  // baseline touch - slow
     s1.push(           ...cPack(ox+w*.05, bl+lh*.5,  1,rng))  // rising
     s1.push(           ...cPack(ox+w*.06, bl+lh*.88, 2,rng))  // near apex - slow
     s1.push(           ...cPack(ox+w*.07, bl+lh,     3,rng))  // APEX - clustered = thick
